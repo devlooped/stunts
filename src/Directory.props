@@ -1,7 +1,7 @@
 <Project>
 
   <PropertyGroup>
-    <RootNamespace>Avatars</RootNamespace>
+    <RootNamespace>Stunts</RootNamespace>
     
     <!-- Use Directory.Packages.props -->
     <ManagePackageVersionsCentrally Condition="'$(MSBuildProjectExtension)' == '.csproj' or '$(MSBuildProjectExtension)' == '.vbproj'">true</ManagePackageVersionsCentrally>
@@ -10,13 +10,13 @@
     <RestoreSources Condition="Exists('$(MSBuildThisFileDirectory)..\..\ThisAssembly\bin\')">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\ThisAssembly\bin'));$(RestoreSources)</RestoreSources>
     
     <TypeNameFormatterInternal>true</TypeNameFormatterInternal>
-    <PackageProjectUrl>https://clarius.org/avatar</PackageProjectUrl>
+    <PackageProjectUrl>https://clarius.org/stunts</PackageProjectUrl>
 
     <DogfoodingVersion>0.6.2</DogfoodingVersion>
   </PropertyGroup>
 
   <!-- We need this in .props so it kicks-in before all the common.props defaulting -->
-  <PropertyGroup Label="Avatar.StaticProxy" Condition="$(MSBuildProjectName) == 'Avatar.StaticProxy'">
+  <PropertyGroup Label="Stunts.StaticProxy" Condition="$(MSBuildProjectName) == 'Stunts.StaticProxy'">
     <RoslynVersion>4.14.0</RoslynVersion>
     <BaseIntermediateOutputPath>obj\$(RoslynVersion)\</BaseIntermediateOutputPath>
     <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>

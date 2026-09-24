@@ -1,5 +1,5 @@
 Imports System
-Imports Avatars
+Imports Stunts
 Imports Xunit
 
 Namespace Sample
@@ -8,9 +8,9 @@ Namespace Sample
 
         <Fact>
         Public Sub CanConfigureDefaultValues()
-            Dim calculator = Avatar.[Of](Of ICalculator, IDisposable)()
+            Dim calculator = Stunt.[Of](Of ICalculator, IDisposable)()
 
-            Assert.IsNotType(Of StaticAvatarFactory)(AvatarFactory.[Default])
+            Assert.IsNotType(Of StaticStuntFactory)(StuntFactory.[Default])
 
             Dim recorder = New RecordingBehavior()
             calculator.AddBehavior(recorder)

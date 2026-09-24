@@ -1,15 +1,15 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using Avatars;
+using Stunts;
 using Microsoft.CSharp.RuntimeBinder;
 
 namespace Samples.TargetInvocation
 {
-    public class DynamicTargetBehavior : IAvatarBehavior
+    public class DynamicTargetBehavior : IStuntBehavior
     {
         readonly ConcurrentDictionary<MethodBase, Func<IMethodInvocation, IMethodReturn>> invokers = new();
         readonly HashSet<MethodBase> unsupported = new();

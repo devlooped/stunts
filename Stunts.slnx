@@ -1,0 +1,67 @@
+<Solution>
+  <Folder Name="/.github/">
+    <File Path=".github/dependabot.yml" />
+  </Folder>
+  <Folder Name="/.github/.devcontainer/">
+    <File Path=".devcontainer/.devcontainer.json" />
+    <File Path=".devcontainer/Dockerfile" />
+  </Folder>
+  <Folder Name="/.github/workflows/">
+    <File Path=".github/workflows/build.yml" />
+    <File Path=".github/workflows/changelog.yml" />
+    <File Path=".github/workflows/dotnet-file.yml" />
+    <File Path=".github/workflows/pages.yml" />
+    <File Path=".github/workflows/publish.yml" />
+    <File Path=".github/workflows/release-artifacts.yml" />
+    <File Path=".github/workflows/release-notes.yml" />
+    <File Path=".github/workflows/sponsors.ps1" />
+    <File Path=".github/workflows/sponsors.yml" />
+    <File Path=".github/workflows/wait-status.ps1" />
+  </Folder>
+  <Folder Name="/docs/">
+    <File Path="docs/docfx.json" />
+    <File Path="docs/favicon.ico" />
+    <File Path="docs/filter.yml" />
+    <File Path="docs/index.md" />
+    <File Path="docs/logo.svg" />
+    <File Path="docs/toc.yml" />
+  </Folder>
+  <Folder Name="/docs/api/">
+    <File Path="docs/api/.gitignore" />
+    <File Path="docs/api/index.md" />
+  </Folder>
+  <Folder Name="/docs/favicon/">
+    <File Path="docs/favicon/android-chrome-192x192.png" />
+    <File Path="docs/favicon/android-chrome-512x512.png" />
+    <File Path="docs/favicon/apple-touch-icon.png" />
+    <File Path="docs/favicon/favicon-16x16.png" />
+    <File Path="docs/favicon/favicon-32x32.png" />
+    <File Path="docs/favicon/site.webmanifest" />
+  </Folder>
+  <Folder Name="/docs/styles/">
+    <File Path="docs/styles/main.css" />
+    <File Path="docs/styles/main.js" />
+  </Folder>
+  <Folder Name="/docs/template/" />
+  <Folder Name="/docs/template/partials/">
+    <File Path="docs/template/partials/head.tmpl.partial" />
+    <File Path="docs/template/partials/scripts.tmpl.partial" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".github/dependabot.yml" />
+    <File Path="readme.md" />
+    <File Path="src/.editorconfig" />
+    <File Path="src/Directory.Packages.props" />
+    <File Path="src/Directory.props" />
+    <File Path="src/Directory.targets" />
+  </Folder>
+  <Project Path="src/Stunts.CodeAnalysis/Stunts.CodeAnalysis.csproj" />
+  <Project Path="src/Stunts.DynamicProxy/Stunts.DynamicProxy.csproj" />
+  <Project Path="src/Stunts.IntegrationTests/Stunts.IntegrationTests.csproj" />
+  <Project Path="src/Stunts.Package/Stunts.Package.msbuildproj" Type="13b669be-bb05-4ddf-9536-439f39a36129" />
+  <Project Path="src/Stunts.StaticProxy/Stunts.StaticProxy.csproj" />
+  <Project Path="src/Stunts.UnitTests/Stunts.UnitTests.csproj" />
+  <Project Path="src/Stunts/Stunts.csproj" />
+  <Project Path="src/ManualStunts/ManualStunts.csproj" />
+  <Project Path="src/Pack/Pack.msbuildproj" Type="13b669be-bb05-4ddf-9536-439f39a36129" />
+</Solution>

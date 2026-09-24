@@ -1,13 +1,13 @@
-﻿using System;
+using System;
 using System.Reflection;
-using Avatars;
+using Stunts;
 using Xunit;
 
 namespace Samples
 {
     /// <summary>
-    /// Showcases how an arbitrary method can be annotated as a "avatar generator" that 
-    /// will seamlessly extended default behaviors for new avatars.
+    /// Showcases how an arbitrary method can be annotated as a "stunt generator" that 
+    /// will seamlessly extended default behaviors for new stunts.
     /// </summary>
     public class CustomGenerator
     {
@@ -31,9 +31,9 @@ namespace Samples
     {
         static readonly Random random = new Random();
 
-        [AvatarGenerator]
+        [StuntGenerator]
         public static T Of<T>()
-            => Avatar.Of<T>().AddBehavior(
+            => Stunt.Of<T>().AddBehavior(
                 (invocation, next) => invocation.CreateValueReturn(random.Next()),
                 invocation => invocation.MethodBase is MethodInfo info && info.ReturnType == typeof(int));
     }

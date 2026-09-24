@@ -1,5 +1,5 @@
-﻿using System.Linq;
-using Avatars;
+using System.Linq;
+using Stunts;
 using Xunit;
 
 namespace Samples
@@ -15,8 +15,8 @@ namespace Samples
             Assert.Equal(0, calculator.Add(2, 3));
 
             // Use introspection API to explore configured behaviors
-            var avatar = (IAvatar)calculator;
-            var recorder = avatar.Behaviors.OfType<RecordingBehavior>().Single();
+            var stunt = (IStunt)calculator;
+            var recorder = stunt.Behaviors.OfType<RecordingBehavior>().Single();
 
             // Assert against the recorded invocations.
             Assert.Single(recorder.Invocations);
@@ -25,8 +25,8 @@ namespace Samples
 
     public static class Stub
     {
-        [AvatarGenerator]
-        public static T Of<T>() => Avatar.Of<T>()
+        [StuntGenerator]
+        public static T Of<T>() => Stunt.Of<T>()
             .AddBehavior(new DefaultEqualityBehavior())
             .AddBehavior(new RecordingBehavior())
             .AddBehavior(new DefaultValueBehavior());

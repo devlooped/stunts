@@ -1,6 +1,6 @@
-﻿<Project>
+<Project>
 
-  <!-- Supports the main Avatar Pack project -->
+  <!-- Supports the main Stunts Pack project -->
   <Target Name="IsPackable" Returns="@(IsPackable)">
     <ItemGroup>
       <IsPackable Include="$(MSBuildProjectFullPath)" IsPackable="false" PackageId="" />

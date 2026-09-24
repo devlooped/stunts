@@ -1,0 +1,9 @@
+<Project>
+
+  <ItemGroup Condition="'$(EnableRunTimeStunts)' != 'false'">
+    <Compile Include="$(MSBuildThisFileDirectory)Stunt.DynamicFactory$(DefaultLanguageSourceExtension)"
+             Condition="Exists('$(MSBuildThisFileDirectory)Stunt.DynamicFactory$(DefaultLanguageSourceExtension)')"
+             Visible="false" />
+  </ItemGroup>
+
+</Project>

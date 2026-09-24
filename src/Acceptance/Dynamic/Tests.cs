@@ -1,5 +1,5 @@
-﻿using System;
-using Avatars;
+using System;
+using Stunts;
 using Xunit;
 
 namespace Sample
@@ -9,9 +9,9 @@ namespace Sample
         [Fact]
         public void CanConfigureDefaultValues()
         {
-            var calculator = Avatar.Of<ICalculator, IDisposable>();
+            var calculator = Stunt.Of<ICalculator, IDisposable>();
 
-            Assert.IsNotType<StaticAvatarFactory>(AvatarFactory.Default);
+            Assert.IsNotType<StaticStuntFactory>(StuntFactory.Default);
 
             var recorder = new RecordingBehavior();
             calculator.AddBehavior(recorder);
