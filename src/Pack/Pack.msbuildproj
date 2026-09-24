@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.Build.Traversal/3.0.2" InitialTargets="RemoveNonPackable" DefaultTargets="Pack">
+﻿<Project Sdk="Microsoft.Build.Traversal/4.1.82" InitialTargets="RemoveNonPackable" DefaultTargets="Pack">
   <!-- Move everything to the .props because otherwise CPS screws up the items and formatting -->
   <Import Project="Pack.props" />
   <PropertyGroup>
