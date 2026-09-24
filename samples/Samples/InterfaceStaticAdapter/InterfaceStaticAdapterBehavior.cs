@@ -1,8 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Avatars;
+using Stunts;
 
 namespace Samples
 {
@@ -10,7 +10,7 @@ namespace Samples
     /// Forwards calls whose signature match to static methods on 
     /// another type.
     /// </summary>
-    public class InterfaceStaticAdapterBehavior : IAvatarBehavior
+    public class InterfaceStaticAdapterBehavior : IStuntBehavior
     {
         readonly Type targetType;
         readonly Dictionary<int, MethodInfo> targetMethods;

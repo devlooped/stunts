@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <PackBuildOutput>false</PackBuildOutput>
+    <PackCompile>true</PackCompile>
+    <Description>An example of hand-coding stunts using the behavior pipeline directly. 
+
+This is not the typical usage pattern for Stunts, where the proxies are generated instead 
+by compile-time or run-time generators.
+</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Stunts\Stunts.csproj" Pack="false" />
+    <ProjectReference Include="..\Stunts.Package\Stunts.Package.msbuildproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Update="@(Compile)" TargetPath="Stunts\%(RelativeDir)\%(Filename)%(Extension)" />
+    <Compile Update="@(Compile -&gt; HasMetadata('RelativeDir'))" Pack="false" />
+  </ItemGroup>
+</Project>

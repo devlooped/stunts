@@ -1,0 +1,50 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!-- If source generators aren't supported, we just won't register the static one -->
+  <PropertyGroup>
+    <SourceGeneratorSupported Condition="'$(Language)' == 'C#' AND $([System.Version]::Parse('16.8.0').CompareTo($([System.Version]::Parse($(MSBuildVersion))))) != 1">true</SourceGeneratorSupported>
+    <EnableCompileTimeStunts Condition="'$(EnableCompileTimeStunts)' == '' AND '$(SourceGeneratorSupported)' == 'true'">true</EnableCompileTimeStunts>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(EnableCompileTimeStunts)' == 'true'">
+    <CompilerVisibleProperty Include="DebugSourceGenerators" />
+    <CompilerVisibleProperty Include="DebugStuntGenerator" />
+    <CompilerVisibleProperty Include="SkipCompilerExecution" />
+    <CompilerVisibleProperty Include="StuntsAnalyzerDir" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(EnableCompileTimeStunts)' == 'true'">
+    <Compile Include="$(MSBuildThisFileDirectory)Stunt.StaticFactory$(DefaultLanguageSourceExtension)"
+             Condition="Exists('$(MSBuildThisFileDirectory)Stunt.StaticFactory$(DefaultLanguageSourceExtension)')"
+             Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="@(Compile)">
+      <!-- Hide Stunt.cs/vb from the project -->
+      <Visible Condition="'%(NuGetItemType)' == 'Compile' AND '%(NuGetPackageId)' == 'Stunts'">false</Visible>
+    </Compile>
+  </ItemGroup>
+
+  <Target Name="ResolveCompileTimeStunts" BeforeTargets="CoreCompile;GenerateMSBuildEditorConfigFileShouldRun"
+          Condition="'$(EnableCompileTimeStunts)' == 'true' AND '$(SkipCompilerExecution)' != 'true' AND '$(DesignTimeBuild)' != 'true'">
+
+    <PropertyGroup>
+      <!-- One generator, built against the public Roslyn 4.14 API. The host
+           compiler supplies Microsoft.CodeAnalysis. -->
+      <StuntsAnalyzerDir>$([MSBuild]::NormalizePath($(MSBuildThisFileDirectory)..\..\tools\4.14.0))</StuntsAnalyzerDir>
+    </PropertyGroup>
+
+    <Error Condition="!Exists('$(StuntsAnalyzerDir)\Stunts.StaticProxy.dll')" Code="ST010"
+           Text="Stunts.StaticProxy was not found under tools\4.14.0. Set 'EnableCompileTimeStunts=false' to use run-time stunts." />
+
+    <ItemGroup>
+      <Analyzer Include="$(StuntsAnalyzerDir)\Stunts.StaticProxy.dll" NuGetPackageId="Stunts" NuGetPackageVersion="$(StuntsVersion)" />
+    </ItemGroup>
+
+  </Target>
+
+  <Import Project="Stunts.DynamicProxy.targets"
+          Condition="'$(EnableCompileTimeStunts)' != 'true' AND  Exists('Stunts.DynamicProxy.targets')" />
+
+</Project>

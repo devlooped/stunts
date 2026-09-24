@@ -1,0 +1,286 @@
+#nullable enable
+abstract Stunts.Argument.RawValue.get -> object?
+abstract Stunts.Argument.WithRawValue(object? rawValue) -> Stunts.Argument!
+Stunts.AppliesToHandler
+Stunts.Argument
+Stunts.Argument.Argument(System.Reflection.ParameterInfo! parameter) -> void
+Stunts.Argument.CheckValue(object? value) -> object?
+Stunts.Argument.Name.get -> string!
+Stunts.Argument.Parameter.get -> System.Reflection.ParameterInfo!
+Stunts.Argument.Parameter.init -> void
+Stunts.Argument<T>
+Stunts.Argument<T>.Argument(System.Reflection.ParameterInfo! parameter, T? value) -> void
+Stunts.Argument<T>.Value.get -> T?
+Stunts.Argument<T>.Value.init -> void
+Stunts.Argument<T>.WithValue(T? value) -> Stunts.Argument<T>!
+Stunts.ArgumentCollection
+Stunts.ArgumentCollection.Add<T>(int index, T? value) -> void
+Stunts.ArgumentCollection.Add<T>(string! name, T? value) -> void
+Stunts.ArgumentCollection.ArgumentCollection(params Stunts.Argument![]! arguments) -> void
+Stunts.ArgumentCollection.ArgumentCollection(System.Reflection.ParameterInfo![]! parameters) -> void
+Stunts.ArgumentCollection.Contains(string! name) -> bool
+Stunts.ArgumentCollection.Count.get -> int
+Stunts.ArgumentCollection.GetEnumerator() -> System.Collections.Generic.IEnumerator<Stunts.Argument!>!
+Stunts.ArgumentCollection.GetValue(int index) -> object?
+Stunts.ArgumentCollection.GetValue(string! name) -> object?
+Stunts.ArgumentCollection.Parameters.get -> System.Reflection.ParameterInfo![]!
+Stunts.ArgumentCollection.SetValue(int index, object? value) -> Stunts.IArgumentCollection!
+Stunts.ArgumentCollection.SetValue(string! name, object? value) -> Stunts.IArgumentCollection!
+Stunts.ArgumentCollection.this[int index].get -> Stunts.Argument!
+Stunts.ArgumentCollection.this[string! name].get -> Stunts.Argument!
+Stunts.ArgumentCollection.this[string! name].set -> void
+Stunts.ArgumentCollectionExtensions
+Stunts.StuntExtensions
+Stunts.StuntFactory
+Stunts.StuntFactory.CreateStunt(System.Reflection.Assembly! assembly, System.Type! baseType, System.Type![]! implementedInterfaces, object?[]! constructorArguments) -> object!
+Stunts.StuntGeneratorAttribute
+Stunts.StuntGeneratorAttribute.StuntGeneratorAttribute() -> void
+Stunts.StuntNaming
+Stunts.BehaviorPipeline
+Stunts.BehaviorPipeline.BehaviorPipeline() -> void
+Stunts.BehaviorPipeline.BehaviorPipeline(params Stunts.ExecuteHandler![]! behaviors) -> void
+Stunts.BehaviorPipeline.BehaviorPipeline(params Stunts.IStuntBehavior![]! behaviors) -> void
+Stunts.BehaviorPipeline.BehaviorPipeline(System.Collections.Generic.IEnumerable<Stunts.ExecuteHandler!>! behaviors) -> void
+Stunts.BehaviorPipeline.BehaviorPipeline(System.Collections.Generic.IEnumerable<Stunts.IStuntBehavior!>! behaviors) -> void
+Stunts.BehaviorPipeline.Behaviors.get -> System.Collections.Generic.IList<Stunts.IStuntBehavior!>!
+Stunts.BehaviorPipeline.Invoke(Stunts.IMethodInvocation! invocation, bool throwOnException = false) -> Stunts.IMethodReturn!
+Stunts.BehaviorPipelineExtensions
+Stunts.BehaviorPipelineFactory
+Stunts.DefaultEqualityBehavior
+Stunts.DefaultEqualityBehavior.AppliesTo(Stunts.IMethodInvocation! invocation) -> bool
+Stunts.DefaultEqualityBehavior.DefaultEqualityBehavior() -> void
+Stunts.DefaultEqualityBehavior.Execute(Stunts.IMethodInvocation! invocation, Stunts.ExecuteHandler! next) -> Stunts.IMethodReturn!
+Stunts.DefaultValueBehavior
+Stunts.DefaultValueBehavior.AppliesTo(Stunts.IMethodInvocation! invocation) -> bool
+Stunts.DefaultValueBehavior.DefaultValueBehavior() -> void
+Stunts.DefaultValueBehavior.DefaultValueBehavior(Stunts.DefaultValueProvider! provider) -> void
+Stunts.DefaultValueBehavior.Provider.get -> Stunts.DefaultValueProvider!
+Stunts.DefaultValueBehavior.Provider.set -> void
+Stunts.DefaultValueProvider
+Stunts.DefaultValueProvider.DefaultValueProvider(bool registerDefaults = true) -> void
+Stunts.DefaultValueProvider.Deregister(System.Type! key) -> bool
+Stunts.DefaultValueProvider.Deregister<T>() -> bool
+Stunts.DefaultValueProvider.GetDefault(System.Type! type) -> object?
+Stunts.DefaultValueProvider.GetDefault<T>() -> T?
+Stunts.DefaultValueProvider.Register(System.Type! key, System.Func<System.Type!, object!>! factory) -> void
+Stunts.DefaultValueProvider.Register<T>(System.Func<T>! factory) -> void
+Stunts.ExecuteHandler
+Stunts.IArgumentCollection
+Stunts.IArgumentCollection.Contains(string! name) -> bool
+Stunts.IArgumentCollection.GetValue(int index) -> object?
+Stunts.IArgumentCollection.GetValue(string! name) -> object?
+Stunts.IArgumentCollection.SetValue(int index, object? value) -> Stunts.IArgumentCollection!
+Stunts.IArgumentCollection.SetValue(string! name, object? value) -> Stunts.IArgumentCollection!
+Stunts.IArgumentCollection.this[string! name].get -> Stunts.Argument!
+Stunts.IArgumentCollection.this[string! name].set -> void
+Stunts.IStunt
+Stunts.IStunt.Behaviors.get -> System.Collections.Generic.IList<Stunts.IStuntBehavior!>!
+Stunts.IStuntBehavior
+Stunts.IStuntBehavior.AppliesTo(Stunts.IMethodInvocation! invocation) -> bool
+Stunts.IStuntBehavior.Execute(Stunts.IMethodInvocation! invocation, Stunts.ExecuteHandler! next) -> Stunts.IMethodReturn!
+Stunts.IStuntFactory
+Stunts.IStuntFactory.CreateStunt(System.Reflection.Assembly! assembly, System.Type! baseType, System.Type![]! implementedInterfaces, object?[]! constructorArguments) -> object!
+Stunts.IBehaviorPipelineFactory
+Stunts.IBehaviorPipelineFactory.CreatePipeline<TStunt>() -> Stunts.BehaviorPipeline!
+Stunts.IMethodInvocation
+Stunts.IMethodInvocation.Arguments.get -> Stunts.IArgumentCollection!
+Stunts.IMethodInvocation.Context.get -> System.Collections.Generic.IDictionary<string!, object!>!
+Stunts.IMethodInvocation.CreateExceptionReturn(System.Exception! exception) -> Stunts.IMethodReturn!
+Stunts.IMethodInvocation.CreateInvokeReturn(Stunts.IArgumentCollection? arguments = null) -> Stunts.IMethodReturn!
+Stunts.IMethodInvocation.CreateValueReturn(object? returnValue, Stunts.IArgumentCollection! arguments) -> Stunts.IMethodReturn!
+Stunts.IMethodInvocation.MethodBase.get -> System.Reflection.MethodBase!
+Stunts.IMethodInvocation.SkipBehaviors.get -> System.Collections.Generic.HashSet<System.Type!>!
+Stunts.IMethodInvocation.HasImplementation.get -> bool
+Stunts.IMethodInvocation.Target.get -> object!
+Stunts.IMethodReturn
+Stunts.IMethodReturn.Context.get -> System.Collections.Generic.IDictionary<string!, object!>!
+Stunts.IMethodReturn.Exception.get -> System.Exception?
+Stunts.IMethodReturn.Outputs.get -> Stunts.IArgumentCollection!
+Stunts.IMethodReturn.ReturnValue.get -> object?
+Stunts.MethodInvocation
+Stunts.MethodInvocation.Arguments.get -> Stunts.IArgumentCollection!
+Stunts.MethodInvocation.Context.get -> System.Collections.Generic.IDictionary<string!, object!>!
+Stunts.MethodInvocation.CreateExceptionReturn(System.Exception! exception) -> Stunts.IMethodReturn!
+Stunts.MethodInvocation.CreateInvokeReturn(Stunts.IArgumentCollection? arguments = null) -> Stunts.IMethodReturn!
+Stunts.MethodInvocation.CreateValueReturn(object? returnValue, Stunts.IArgumentCollection! arguments) -> Stunts.IMethodReturn!
+Stunts.MethodInvocation.Equals(Stunts.IMethodInvocation? other) -> bool
+Stunts.MethodInvocation.Equals(Stunts.MethodInvocation! other) -> bool
+Stunts.MethodInvocation.MethodBase.get -> System.Reflection.MethodBase!
+Stunts.MethodInvocation.MethodInvocation(object! target, System.Reflection.MethodBase! method) -> void
+Stunts.MethodInvocation.MethodInvocation(object! target, System.Reflection.MethodBase! method, Stunts.ExecuteHandler! implementation) -> void
+Stunts.MethodInvocation.MethodInvocation(object! target, System.Reflection.MethodBase! method, Stunts.ExecuteHandler! implementation, Stunts.IArgumentCollection! arguments) -> void
+Stunts.MethodInvocation.MethodInvocation(object! target, System.Reflection.MethodBase! method, Stunts.IArgumentCollection! arguments) -> void
+Stunts.MethodInvocation.SkipBehaviors.get -> System.Collections.Generic.HashSet<System.Type!>!
+Stunts.MethodInvocation.HasImplementation.get -> bool
+Stunts.MethodInvocation.Target.get -> object!
+Stunts.MethodInvocationExtensions
+Stunts.MethodReturn
+Stunts.MethodReturn.Context.get -> System.Collections.Generic.IDictionary<string!, object!>!
+Stunts.MethodReturn.Exception.get -> System.Exception?
+Stunts.MethodReturn.Exception.init -> void
+Stunts.MethodReturn.MethodReturn(Stunts.IMethodInvocation! invocation, object? returnValue, Stunts.IArgumentCollection! arguments) -> void
+Stunts.MethodReturn.MethodReturn(Stunts.IMethodInvocation! invocation, System.Exception! exception) -> void
+Stunts.MethodReturn.Outputs.get -> Stunts.IArgumentCollection!
+Stunts.MethodReturn.Outputs.init -> void
+Stunts.MethodReturn.ReturnValue.get -> object?
+Stunts.MethodReturn.ReturnValue.init -> void
+Stunts.MethodReturnExtensions
+Stunts.ObjectArgument
+Stunts.ObjectArgument.ObjectArgument(System.Reflection.ParameterInfo! parameter, object? value) -> void
+Stunts.RecordingBehavior
+Stunts.RecordingBehavior.AppliesTo(Stunts.IMethodInvocation! invocation) -> bool
+Stunts.RecordingBehavior.Execute(Stunts.IMethodInvocation! invocation, Stunts.ExecuteHandler! next) -> Stunts.IMethodReturn!
+Stunts.RecordingBehavior.Invocations.get -> System.Collections.Generic.List<Stunts.RecordingBehavior.RecordedInvocation!>!
+Stunts.RecordingBehavior.RecordedInvocation
+Stunts.RecordingBehavior.RecordedInvocation.Invocation.get -> Stunts.IMethodInvocation!
+Stunts.RecordingBehavior.RecordedInvocation.RecordedInvocation(Stunts.IMethodInvocation! invocation, Stunts.IMethodReturn! return) -> void
+Stunts.RecordingBehavior.RecordedInvocation.Return.get -> Stunts.IMethodReturn!
+Stunts.RecordingBehavior.RecordingBehavior() -> void
+Stunts.Ref
+Stunts.Ref.Ref() -> void
+Stunts.Ref<T>
+Stunts.Ref<T>.Ref(T? value) -> void
+Stunts.Ref<T>.Value.get -> T?
+Stunts.StaticStuntFactory
+Stunts.StaticStuntFactory.CreateStunt(System.Reflection.Assembly! assembly, System.Type! baseType, System.Type![]! implementedInterfaces, object?[]! constructorArguments) -> object!
+Stunts.StaticStuntFactory.StaticStuntFactory() -> void
+const Stunts.StuntNaming.DefaultRootNamespace = "Stunts" -> string!
+const Stunts.StuntNaming.DefaultSuffix = "Stunt" -> string!
+override Stunts.Argument<T>.RawValue.get -> object?
+override Stunts.Argument<T>.ToString() -> string!
+override Stunts.Argument<T>.WithRawValue(object? rawValue) -> Stunts.Argument!
+override Stunts.ArgumentCollection.Equals(object! obj) -> bool
+override Stunts.ArgumentCollection.GetHashCode() -> int
+override Stunts.ArgumentCollection.ToString() -> string!
+override Stunts.MethodInvocation.Equals(object! obj) -> bool
+override Stunts.MethodInvocation.GetHashCode() -> int
+override Stunts.MethodInvocation.ToString() -> string!
+override Stunts.MethodReturn.ToString() -> string!
+override Stunts.ObjectArgument.RawValue.get -> object?
+override Stunts.ObjectArgument.WithRawValue(object? rawValue) -> Stunts.Argument!
+override Stunts.RecordingBehavior.RecordedInvocation.ToString() -> string!
+override Stunts.RecordingBehavior.ToString() -> string!
+static Stunts.Argument.Create<T>(System.Reflection.ParameterInfo! info, T value) -> Stunts.Argument<T>!
+static Stunts.Argument<T>.implicit operator T?(Stunts.Argument<T>! argument) -> T?
+static Stunts.ArgumentCollection.Create<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(System.Reflection.ParameterInfo![]! parameters, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12, T13 arg13, T14 arg14, T15 arg15, T16 arg16) -> Stunts.ArgumentCollection!
+static Stunts.ArgumentCollection.Create<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(System.Reflection.ParameterInfo![]! parameters, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12, T13 arg13, T14 arg14, T15 arg15) -> Stunts.ArgumentCollection!
+static Stunts.ArgumentCollection.Create<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(System.Reflection.ParameterInfo![]! parameters, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12, T13 arg13, T14 arg14) -> Stunts.ArgumentCollection!
+static Stunts.ArgumentCollection.Create<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(System.Reflection.ParameterInfo![]! parameters, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12, T13 arg13) -> Stunts.ArgumentCollection!
+static Stunts.ArgumentCollection.Create<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(System.Reflection.ParameterInfo![]! parameters, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12) -> Stunts.ArgumentCollection!
+static Stunts.ArgumentCollection.Create<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(System.Reflection.ParameterInfo![]! parameters, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11) -> Stunts.ArgumentCollection!
+static Stunts.ArgumentCollection.Create<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(System.Reflection.ParameterInfo![]! parameters, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10) -> Stunts.ArgumentCollection!
+static Stunts.ArgumentCollection.Create<T1, T2, T3, T4, T5, T6, T7, T8, T9>(System.Reflection.ParameterInfo![]! parameters, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9) -> Stunts.ArgumentCollection!
+static Stunts.ArgumentCollection.Create<T1, T2, T3, T4, T5, T6, T7, T8>(System.Reflection.ParameterInfo![]! parameters, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8) -> Stunts.ArgumentCollection!
+static Stunts.ArgumentCollection.Create<T1, T2, T3, T4, T5, T6, T7>(System.Reflection.ParameterInfo![]! parameters, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7) -> Stunts.ArgumentCollection!
+static Stunts.ArgumentCollection.Create<T1, T2, T3, T4, T5, T6>(System.Reflection.ParameterInfo![]! parameters, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6) -> Stunts.ArgumentCollection!
+static Stunts.ArgumentCollection.Create<T1, T2, T3, T4, T5>(System.Reflection.ParameterInfo![]! parameters, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5) -> Stunts.ArgumentCollection!
+static Stunts.ArgumentCollection.Create<T1, T2, T3, T4>(System.Reflection.ParameterInfo![]! parameters, T1 arg1, T2 arg2, T3 arg3, T4 arg4) -> Stunts.ArgumentCollection!
+static Stunts.ArgumentCollection.Create<T1, T2, T3>(System.Reflection.ParameterInfo![]! parameters, T1 arg1, T2 arg2, T3 arg3) -> Stunts.ArgumentCollection!
+static Stunts.ArgumentCollection.Create<T1, T2>(System.Reflection.ParameterInfo![]! parameters, T1 arg1, T2 arg2) -> Stunts.ArgumentCollection!
+static Stunts.ArgumentCollection.Create<T>(System.Reflection.ParameterInfo![]! parameters, T arg) -> Stunts.ArgumentCollection!
+static Stunts.ArgumentCollectionExtensions.Get<T>(this Stunts.IArgumentCollection! arguments, int index) -> T
+static Stunts.ArgumentCollectionExtensions.Get<T>(this Stunts.IArgumentCollection! arguments, string! name) -> T
+static Stunts.ArgumentCollectionExtensions.GetNullable<T>(this Stunts.IArgumentCollection! arguments, int index) -> T?
+static Stunts.ArgumentCollectionExtensions.GetNullable<T>(this Stunts.IArgumentCollection! arguments, string! name) -> T?
+static Stunts.ArgumentCollectionExtensions.Set<T>(this Stunts.IArgumentCollection! arguments, int index, T value) -> Stunts.IArgumentCollection!
+static Stunts.ArgumentCollectionExtensions.Set<T>(this Stunts.IArgumentCollection! arguments, string! name, T value) -> Stunts.IArgumentCollection!
+static Stunts.StuntExtensions.AddBehavior(this Stunts.IStunt! stunt, Stunts.ExecuteHandler! behavior, Stunts.AppliesToHandler? appliesTo = null, string? name = null) -> Stunts.IStunt!
+static Stunts.StuntExtensions.AddBehavior(this Stunts.IStunt! stunt, Stunts.IStuntBehavior! behavior) -> Stunts.IStunt!
+static Stunts.StuntExtensions.AddBehavior<TStunt>(this TStunt stunt, Stunts.ExecuteHandler! behavior, Stunts.AppliesToHandler? appliesTo = null, string? name = null) -> TStunt
+static Stunts.StuntExtensions.AddBehavior<TStunt>(this TStunt stunt, Stunts.IStuntBehavior! behavior) -> TStunt
+static Stunts.StuntExtensions.InsertBehavior(this Stunts.IStunt! stunt, int index, Stunts.ExecuteHandler! behavior, Stunts.AppliesToHandler? appliesTo = null, string? name = null) -> Stunts.IStunt!
+static Stunts.StuntExtensions.InsertBehavior(this Stunts.IStunt! stunt, int index, Stunts.IStuntBehavior! behavior) -> Stunts.IStunt!
+static Stunts.StuntExtensions.InsertBehavior<TStunt>(this TStunt stunt, int index, Stunts.ExecuteHandler! behavior, Stunts.AppliesToHandler? appliesTo = null, string? name = null) -> TStunt
+static Stunts.StuntExtensions.InsertBehavior<TStunt>(this TStunt stunt, int index, Stunts.IStuntBehavior! behavior) -> TStunt
+static Stunts.StuntFactory.Default.get -> Stunts.IStuntFactory!
+static Stunts.StuntFactory.Default.set -> void
+static Stunts.StuntFactory.LocalDefault.get -> Stunts.IStuntFactory?
+static Stunts.StuntFactory.LocalDefault.set -> void
+static Stunts.StuntFactory.NotImplemented.get -> Stunts.IStuntFactory!
+static Stunts.StuntNaming.GetFullName(string! namespace, System.Type! baseType, params System.Type![]! additionalInterfaces) -> string!
+static Stunts.StuntNaming.GetFullName(string! rootNamespace, string! suffix, System.Type! baseType, params System.Type![]! additionalInterfaces) -> string!
+static Stunts.StuntNaming.GetFullName(System.Type! baseType, params System.Type![]! additionalInterfaces) -> string!
+static Stunts.StuntNaming.GetName(string! suffix, System.Type! baseType, params System.Type![]! additionalInterfaces) -> string!
+static Stunts.StuntNaming.GetName(System.Type! baseType, params System.Type![]! additionalInterfaces) -> string!
+static Stunts.BehaviorPipelineExtensions.Execute(this Stunts.BehaviorPipeline! pipeline, Stunts.IMethodInvocation! invocation) -> Stunts.IMethodReturn!
+static Stunts.BehaviorPipelineExtensions.Execute<T>(this Stunts.BehaviorPipeline! pipeline, Stunts.IMethodInvocation! invocation) -> T?
+static Stunts.BehaviorPipelineExtensions.ExecuteRef<T>(this Stunts.BehaviorPipeline! pipeline, Stunts.IMethodInvocation! invocation) -> Stunts.Ref<T>!
+static Stunts.BehaviorPipelineFactory.Default.get -> Stunts.IBehaviorPipelineFactory!
+static Stunts.BehaviorPipelineFactory.Default.set -> void
+static Stunts.BehaviorPipelineFactory.LocalDefault.get -> Stunts.IBehaviorPipelineFactory?
+static Stunts.BehaviorPipelineFactory.LocalDefault.set -> void
+static Stunts.MethodInvocation.Create(object! target, System.Reflection.MethodBase! method) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create(object! target, System.Reflection.MethodBase! method, Stunts.ExecuteHandler! implementation) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(object! target, System.Reflection.MethodBase! method, Stunts.ExecuteHandler! implementation, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12, T13 arg13, T14 arg14, T15 arg15, T16 arg16) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(object! target, System.Reflection.MethodBase! method, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12, T13 arg13, T14 arg14, T15 arg15, T16 arg16) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(object! target, System.Reflection.MethodBase! method, Stunts.ExecuteHandler! implementation, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12, T13 arg13, T14 arg14, T15 arg15) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(object! target, System.Reflection.MethodBase! method, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12, T13 arg13, T14 arg14, T15 arg15) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(object! target, System.Reflection.MethodBase! method, Stunts.ExecuteHandler! implementation, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12, T13 arg13, T14 arg14) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(object! target, System.Reflection.MethodBase! method, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12, T13 arg13, T14 arg14) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(object! target, System.Reflection.MethodBase! method, Stunts.ExecuteHandler! implementation, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12, T13 arg13) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(object! target, System.Reflection.MethodBase! method, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12, T13 arg13) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(object! target, System.Reflection.MethodBase! method, Stunts.ExecuteHandler! implementation, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(object! target, System.Reflection.MethodBase! method, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(object! target, System.Reflection.MethodBase! method, Stunts.ExecuteHandler! implementation, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(object! target, System.Reflection.MethodBase! method, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(object! target, System.Reflection.MethodBase! method, Stunts.ExecuteHandler! implementation, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(object! target, System.Reflection.MethodBase! method, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4, T5, T6, T7, T8, T9>(object! target, System.Reflection.MethodBase! method, Stunts.ExecuteHandler! implementation, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4, T5, T6, T7, T8, T9>(object! target, System.Reflection.MethodBase! method, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4, T5, T6, T7, T8>(object! target, System.Reflection.MethodBase! method, Stunts.ExecuteHandler! implementation, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4, T5, T6, T7, T8>(object! target, System.Reflection.MethodBase! method, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4, T5, T6, T7>(object! target, System.Reflection.MethodBase! method, Stunts.ExecuteHandler! implementation, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4, T5, T6, T7>(object! target, System.Reflection.MethodBase! method, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4, T5, T6>(object! target, System.Reflection.MethodBase! method, Stunts.ExecuteHandler! implementation, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4, T5, T6>(object! target, System.Reflection.MethodBase! method, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4, T5>(object! target, System.Reflection.MethodBase! method, Stunts.ExecuteHandler! implementation, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4, T5>(object! target, System.Reflection.MethodBase! method, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4>(object! target, System.Reflection.MethodBase! method, Stunts.ExecuteHandler! implementation, T1 arg1, T2 arg2, T3 arg3, T4 arg4) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3, T4>(object! target, System.Reflection.MethodBase! method, T1 arg1, T2 arg2, T3 arg3, T4 arg4) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3>(object! target, System.Reflection.MethodBase! method, Stunts.ExecuteHandler! implementation, T1 arg1, T2 arg2, T3 arg3) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2, T3>(object! target, System.Reflection.MethodBase! method, T1 arg1, T2 arg2, T3 arg3) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2>(object! target, System.Reflection.MethodBase! method, Stunts.ExecuteHandler! implementation, T1 arg1, T2 arg2) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T1, T2>(object! target, System.Reflection.MethodBase! method, T1 arg1, T2 arg2) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T>(object! target, System.Reflection.MethodBase! method, Stunts.ExecuteHandler! implementation, T arg) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocation.Create<T>(object! target, System.Reflection.MethodBase! method, T arg) -> Stunts.MethodInvocation!
+static Stunts.MethodInvocationExtensions.CreateReturn(this Stunts.IMethodInvocation! invocation) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateReturn<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(this Stunts.IMethodInvocation! invocation, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12, T13 arg13, T14 arg14, T15 arg15, T16 arg16) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateReturn<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(this Stunts.IMethodInvocation! invocation, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12, T13 arg13, T14 arg14, T15 arg15) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateReturn<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(this Stunts.IMethodInvocation! invocation, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12, T13 arg13, T14 arg14) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateReturn<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(this Stunts.IMethodInvocation! invocation, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12, T13 arg13) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateReturn<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(this Stunts.IMethodInvocation! invocation, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateReturn<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(this Stunts.IMethodInvocation! invocation, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateReturn<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(this Stunts.IMethodInvocation! invocation, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateReturn<T1, T2, T3, T4, T5, T6, T7, T8, T9>(this Stunts.IMethodInvocation! invocation, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateReturn<T1, T2, T3, T4, T5, T6, T7, T8>(this Stunts.IMethodInvocation! invocation, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateReturn<T1, T2, T3, T4, T5, T6, T7>(this Stunts.IMethodInvocation! invocation, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateReturn<T1, T2, T3, T4, T5, T6>(this Stunts.IMethodInvocation! invocation, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateReturn<T1, T2, T3, T4, T5>(this Stunts.IMethodInvocation! invocation, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateReturn<T1, T2, T3, T4>(this Stunts.IMethodInvocation! invocation, T1 arg1, T2 arg2, T3 arg3, T4 arg4) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateReturn<T1, T2, T3>(this Stunts.IMethodInvocation! invocation, T1 arg1, T2 arg2, T3 arg3) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateReturn<T1, T2>(this Stunts.IMethodInvocation! invocation, T1 arg1, T2 arg2) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateReturn<T>(this Stunts.IMethodInvocation! invocation, T arg) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateValueReturn<TResult, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(this Stunts.IMethodInvocation! invocation, TResult result, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12, T13 arg13, T14 arg14, T15 arg15, T16 arg16) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateValueReturn<TResult, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(this Stunts.IMethodInvocation! invocation, TResult result, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12, T13 arg13, T14 arg14, T15 arg15) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateValueReturn<TResult, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(this Stunts.IMethodInvocation! invocation, TResult result, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12, T13 arg13, T14 arg14) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateValueReturn<TResult, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(this Stunts.IMethodInvocation! invocation, TResult result, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12, T13 arg13) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateValueReturn<TResult, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(this Stunts.IMethodInvocation! invocation, TResult result, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11, T12 arg12) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateValueReturn<TResult, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(this Stunts.IMethodInvocation! invocation, TResult result, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10, T11 arg11) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateValueReturn<TResult, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(this Stunts.IMethodInvocation! invocation, TResult result, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateValueReturn<TResult, T1, T2, T3, T4, T5, T6, T7, T8, T9>(this Stunts.IMethodInvocation! invocation, TResult result, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateValueReturn<TResult, T1, T2, T3, T4, T5, T6, T7, T8>(this Stunts.IMethodInvocation! invocation, TResult result, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateValueReturn<TResult, T1, T2, T3, T4, T5, T6, T7>(this Stunts.IMethodInvocation! invocation, TResult result, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateValueReturn<TResult, T1, T2, T3, T4, T5, T6>(this Stunts.IMethodInvocation! invocation, TResult result, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateValueReturn<TResult, T1, T2, T3, T4, T5>(this Stunts.IMethodInvocation! invocation, TResult result, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateValueReturn<TResult, T1, T2, T3, T4>(this Stunts.IMethodInvocation! invocation, TResult result, T1 arg1, T2 arg2, T3 arg3, T4 arg4) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateValueReturn<TResult, T1, T2, T3>(this Stunts.IMethodInvocation! invocation, TResult result, T1 arg1, T2 arg2, T3 arg3) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateValueReturn<TResult, T1, T2>(this Stunts.IMethodInvocation! invocation, TResult result, T1 arg1, T2 arg2) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateValueReturn<TResult, T>(this Stunts.IMethodInvocation! invocation, TResult result, T arg) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.CreateValueReturn<TResult>(this Stunts.IMethodInvocation! invocation, TResult result) -> Stunts.IMethodReturn!
+static Stunts.MethodInvocationExtensions.SkipBehavior<TBehavior>(this Stunts.IMethodInvocation! invocation) -> void
+static Stunts.MethodReturnExtensions.AsRef<T>(this Stunts.IMethodReturn! return) -> Stunts.Ref<T>!
+static Stunts.Ref.Create(System.Type! type, object? value) -> object!
+static Stunts.Ref.Create<T>(T value) -> Stunts.Ref<T>!
+static Stunts.Ref<T>.implicit operator Stunts.Ref<T>!(T? value) -> Stunts.Ref<T>!
+static Stunts.Ref<T>.implicit operator T?(Stunts.Ref<T>! ref) -> T?
+virtual Stunts.DefaultValueProvider.GetFallbackDefaultValue(System.Type! type) -> object?

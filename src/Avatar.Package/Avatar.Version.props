@@ -1,7 +1,0 @@
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-
-  <PropertyGroup>
-    <AvatarVersion>42.42.42</AvatarVersion>
-  </PropertyGroup>
-
-</Project>

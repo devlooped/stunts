@@ -1,9 +1,0 @@
-<Project>
-
-  <ItemGroup Condition="'$(EnableRunTimeAvatars)' != 'false'">
-    <Compile Include="$(MSBuildThisFileDirectory)Avatar.DynamicFactory$(DefaultLanguageSourceExtension)"
-             Condition="Exists('$(MSBuildThisFileDirectory)Avatar.DynamicFactory$(DefaultLanguageSourceExtension)')"
-             Visible="false" />
-  </ItemGroup>
-
-</Project>

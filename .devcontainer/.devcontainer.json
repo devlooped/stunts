@@ -1,5 +1,5 @@
 {
-  "name": "avatar",
+  "name": "stunts",
   "dockerFile": "./Dockerfile",
   "extensions": [
     "ms-vscode.csharp",

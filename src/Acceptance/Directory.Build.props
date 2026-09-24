@@ -1,4 +1,4 @@
-﻿<Project>
+<Project>
 
   <Import Project="..\Directory.Build.props"/>
   
@@ -17,8 +17,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageVersion Include="Avatar" Version="$(Version)" />
-    <PackageVersion Include="ManualAvatars" Version="$(Version)" />
+    <PackageVersion Include="Stunts" Version="$(Version)" />
+    <PackageVersion Include="ManualStunts" Version="$(Version)" />
   </ItemGroup>
 
   <!-- Imported early so $(Version) in our references Just Works -->

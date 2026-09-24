@@ -12,7 +12,7 @@
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.msbuild" Version="2.9.3" Condition="'$(TargetFramework)' == 'net48'" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
-    <PackageReference Include="Avatar" Version="$(Version)" />
+    <PackageReference Include="Stunts" Version="$(Version)" />
   </ItemGroup>
 
 </Project>

@@ -1,8 +1,8 @@
-﻿<Project>
+<Project>
 
   <ItemGroup>
     <ProjectCapability Include="Pack" />
-    <ProjectReference Include="..\**\*.csproj;..\**\Avatar.Package.msbuildproj" 
+    <ProjectReference Include="..\**\*.csproj;..\**\Stunts.Package.msbuildproj" 
                       Exclude="..\**\bin\**\*.*;..\**\obj\**\*.*;..\**\*Tests.csproj;..\Acceptance\**\*.csproj" />
   </ItemGroup>
   

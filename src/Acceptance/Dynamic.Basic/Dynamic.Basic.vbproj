@@ -11,7 +11,7 @@
     <PackageReference Include="Microsoft.TestPlatform.ObjectModel" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
-    <PackageReference Include="Avatar" />
+    <PackageReference Include="Stunts" />
   </ItemGroup>
 
 </Project>

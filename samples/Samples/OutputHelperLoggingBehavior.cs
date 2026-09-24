@@ -1,10 +1,10 @@
-﻿using Avatars;
+using Stunts;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace Samples
 {
-    public class OutputHelperLoggingBehavior : IAvatarBehavior
+    public class OutputHelperLoggingBehavior : IStuntBehavior
     {
         readonly ITestOutputHelper output;
 
@@ -37,7 +37,7 @@ namespace Samples
         [Fact]
         public void LogsAllCalls()
         {
-            var calc = Avatar.Of<ICalculator>()
+            var calc = Stunt.Of<ICalculator>()
                 .AddBehavior(new OutputHelperLoggingBehavior(output))
                 .AddBehavior(new DefaultValueBehavior());
 

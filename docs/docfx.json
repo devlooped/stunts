@@ -5,7 +5,7 @@
       "src": [
         {
           "files": [ "*.cs" ],
-          "src": "../src/Avatar"
+          "src": "../src/Stunts"
         }
       ],
       "dest": "docs/api",
@@ -41,8 +41,8 @@
       }
     ],
     "globalMetadata": {
-      "_appTitle": "Avatar",
-      "_rel": "/avatar/",
+      "_appTitle": "Stunts",
+      "_rel": "/stunts/",
       "_enableSearch": true
     },
     "template": [
