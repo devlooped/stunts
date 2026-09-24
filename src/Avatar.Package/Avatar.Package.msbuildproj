@@ -1,6 +1,8 @@
-﻿<Project Sdk="Microsoft.Build.NoTargets/2.0.1" DefaultTargets="Pack">
+﻿<Project Sdk="Microsoft.Build.NoTargets/3.7.134" DefaultTargets="Pack">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <!-- NoTargets 3.7 excludes these projects from generated solutions. This one is the package project. -->
+    <IncludeInSolutionFile>true</IncludeInSolutionFile>
     <PackageId>Avatar</PackageId>
     <Title>Avatar</Title>
     <Description>Avatar is a modern interception library which implements the proxy pattern 
@@ -18,6 +20,8 @@ service.AddBehavior(...);
     <Content Include="Avatar.vb" CodeLanguage="vb" TargetFramework="netstandard2.0" BuildAction="Compile" />
     <None Include="Avatar.StaticFactory.*" PackFolder="build\netstandard2.0" />
     <None Include="*.props;*.targets" Exclude="Avatar.Version.props" PackFolder="build\netstandard2.0" />
+    <!-- Default items still include the unversioned file. Only the poked copy in obj should ship. -->
+    <None Remove="Avatar.Version.props" />
     <PackageFile Include="@(None)" PackFolder="buildTransitive\netstandard2.0" />
   </ItemGroup>
   <ItemGroup>
