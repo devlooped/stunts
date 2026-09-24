@@ -7,10 +7,10 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
-using Stunts.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Sample;
+using Stunts.CodeAnalysis;
 using TypeNameFormatter;
 using Xunit;
 

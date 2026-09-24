@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Immutable;
 using System.Linq;
-using Stunts.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
+using Stunts.CodeAnalysis;
 
 namespace Stunts
 {
