@@ -1,16 +1,14 @@
 <Project>
 
   <ItemGroup Condition="'$(ManagePackageVersionsCentrally)' == 'true'">
-    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" Visible="false" />
     <PackageReference Include="NuGetizer" PrivateAssets="all" Visible="false" />
     <PackageReference Include="ThisAssembly" PrivateAssets="all" Visible="false" />
   </ItemGroup>
 
   <ItemGroup Label="Core">
-    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="1.0.0" />
-    <PackageVersion Include="ThisAssembly" Version="1.0.8" />
-    <PackageVersion Include="NuGetizer" Version="0.6.2" />
-    <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
+    <PackageVersion Include="ThisAssembly" Version="2.1.5" />
+    <PackageVersion Include="NuGetizer" Version="1.5.0" />
+    <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
     <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.2" />
   </ItemGroup>
 
@@ -24,14 +22,14 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.VisualBasic.Workspaces" Version="3.8.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.CodeStyle" Version="3.8.0" />
     <!-- Required to unify this dependency across projects. -->
-    <PackageVersion Include="System.Runtime.CompilerServices.Unsafe" Version="5.0.0" />
+    <PackageVersion Include="System.Runtime.CompilerServices.Unsafe" Version="6.1.2" />
 
     <!-- When running under .netframework, this dependency will be needed -->
     <PackageVersion Include="System.ValueTuple" Version="4.5.0" />
     
     <!-- For packaging purposes -->
-    <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="5.0.0" />
-    <PackageVersion Include="Microsoft.Bcl.HashCode" Version="1.1.0" />
+    <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.Bcl.HashCode" Version="1.1.1" />
 
     <!-- Unit tests need to pack this for tests to run on macOS, for example -->
     <PackageVersion Include="SQLitePCLRaw.bundle_green" Version="2.0.4" />
@@ -48,12 +46,12 @@
     <PackageVersion Include="System.ComponentModel.Composition" Version="5.0.0" />
 
     <PackageVersion Include="NuGet.Client" Version="4.2.0" />
-    <PackageVersion Include="NuGet.Protocol" Version="5.9.1" />
+    <PackageVersion Include="NuGet.Protocol" Version="7.9.0" />
   </ItemGroup>
 
   <ItemGroup Label="MSBuild">
     <PackageVersion Include="Microsoft.Build" Version="16.8.0" />
-    <PackageVersion Include="Microsoft.Build.Tasks.Core" Version="16.9.0" />
+    <PackageVersion Include="Microsoft.Build.Tasks.Core" Version="17.14.28" />
     <PackageVersion Include="Microsoft.Build.Locator" Version="1.4.1" />
     <PackageVersion Include="MSBuild.StructuredLogger" Version="2.1.500" />
   </ItemGroup>
