@@ -6,6 +6,9 @@ on:
   workflow_dispatch:
   push:
     branches: [ main, dev, 'feature/*', 'rel/*' ]
+    paths-ignore:
+      - changelog.md
+      - readme.md
   pull_request:
     types: [opened, synchronize, reopened]
 
@@ -21,16 +24,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 🤘 checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with: 
           submodules: recursive
           fetch-depth: 0
 
+      - name: ⚙ dotnet
+        uses: devlooped/actions-dotnet-env@v1
+
       - name: ✓ ensure format
         run: |
-          dotnet tool update -g dotnet-format
-          dotnet restore
-          dotnet format --check -v:diag
+          dotnet format whitespace --verify-no-changes -v:diag --exclude ~/.nuget
+          dotnet format style --verify-no-changes -v:diag --exclude ~/.nuget
 
   build:
     name: build-${{ matrix.os }}
@@ -41,10 +46,13 @@ jobs:
         os: [ubuntu-latest, windows-latest, macOS-latest]
     steps:
       - name: 🤘 checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with: 
           submodules: recursive
           fetch-depth: 0
+
+      - name: ⚙ dotnet
+        uses: devlooped/actions-dotnet-env@v1
 
       - name: 🙏 build
         run: dotnet build -m:1 -bl:build.binlog -p:VersionLabel="$GITHUB_REF.$GITHUB_RUN_NUMBER" -p:RepositoryBranch=${GITHUB_REF#refs/*/}
@@ -56,9 +64,9 @@ jobs:
         run: dotnet pack -m:1 -bl:pack.binlog -p:VersionLabel="$GITHUB_REF.$GITHUB_RUN_NUMBER" -p:RepositoryBranch=${GITHUB_REF#refs/*/}
 
       - name: 🔼 packages
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
-          name: bin
+          name: bin-${{ matrix.os }}
           path: bin/*.nupkg
       
       # Only push CI package to sleet feed if building on ubuntu (fastest)
@@ -67,7 +75,7 @@ jobs:
           SLEET_CONNECTION: ${{ secrets.SLEET_CONNECTION }}
         if: matrix.os == 'ubuntu-latest' && env.SLEET_CONNECTION != ''
         run: |
-          dotnet tool install -g --version 4.0.18 sleet 
+          dotnet tool update sleet -g --allow-downgrade --version $(curl -s --compressed ${{ vars.SLEET_FEED_URL }} | jq '.["sleet:version"]' -r) 
           sleet push bin --config none -f --verbose -p "SLEET_FEED_CONTAINER=nuget" -p "SLEET_FEED_CONNECTIONSTRING=${{ secrets.SLEET_CONNECTION }}" -p "SLEET_FEED_TYPE=azure" || echo "No packages found"
 
   acceptance:
@@ -79,12 +87,15 @@ jobs:
         os: [ubuntu-latest, windows-latest, macOS-latest]
     steps:
       - name: 🤘 checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+
+      - name: ⚙ dotnet
+        uses: devlooped/actions-dotnet-env@v1
 
       - name: 🔽 packages
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
-          name: bin
+          name: bin-${{ matrix.os }}
           path: bin
 
       - name: 🧪 test
@@ -100,7 +111,10 @@ jobs:
 
     steps:
       - name: 🤘 checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+
+      - name: ⚙ dotnet
+        uses: devlooped/actions-dotnet-env@v1
 
       # > VS Preview
       - name: 🔽 dotnet-vs
@@ -138,9 +152,9 @@ jobs:
         run: ./.github/workflows/wait-status.ps1
 
       - name: 🔽 packages
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
-          name: bin
+          name: bin-windows-latest
           path: bin
 
       - name: 🧪 test

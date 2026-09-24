@@ -1,21 +1,23 @@
 name: pages
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
       - pages
+      - docs
 
 jobs:
   gh-pages:
     runs-on: ubuntu-latest
     steps:
       - name: 🤘 checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: ⚙ jekyll
         run: |
           sudo gem install bundler
-          bundle install
+          sudo bundle install
 
       - name: 🖉 repo
         run: echo "REPOSITORY=${GITHUB_REPOSITORY#*/}" >> $GITHUB_ENV

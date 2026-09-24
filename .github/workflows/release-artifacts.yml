@@ -11,10 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 🤘 checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with: 
           submodules: recursive
           fetch-depth: 0
+
+      - name: ⚙ dotnet
+        uses: devlooped/actions-dotnet-env@v1
 
       - name: 🏷 current
         run: echo "CURRENT_TAG=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
@@ -30,8 +33,9 @@ jobs:
 
       - name: 🔼 logs
         if: ${{ always() }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
+          name: logs
           path: '**/*.binlog'
 
       - name: 🔽 gh 
