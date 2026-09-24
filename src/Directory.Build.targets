@@ -222,54 +222,7 @@
   </Target>
 
 
-  <!-- Import before UsingTask because first to declare tasks wins -->
   <Import Project="Directory.targets" Condition="Exists('Directory.targets')"/>
   <Import Project="Directory.targets.user" Condition="Exists('Directory.targets.user')" />
-
-  <!-- NuGetizer 0.6.2 reads PackageReference.Version. Central versions leave that
-       metadata empty, so dependency groups were packed with a blank version. -->
-  <UsingTask TaskName="StampPackageVersions" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
-    <ParameterGroup>
-      <PackageReference ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
-      <PackageVersion ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
-      <Stamped ParameterType="Microsoft.Build.Framework.ITaskItem[]" Output="true" />
-    </ParameterGroup>
-    <Task>
-      <Using Namespace="System.Collections.Generic" />
-      <Using Namespace="Microsoft.Build.Framework" />
-      <Using Namespace="Microsoft.Build.Utilities" />
-      <Code Type="Fragment" Language="cs"><![CDATA[
-        var versions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var version in PackageVersion)
-        {
-          var value = version.GetMetadata("Version");
-          if (!string.IsNullOrEmpty(value))
-            versions[version.ItemSpec] = value;
-        }
-
-        var result = new List<ITaskItem>(PackageReference.Length);
-        foreach (var item in PackageReference)
-        {
-          var copy = new TaskItem(item);
-          if (string.IsNullOrEmpty(copy.GetMetadata("Version")) &&
-              versions.TryGetValue(item.ItemSpec, out var version))
-            copy.SetMetadata("Version", version);
-          result.Add(copy);
-        }
-
-        Stamped = result.ToArray();
-      ]]></Code>
-    </Task>
-  </UsingTask>
-
-  <Target Name="CopyCentralPackageVersions" BeforeTargets="InferPackageContents" Condition="'$(ManagePackageVersionsCentrally)' == 'true' and '@(PackageReference)' != '' and '@(PackageVersion)' != ''">
-    <StampPackageVersions PackageReference="@(PackageReference)" PackageVersion="@(PackageVersion)">
-      <Output TaskParameter="Stamped" ItemName="_StampedPackageReference" />
-    </StampPackageVersions>
-    <ItemGroup>
-      <PackageReference Remove="@(PackageReference)" />
-      <PackageReference Include="@(_StampedPackageReference)" />
-    </ItemGroup>
-  </Target>
 
 </Project>
