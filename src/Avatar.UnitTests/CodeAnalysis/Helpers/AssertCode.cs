@@ -65,7 +65,7 @@ public static class AssertCode
     public static async Task NoErrorsAsync(Document document)
     {
         var compilation = await document.Project.GetCompilationAsync(TimeoutToken(5))
-            ?? throw new XunitException();
+            ?? throw new XunitException("Unexpected null.");
 
         var noWarn = new HashSet<string>
         {
@@ -78,15 +78,15 @@ public static class AssertCode
             try
             {
                 // Attempt to normalize whitespace and get the errors again, so the code is more legible
-                syntax = await document.GetSyntaxRootAsync(TimeoutToken(1)) ?? throw new XunitException();
+                syntax = await document.GetSyntaxRootAsync(TimeoutToken(1)) ?? throw new XunitException("Unexpected null.");
                 syntax = syntax.NormalizeWhitespace();
                 document = document.WithSyntaxRoot(syntax);
-                compilation = await document.Project.GetCompilationAsync(TimeoutToken(5)) ?? throw new XunitException();
+                compilation = await document.Project.GetCompilationAsync(TimeoutToken(5)) ?? throw new XunitException("Unexpected null.");
                 diagnostics = compilation.GetDiagnostics(TimeoutToken(5)).Where(d => !noWarn.Contains(d.Id)).ToArray();
             }
             catch
             {
-                syntax = await document.GetSyntaxRootAsync(TimeoutToken(1)) ?? throw new XunitException();
+                syntax = await document.GetSyntaxRootAsync(TimeoutToken(1)) ?? throw new XunitException("Unexpected null.");
             }
 
             if (!string.IsNullOrEmpty(document.FilePath))
