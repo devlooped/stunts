@@ -19,7 +19,6 @@
     <PackageReference Include="System.ValueTuple" />
     <PackageReference Include="System.Threading.Tasks.Extensions" />
     <PackageReference Include="PolySharp" PrivateAssets="all" />
-    <PackageReference Include="ThisAssembly" PrivateAssets="all" />
     <PackageReference Include="TypeNameFormatter.Sources" PrivateAssets="all" />
     <PackageReference Include="docfx.console" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.CodeStyle" Pack="false" />

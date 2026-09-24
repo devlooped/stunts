@@ -4,9 +4,10 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <IsPackable>true</IsPackable>
     <RoslynVersion>4.14.0</RoslynVersion>
-    <!-- ISourceGenerator is marked obsolete in Roslyn 4.14. The compiler still runs it.
-         Incremental generators are a separate change. -->
-    <NoWarn>$(NoWarn);RS1042</NoWarn>
+    <!-- ISourceGenerator is obsolete in Roslyn 4.14 (RS1042). Extended analyzer rules also ban
+         that API and the assembly probing in DependencyResolver (RS1035). Incremental generators
+         are a separate change, so RS1036 stays suppressed until then. -->
+    <NoWarn>$(NoWarn);RS1042;RS1036</NoWarn>
   </PropertyGroup>
 
   <Import Project="Stunts.StaticProxy.targets"/>

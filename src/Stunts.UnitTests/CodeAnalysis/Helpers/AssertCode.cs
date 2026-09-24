@@ -58,7 +58,7 @@ public static class AssertCode
             error.AppendLine("Source: ");
             error.AppendLine(proxyCode.NormalizeWhitespace().ToFullString());
 
-            Assert.False(true, error.ToString());
+            Assert.Fail(error.ToString());
         }
     }
 
@@ -94,7 +94,7 @@ public static class AssertCode
 
             var indexOffset = document.Project.Language == LanguageNames.VisualBasic ? 1 : 0;
 
-            Assert.False(true,
+            Assert.Fail(
                 Environment.NewLine +
                 "Errors:" +
                     Environment.NewLine +

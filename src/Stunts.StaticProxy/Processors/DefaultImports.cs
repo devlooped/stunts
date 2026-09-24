@@ -54,7 +54,7 @@ namespace Stunts.Processors
             if (syntax is not CompilationUnitSyntax unit)
                 return syntax;
 
-            var imports = unit.Usings.Select(x => x.Name.ToString());
+            var imports = unit.Usings.Select(x => x.Name?.ToString() ?? string.Empty);
             var missing = new HashSet<string>(namespaces);
             missing.ExceptWith(imports);
 

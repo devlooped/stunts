@@ -36,7 +36,7 @@ namespace Stunts.Processors
             return unit.WithUsings(
                 List(
                     unit.Usings
-                        .OrderBy(x => x.Name.ToString())));
+                        .OrderBy(x => x.Name?.ToString())));
         }
     }
 }
