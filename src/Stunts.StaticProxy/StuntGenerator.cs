@@ -7,12 +7,12 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
-using Stunts.CodeAnalysis;
-using Stunts.Processors;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
+using Stunts.CodeAnalysis;
+using Stunts.Processors;
 
 namespace Stunts
 {

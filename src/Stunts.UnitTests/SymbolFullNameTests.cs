@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Stunts.CodeAnalysis;
 using Microsoft.CodeAnalysis;
+using Stunts.CodeAnalysis;
 using Xunit;
 using Xunit.Sdk;
 using static WorkspaceHelper;

@@ -1,7 +1,7 @@
 using System.IO;
-using Stunts.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Stunts.CodeAnalysis;
 using Xunit;
 
 namespace Stunts.UnitTests
