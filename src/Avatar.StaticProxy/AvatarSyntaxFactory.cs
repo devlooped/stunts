@@ -64,20 +64,15 @@ namespace Avatars
                 }
             }
 
-            TypeSyntax AsTypeSyntax(ITypeSymbol symbol)
-            {
-                var prefix = symbol.ContainingType == null ? "" : symbol.ContainingType.Name + ".";
-                if (symbol is INamedTypeSymbol named && named.IsGenericType)
-                    return GenericName(Identifier(prefix + symbol.Name))
-                        .WithTypeArgumentList(
-                            TypeArgumentList(
-                                SeparatedList(
-                                    named.TypeArguments.Select(AsTypeSyntax))
-                            )
-                        );
+            static readonly SymbolDisplayFormat TypeFormat = new SymbolDisplayFormat(
+                globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Included,
+                typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+                genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+                miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
 
-                return IdentifierName(prefix + symbol.Name);
-            }
+            // Fully qualified so nested types bind in the scaffold compilation.
+            // IdentifierName("Outer.Inner") is one identifier and does not.
+            TypeSyntax AsTypeSyntax(ITypeSymbol symbol) => ParseTypeName(symbol.ToDisplayString(TypeFormat));
         }
     }
 }

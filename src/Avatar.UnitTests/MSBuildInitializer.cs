@@ -1,4 +1,4 @@
-﻿#if NET472
+﻿#if NET48
 using System;
 using System.IO;
 using System.Reflection;
@@ -32,12 +32,6 @@ namespace Avatars.UnitTests
             return null;
         }
     }
-}
-
-namespace System.Runtime.CompilerServices
-{
-    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
-    public sealed class ModuleInitializerAttribute : Attribute { }
 }
 
 #endif

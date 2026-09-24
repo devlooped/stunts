@@ -29,16 +29,14 @@
   <Target Name="ResolveCompileTimeAvatars" BeforeTargets="CoreCompile;GenerateMSBuildEditorConfigFileShouldRun"
           Condition="'$(EnableCompileTimeAvatars)' == 'true' AND '$(SkipCompilerExecution)' != 'true' AND '$(DesignTimeBuild)' != 'true'">
 
-    <GetRoslynVersion TargetsPath="$(CSharpCoreTargetsPath)">
-      <Output TaskParameter="Version" PropertyName="RoslynVersion" />
-    </GetRoslynVersion>
-
     <PropertyGroup>
-      <AvatarAnalyzerDir>$([MSBuild]::NormalizePath($(MSBuildThisFileDirectory)..\..\tools\$(RoslynVersion)))</AvatarAnalyzerDir>
+      <!-- One generator, built against the public Roslyn 4.14 API. The host
+           compiler supplies Microsoft.CodeAnalysis. -->
+      <AvatarAnalyzerDir>$([MSBuild]::NormalizePath($(MSBuildThisFileDirectory)..\..\tools\4.14.0))</AvatarAnalyzerDir>
     </PropertyGroup>
 
-    <Error Condition="!Exists($(AvatarAnalyzerDir))" Code="AV001"
-           Text="The current compiler uses Roslyn version $(RoslynVersion) which is not supported yet. Please install package Microsoft.Net.Compilers.Toolset version $(AvatarGeneratorLatestRoslyn) to get the latest supported compiler, or set 'EnableCompileTimeAvatars=false' in the project to switch to run-time avatars." />
+    <Error Condition="!Exists('$(AvatarAnalyzerDir)\Avatar.StaticProxy.dll')" Code="AV001"
+           Text="Avatar.StaticProxy was not found under tools\4.14.0. Set 'EnableCompileTimeAvatars=false' to use run-time avatars." />
 
     <ItemGroup>
       <Analyzer Include="$(AvatarAnalyzerDir)\Avatar.StaticProxy.dll" NuGetPackageId="Avatar" NuGetPackageVersion="$(AvatarVersion)" />
@@ -48,23 +46,5 @@
 
   <Import Project="Avatar.DynamicProxy.targets"
           Condition="'$(EnableCompileTimeAvatars)' != 'true' AND  Exists('Avatar.DynamicProxy.targets')" />
-
-  <UsingTask TaskName="GetRoslynVersion" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
-    <ParameterGroup>
-      <TargetsPath />
-      <Version Output="true" />
-    </ParameterGroup>
-    <Task>
-      <Using Namespace="System.IO" />
-      <Using Namespace="System.Reflection" />
-      <Code Type="Fragment" Language="cs">
-        <![CDATA[
-        // NOTE: we use the tasks assembly because the Microsoft.CodeAnalysis.dll itself has a different location in VS MSBuild and dotnet SDK
-        var name = AssemblyName.GetAssemblyName(Path.Combine(Path.GetDirectoryName(TargetsPath), "Microsoft.Build.Tasks.CodeAnalysis.dll"));
-        Version = name.Version.ToString(2) + ".0";
-        ]]>
-      </Code>
-    </Task>
-  </UsingTask>
 
 </Project>

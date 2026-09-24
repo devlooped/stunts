@@ -14,7 +14,6 @@ namespace Avatars.UnitTests
         static readonly MetadataReference CorlibReference = MetadataReference.CreateFromFile(typeof(object).Assembly.Location);
         static readonly MetadataReference SystemCoreReference = MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location);
         static readonly MetadataReference CSharpSymbolsReference = MetadataReference.CreateFromFile(typeof(CSharpCompilation).Assembly.Location);
-        static readonly MetadataReference CSharpFeaturesReference = MetadataReference.CreateFromFile(Type.GetType("Microsoft.CodeAnalysis.CSharp.CSharpAnalyzersResources, Microsoft.CodeAnalysis.CSharp.Features, PublicKeyToken=31bf3856ad364e35", true)!.Assembly.Location);
         static readonly MetadataReference CodeAnalysisReference = MetadataReference.CreateFromFile(typeof(Compilation).Assembly.Location);
 
         internal static string DefaultFilePathPrefix = "Test";
@@ -147,7 +146,7 @@ namespace Avatars.UnitTests
                 .AddMetadataReference(projectId, CorlibReference)
                 .AddMetadataReference(projectId, SystemCoreReference)
                 .AddMetadataReference(projectId, CSharpSymbolsReference)
-                .AddMetadataReference(projectId, CSharpFeaturesReference)
+
                 .AddMetadataReference(projectId, CodeAnalysisReference);
 
             var count = 0;

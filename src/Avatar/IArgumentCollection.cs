@@ -11,7 +11,7 @@ namespace Avatars
         /// Determines whether the collection contains an argument with the given name.
         /// </summary>
         /// <param name="name">The argument name to lookup.</param>
-        public bool Contains(string name);
+        bool Contains(string name);
 
         /// <summary>
         /// Gets the (reference or boxed) value for the argument with the 
@@ -29,17 +29,17 @@ namespace Avatars
         /// Sets the (reference or boxed) value for the argument with the 
         /// given name.
         /// </summary>
-        public IArgumentCollection SetValue(string name, object? value);
+        IArgumentCollection SetValue(string name, object? value);
 
         /// <summary>
         /// Sets the (reference or boxed) value for the argument with the 
         /// given index.
         /// </summary>
-        public IArgumentCollection SetValue(int index, object? value);
+        IArgumentCollection SetValue(int index, object? value);
 
         /// <summary>
         /// Gets or sets the argument with the given name.
         /// </summary>
-        public Argument this[string name] { get; set; }
+        Argument this[string name] { get; set; }
     }
 }

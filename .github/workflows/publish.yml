@@ -5,7 +5,7 @@
 name: publish
 on:
   release:
-    types: [released]
+    types: [prereleased, released]
 
 env:
   DOTNET_NOLOGO: true
@@ -16,11 +16,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 🤘 checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with: 
           submodules: recursive
           fetch-depth: 0
-          
+
+      - name: ⚙ dotnet
+        uses: devlooped/actions-dotnet-env@v1
+
       - name: 🙏 build
         run: dotnet build -m:1 -bl:build.binlog -p:version=${GITHUB_REF#refs/*/v} -p:RepositoryBranch=${GITHUB_REF#refs/*/}
 
@@ -32,9 +35,23 @@ jobs:
 
       - name: 🔼 logs
         if: ${{ always() }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
-          path: '**/*.binlog'
+          name: logs
+          path: '*.binlog'
+
+      - name: ✅ validate
+        shell: pwsh
+        working-directory: bin
+        run: |
+          $invalid = Get-ChildItem -File -Filter "*.42.42*.nupkg"
+          if ($invalid) {
+            Write-Error "Found dev/local packages with disallowed 42.42* version prefix:`n$($invalid.Name -join "`n")"
+            exit 1
+          }
 
       - name: 🚀 nuget
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        if: ${{ env.NUGET_API_KEY != '' && github.event.action != 'prereleased' }}
         run: dotnet nuget push ./bin/**/*.nupkg -s https://api.nuget.org/v3/index.json -k ${{secrets.NUGET_API_KEY}} --skip-duplicate

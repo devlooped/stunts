@@ -1,9 +1,12 @@
-﻿<Project Sdk="Microsoft.Build.Traversal/3.0.2" InitialTargets="RemoveNonPackable" DefaultTargets="Pack">
+﻿<Project Sdk="Microsoft.Build.Traversal/4.1.82" InitialTargets="RemoveNonPackable" DefaultTargets="Pack">
   <!-- Move everything to the .props because otherwise CPS screws up the items and formatting -->
   <Import Project="Pack.props" />
+  <PropertyGroup>
+    <!-- The traversal SDK defaults to net45, which cannot reference ThisAssembly 2.x. -->
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" Visible="false" Pack="false" />
-    <PackageReference Include="NuGetizer" Version="0.6.0" Visible="false" />
+    <PackageReference Include="NuGetizer" Version="1.5.0" Visible="false" />
     <PackageReference Update="NuGetizer" Version="$(DogfoodingVersion)" Visible="false" Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\nugetizer\bin\')" />
     <None Include="Pack.props" />
   </ItemGroup>

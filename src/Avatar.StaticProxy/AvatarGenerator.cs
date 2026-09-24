@@ -174,7 +174,7 @@ namespace Avatars
         {
             var processors = Processors;
             if (!processors.Any(x => x.Phase == ProcessorPhase.Scaffold))
-                processors = processors.Add(new RoslynInternalScaffold(context, naming));
+                processors = processors.Add(new MemberScaffold());
 
             var driver = new SyntaxProcessorDriver(processors);
             var factory = AvatarSyntaxFactory.CreateFactory(context.Language);

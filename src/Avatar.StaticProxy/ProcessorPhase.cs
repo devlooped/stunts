@@ -19,10 +19,9 @@ namespace Avatars
         Prepare,
 
         /// <summary>
-        /// Phase that generates the basic boilerplate for all abstract and interface members,
-        /// that typically have default implementations that basically throw <see cref="NotImplementedException"/>.
-        /// For C# and VB, this is achieved by executing the built-in code fixes for abstract 
-        /// class and interface default implementations.
+        /// Phase that generates constructors and stub implementations for abstract, virtual,
+        /// and interface members. Virtual stubs call <c>base</c>. Abstract and interface stubs
+        /// throw <see cref="NotImplementedException"/>.
         /// </summary>
         Scaffold,
 
@@ -37,8 +36,7 @@ namespace Avatars
         /// Final phase that allows generators to perform additional generation beyond scaffold 
         /// and initial avatar rewriting. Members generated in this phase are not rewritten at all
         /// to use the <see cref="BehaviorPipeline"/> and can consist of language-specific fixups 
-        /// or cleanups to make the generated code more idiomatic than the default code fixes may 
-        /// provide.
+        /// or cleanups to make the generated code more idiomatic.
         /// </summary>
         Fixup,
     }

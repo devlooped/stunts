@@ -139,7 +139,7 @@ public abstract partial class DiagnosticVerifier
 
         var projectId = ProjectId.CreateNewId(debugName: TestProjectName);
 
-        using var workspace = new AdhocWorkspace(WorkspaceServices.HostServices);
+        using var workspace = new AdhocWorkspace();
 
         var options = language == LanguageNames.CSharp ?
                 (CompilationOptions)new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable) :

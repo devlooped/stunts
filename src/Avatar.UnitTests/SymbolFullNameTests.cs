@@ -19,7 +19,7 @@ namespace Avatars.UnitTests
         public async Task GivenAFullName_ThenCanResolveSymbolAndRoundtrip(string fullName)
         {
             var (_, project) = CreateWorkspaceAndProject(LanguageNames.CSharp);
-            var compilation = await project.GetCompilationAsync() ?? throw new XunitException();
+            var compilation = await project.GetCompilationAsync() ?? throw new XunitException("Unexpected null.");
 
             var symbol = compilation!.GetTypeByFullName(fullName);
 
@@ -36,24 +36,24 @@ namespace Avatars.UnitTests
         public async Task GivenASymbol_ThenCanRoundtripWithFullName()
         {
             var (workspace, project) = CreateWorkspaceAndProject(LanguageNames.CSharp);
-            var compilation = await project.GetCompilationAsync() ?? throw new XunitException();
+            var compilation = await project.GetCompilationAsync() ?? throw new XunitException("Unexpected null.");
 
             var dictionary = compilation!.GetTypeByMetadataName(typeof(IDictionary<,>).FullName!)
-                 ?? throw new XunitException();
+                 ?? throw new XunitException("Unexpected null.");
             var list = compilation.GetTypeByMetadataName(typeof(IList<>).FullName!)
-                 ?? throw new XunitException();
+                 ?? throw new XunitException("Unexpected null.");
             var enumerable = compilation.GetTypeByMetadataName(typeof(IEnumerable<>).FullName!)
-                 ?? throw new XunitException();
+                 ?? throw new XunitException("Unexpected null.");
             var intsymbol = compilation.GetTypeByMetadataName(typeof(int).FullName!)
-                 ?? throw new XunitException();
+                 ?? throw new XunitException("Unexpected null.");
 
             var ints = compilation.CreateArrayTypeSymbol(intsymbol, 1);
             var nullable = compilation.GetTypeByMetadataName(typeof(Nullable<>).FullName!)
-                 ?? throw new XunitException();
+                 ?? throw new XunitException("Unexpected null.");
             var special = compilation.GetTypeByMetadataName(typeof(Environment.SpecialFolder).FullName!)
-                 ?? throw new XunitException();
+                 ?? throw new XunitException("Unexpected null.");
             var pair = compilation.GetTypeByMetadataName(typeof(KeyValuePair<,>).FullName!)
-                 ?? throw new XunitException();
+                 ?? throw new XunitException("Unexpected null.");
 
             var pairof = pair.Construct(ints, nullable.Construct(special));
             var enumpairs = enumerable.Construct(pairof);

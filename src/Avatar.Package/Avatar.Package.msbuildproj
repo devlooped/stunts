@@ -1,6 +1,8 @@
-﻿<Project Sdk="Microsoft.Build.NoTargets/2.0.1" DefaultTargets="Pack">
+﻿<Project Sdk="Microsoft.Build.NoTargets/3.7.134" DefaultTargets="Pack">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <!-- NoTargets 3.7 excludes these projects from generated solutions. This one is the package project. -->
+    <IncludeInSolutionFile>true</IncludeInSolutionFile>
     <PackageId>Avatar</PackageId>
     <Title>Avatar</Title>
     <Description>Avatar is a modern interception library which implements the proxy pattern 
@@ -18,11 +20,12 @@ service.AddBehavior(...);
     <Content Include="Avatar.vb" CodeLanguage="vb" TargetFramework="netstandard2.0" BuildAction="Compile" />
     <None Include="Avatar.StaticFactory.*" PackFolder="build\netstandard2.0" />
     <None Include="*.props;*.targets" Exclude="Avatar.Version.props" PackFolder="build\netstandard2.0" />
+    <!-- Default items still include the unversioned file. Only the poked copy in obj should ship. -->
+    <None Remove="Avatar.Version.props" />
     <PackageFile Include="@(None)" PackFolder="buildTransitive\netstandard2.0" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" Visible="false" Pack="false" />
-    <PackageReference Include="NuGetizer" Version="0.6.2" Visible="false" />
+    <PackageReference Include="NuGetizer" Version="1.5.0" Visible="false" />
     <PackageReference Update="NuGetizer" Version="$(DogfoodingVersion)" Visible="false" Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\nugetizer\bin\')" />
   </ItemGroup>
   <ItemGroup>
@@ -30,8 +33,6 @@ service.AddBehavior(...);
     <ProjectReference Include="..\Avatar.CodeAnalysis\Avatar.CodeAnalysis.csproj" AdditionalProperties="IsPackable=false" />
     <ProjectReference Include="..\Avatar.DynamicProxy\Avatar.DynamicProxy.csproj" AdditionalProperties="IsPackable=false" />
     <ProjectReference Include="..\Avatar.StaticProxy\Avatar.StaticProxy.csproj" AdditionalProperties="IsPackable=false" />
-    <ProjectReference Include="..\Avatar.StaticProxy\Avatar.StaticProxy.3.9.0.csproj" AdditionalProperties="IsPackable=false" />
-    <ProjectReference Include="..\Avatar.StaticProxy\Avatar.StaticProxy.3.10.0.csproj" AdditionalProperties="IsPackable=false" />
   </ItemGroup>
   <Target Name="CopyVersion" Inputs="Avatar.Version.props" Outputs="$(IntermediateOutputPath)Avatar.Version.props">
     <Copy SourceFiles="Avatar.Version.props" DestinationFiles="$(IntermediateOutputPath)Avatar.Version.props" SkipUnchangedFiles="true" />

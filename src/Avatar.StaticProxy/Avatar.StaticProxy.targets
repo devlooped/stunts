@@ -15,20 +15,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="all" />
-    <PackageReference Include="NuGetizer" Version="0.6.2" PrivateAssets="all" />
-    <PackageReference Include="ThisAssembly" Version="1.0.8"  PrivateAssets="all" />
+    <PackageReference Include="NuGetizer" Version="1.5.0" PrivateAssets="all" />
+    <PackageReference Include="PolySharp" Version="1.16.0" PrivateAssets="all" />
+    <PackageReference Include="ThisAssembly" Version="2.1.5" PrivateAssets="all" />
 
     <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="$(RoslynVersion)$(RoslynLabel)" Pack="false" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="$(RoslynVersion)$(RoslynLabel)" Pack="false" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Features" Version="$(RoslynVersion)$(RoslynLabel)" Pack="false" />
-    <PackageReference Include="System.ComponentModel.Composition" Version="5.0.0" />
-  </ItemGroup>
-
-  <ItemGroup Condition="$(RoslynVersion) == '3.8.0'">
-    <!-- Don't bump these dependencies to 5.0.0 because that breaks net472 source generator runs -->
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.1.1" Pack="false" />
-    <PackageReference Include="Microsoft.Bcl.HashCode" Version="1.1.0" Pack="false" />
   </ItemGroup>
 
   <ItemGroup>
@@ -44,11 +36,11 @@
   <Target Name="ResolveReferences" />
   <Target Name="AddDependencies" Condition="'$(IsPackable)' != 'true'" AfterTargets="Build" BeforeTargets="GetPackageContents" DependsOnTargets="ResolveReferences">
     <ItemGroup Condition="'$(TargetFramework)' != ''">
-      <AnalyzerFile Include="@(ReferenceCopyLocalPaths)" 
-                    Condition="'%(ReferenceCopyLocalPaths.AssetType)' != 'resources'" 
-                    Exclude="'%(Filename)%(Extension)' == 'Microsoft.CodeAnalysis.dll' OR 
-                             '%(Filename)%(Extension)' == 'Microsoft.CodeAnalysis.CSharp.dll' OR 
-                             '%(Filename)%(Extension)' == 'Microsoft.CodeAnalysisVisualBasic.dll'" />
+      <AnalyzerFile Include="@(ReferenceCopyLocalPaths)"
+                    Condition="'%(ReferenceCopyLocalPaths.AssetType)' != 'resources'
+                               and '%(Filename)' != 'Microsoft.CodeAnalysis'
+                               and '%(Filename)' != 'Microsoft.CodeAnalysis.CSharp'
+                               and '%(Filename)' != 'Microsoft.CodeAnalysis.VisualBasic'" />
       <PackageFile Include="@(AnalyzerFile -> '%(FullPath)')" PackagePath="tools\$(RoslynVersion)\%(Filename)%(Extension)" />
     </ItemGroup>
   </Target>

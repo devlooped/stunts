@@ -1,7 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net472;net5.0</TargetFrameworks>
+    <TargetFramework>net10.0</TargetFramework>
     <LangVersion>Latest</LangVersion>
     <NoWarn>THIS001</NoWarn>
   </PropertyGroup>
@@ -10,7 +10,6 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="Microsoft.TestPlatform.ObjectModel" />
     <PackageReference Include="xunit" />
-    <PackageReference Include="xunit.runner.msbuild" Condition="'$(TargetFramework)' == 'net472'" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="Avatar" />
   </ItemGroup>

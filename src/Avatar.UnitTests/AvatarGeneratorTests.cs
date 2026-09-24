@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text;
 using Avatars.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -206,32 +207,68 @@ public class BaseTypeInternalCtor
 
         static (ImmutableArray<Diagnostic>, Compilation) GetGeneratedOutput(string source, string[] additionalSources = null, [CallerMemberName] string? test = null)
         {
-            var syntaxTree = CSharpSyntaxTree.ParseText(source, path: test + ".cs");
+            var libs = new HashSet<string>(File.ReadAllLines("lib.txt"), StringComparer.OrdinalIgnoreCase)
+                .Distinct(FileNameEqualityComparer.Default)
+                .ToDictionary(x => Path.GetFileName(x));
 
-            var references = new List<MetadataReference>();
-            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-            foreach (var assembly in assemblies)
+            var args = CSharpCommandLineParser.Default.Parse(
+                File.ReadAllLines("csc.txt"), ThisAssembly.Project.MSBuildProjectDirectory, sdkDirectory: null);
+
+            // net10 csc passes /features:InterceptorsNamespaces. The generator builds its
+            // trees with default parse options, and Roslyn refuses to mix those features.
+            var parseOptions = args.ParseOptions
+                .WithLanguageVersion(LanguageVersion.Latest)
+                .WithFeatures(Enumerable.Empty<KeyValuePair<string, string>>());
+
+            var sources = (additionalSources ?? Array.Empty<string>())
+                .Select((code, index) => CSharpSyntaxTree.ParseText(
+                    code,
+                    options: parseOptions,
+                    path: $"AdditionalSource{index}.cs",
+                    encoding: Encoding.UTF8))
+                .Concat(new[]
+                {
+                    CSharpSyntaxTree.ParseText(source, options: parseOptions, path: test + ".cs", encoding: Encoding.UTF8),
+                    CSharpSyntaxTree.ParseText(File.ReadAllText("Avatar/Avatar.cs"), options: parseOptions, path: "Avatar.cs", encoding: Encoding.UTF8),
+                    CSharpSyntaxTree.ParseText(File.ReadAllText("Avatar/Avatar.StaticFactory.cs"), options: parseOptions, path: "Avatar.StaticFactory.cs", encoding: Encoding.UTF8),
+                });
+
+            var references = args.MetadataReferences.Select(x => libs.TryGetValue(Path.GetFileName(x.Reference), out var lib) ?
+                    MetadataReference.CreateFromFile(lib) :
+                    MetadataReference.CreateFromFile(x.Reference))
+                .ToList();
+
+            // Types passed to GenerateCode (e.g. BaseClass) live in this assembly.
+            var testAssembly = typeof(AvatarGeneratorTests).Assembly.Location;
+            if (!string.IsNullOrEmpty(testAssembly) &&
+                !references.Any(r => string.Equals(r.Display, testAssembly, StringComparison.OrdinalIgnoreCase)))
             {
-                if (!assembly.IsDynamic && !string.IsNullOrEmpty(assembly.Location))
-                    references.Add(MetadataReference.CreateFromFile(assembly.Location));
+                references.Add(MetadataReference.CreateFromFile(testAssembly));
             }
 
-            var compilation = CSharpCompilation.Create(test, (additionalSources ?? Array.Empty<string>())
-                .Select((code, index) => CSharpSyntaxTree.ParseText(code, path: $"AdditionalSource{index}.cs"))
-                .Concat(new SyntaxTree[]
-                {
-                    syntaxTree,
-                    CSharpSyntaxTree.ParseText(File.ReadAllText("Avatar/Avatar.cs"), path: "Avatar.cs"),
-                    CSharpSyntaxTree.ParseText(File.ReadAllText("Avatar/Avatar.StaticFactory.cs"), path: "Avatar.StaticFactory.cs"),
-                }), references, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            var compilation = CSharpCompilation.Create(
+                test,
+                sources,
+                references,
+                args.CompilationOptions.WithCryptoKeyFile(null).WithOutputKind(OutputKind.DynamicallyLinkedLibrary));
 
-            var diagnostics = compilation.GetDiagnostics().RemoveAll(d => d.Severity == DiagnosticSeverity.Hidden || d.Severity == DiagnosticSeverity.Info);
+            Predicate<Diagnostic> ignored = d =>
+                d.Severity == DiagnosticSeverity.Hidden ||
+                d.Severity == DiagnosticSeverity.Info;
+
+            var diagnostics = compilation.GetDiagnostics().RemoveAll(ignored);
             if (diagnostics.Any())
                 return (diagnostics, compilation);
 
-            var generator = new AvatarGenerator();
-            var driver = CSharpGeneratorDriver.Create(generator);
+            var driver = CSharpGeneratorDriver.Create(
+                new[] { new AvatarGenerator() },
+                parseOptions: parseOptions,
+                optionsProvider: EditorConfigOptionsProvider.Create(Directory.EnumerateFiles(
+                    Path.Combine(ThisAssembly.Project.MSBuildProjectDirectory, ThisAssembly.Project.IntermediateOutputPath),
+                    "*.editorconfig", SearchOption.TopDirectoryOnly)));
+
             driver.RunGeneratorsAndUpdateCompilation(compilation, out var output, out diagnostics);
+            diagnostics = diagnostics.RemoveAll(ignored);
 
             return (diagnostics, output);
         }

@@ -1,15 +1,14 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks Condition="'$(OS)' == 'Windows_NT'">net472;net5.0</TargetFrameworks>
-    <TargetFramework Condition="'$(OS)' != 'Windows_NT'">net5.0</TargetFramework>
+    <TargetFrameworks Condition="'$(OS)' == 'Windows_NT'">net48;net10.0</TargetFrameworks>
+    <TargetFramework Condition="'$(OS)' != 'Windows_NT'">net10.0</TargetFramework>
     <Nullable>annotations</Nullable>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="InternalAccess\Program.cs" />
     <ProjectProperty Include="TargetFramework" />
   </ItemGroup>
 
@@ -19,14 +18,9 @@
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
 
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Features" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
-    <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Features" />
-    <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Workspaces" />
-
     <PackageReference Include="Superpower" />
-    <PackageReference Include="NuGet.Client" />
-    <PackageReference Include="NuGet.Protocol" />
+    <PackageReference Include="Newtonsoft.Json" />
+    <PackageReference Include="System.Security.Cryptography.Xml" />
   </ItemGroup>
 
   <ItemGroup Label="Targets">
@@ -34,7 +28,7 @@
     <PackageVersion Include="Microsoft.ApplicationInsights" Version="2.17.0" />
   </ItemGroup>
 
-  <ItemGroup Label="net5 Targets" Condition="'$(TargetFramework)' == 'net5.0'">
+  <ItemGroup Label="net10 Targets" Condition="'$(TargetFramework)' == 'net10.0'">
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="5.0.5" />
 
@@ -42,7 +36,7 @@
     <PackageVersion Include="Microsoft.AspNetCore.Mvc" Version="2.2.0" />
   </ItemGroup>
 
-  <ItemGroup Label="net472 Targets" Condition="'$(TargetFramework)' == 'net472'">
+  <ItemGroup Label="net48 Targets" Condition="'$(TargetFramework)' == 'net48'">
     <PackageReference Include="EntityFramework" />
     <PackageVersion Include="EntityFramework" Version="6.4.4" />
 
@@ -63,11 +57,6 @@
 
   <ItemGroup>
     <None Include="..\Avatar.Package\Avatar.cs" Link="Avatar\Avatar.cs" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\Avatar.StaticProxy\RoslynInternals.cs" Link="InternalAccess\RoslynInternals.cs" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="InternalAccess\Program.cs" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="InternalAccess\Directory.Build.props" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="InternalAccess\Directory.Build.targets" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="InternalAccess\Directory.Packages.props" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
