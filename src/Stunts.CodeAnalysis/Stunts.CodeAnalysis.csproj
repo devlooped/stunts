@@ -6,11 +6,15 @@
     <!-- When the packaging project references it for embedding -->
     <PackFolder Condition="'$(IsPackable)' != 'true'">analyzers\dotnet</PackFolder>
     <EnableRexCodeGenerator>true</EnableRexCodeGenerator>
+    <!-- Analyzers use IOperation and support C# and VB. Keep the compilation off the C# assembly (RS1038). -->
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <!-- ThisAssembly.Strings formats with CultureInfo.CurrentCulture, which RS1035 bans in analyzer assemblies. -->
+    <NoWarn>$(NoWarn);RS1035</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Superpower" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Pack="false" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Common" Pack="false" />
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" PrivateAssets="all" />
   </ItemGroup>
 

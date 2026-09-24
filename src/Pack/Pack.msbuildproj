@@ -6,7 +6,6 @@
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="NuGetizer" Version="1.5.0" Visible="false" />
     <PackageReference Update="NuGetizer" Version="$(DogfoodingVersion)" Visible="false" Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\nugetizer\bin\')" />
     <None Include="Pack.props" />
   </ItemGroup>

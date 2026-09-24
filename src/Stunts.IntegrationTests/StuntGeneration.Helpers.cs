@@ -51,7 +51,7 @@ namespace Stunts.AcceptanceTests
 
             if (!result.Success)
             {
-                Assert.False(true,
+                Assert.Fail(
                     "Emit failed:\r\n" +
                     Environment.NewLine +
                     string.Join(Environment.NewLine, result.Diagnostics.Select(d => d.ToString())));

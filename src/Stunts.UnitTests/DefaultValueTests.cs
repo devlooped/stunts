@@ -19,7 +19,7 @@ namespace Stunts.UnitTests
 
             var result = behavior.Execute(MethodInvocation.Create(new object(), method, value), null!);
 
-            Assert.Equal(1, result.Outputs.Count);
+            Assert.Single(result.Outputs);
             Assert.NotNull(result.Outputs.GetValue(0));
             Assert.Same(result.Outputs.GetValue(0), value);
         }
@@ -33,7 +33,7 @@ namespace Stunts.UnitTests
 
             var result = behavior.Execute(MethodInvocation.Create(new object(), method, platform), null!);
 
-            Assert.Equal(1, result.Outputs.Count);
+            Assert.Single(result.Outputs);
             Assert.NotNull(result.Outputs.GetValue(0));
             Assert.Equal(platform, result.Outputs.GetValue(0));
         }
@@ -46,7 +46,7 @@ namespace Stunts.UnitTests
 
             var result = behavior.Execute(MethodInvocation.Create(new object(), method, Array.Empty<object>()), null!);
 
-            Assert.Equal(1, result.Outputs.Count);
+            Assert.Single(result.Outputs);
             Assert.NotNull(result.Outputs.GetValue(0));
             Assert.True(result.Outputs.GetValue(0) is object[]);
         }
@@ -95,13 +95,13 @@ namespace Stunts.UnitTests
         }
 
         [Fact]
-        public void DefaultForTaskTIsCompleted()
+        public async Task DefaultForTaskTIsCompleted()
         {
             var value = new DefaultValueProvider().GetDefault<Task<bool>>();
 
             Assert.NotNull(value);
             Assert.True(value.IsCompleted);
-            Assert.False(value.Result);
+            Assert.False(await value);
         }
 
         [Fact]
@@ -122,13 +122,13 @@ namespace Stunts.UnitTests
         }
 
         [Fact]
-        public void DefaultForTaskOfEnumIsDefaultValue()
+        public async Task DefaultForTaskOfEnumIsDefaultValue()
         {
             var value = new DefaultValueProvider().GetDefault<Task<PlatformID>>();
 
             Assert.NotNull(value);
             Assert.True(value.IsCompleted);
-            Assert.Equal(default, value.Result);
+            Assert.Equal(default, await value);
         }
 
         [Fact]

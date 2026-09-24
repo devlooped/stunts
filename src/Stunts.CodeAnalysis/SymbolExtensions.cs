@@ -23,12 +23,12 @@ namespace Stunts.CodeAnalysis
         /// <returns></returns>
         public static ImmutableHashSet<INamedTypeSymbol> InterceptableRecursively(this IEnumerable<INamedTypeSymbol> symbols)
         {
-            var set = new HashSet<INamedTypeSymbol>();
+            var set = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
             foreach (var symbol in symbols)
             {
                 CollectSymbols(symbol, set);
             }
-            return set.ToImmutableHashSet();
+            return set.ToImmutableHashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
         }
 
         static void CollectSymbols(INamedTypeSymbol symbol, HashSet<INamedTypeSymbol> set)

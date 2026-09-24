@@ -115,7 +115,7 @@ public static class WorkspaceHelper
     {
         if (!result.Success)
         {
-            Assert.False(true,
+            Assert.Fail(
                 "Emit failed:\r\n" +
                 Environment.NewLine +
                 string.Join(Environment.NewLine, result.Diagnostics.Where(d => d.Id != "CS0436").Select(d => d.ToString())));
