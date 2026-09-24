@@ -53,8 +53,7 @@ namespace Avatars
             if (semanticModel == null)
                 return document.Project.Solution;
 
-            var symbol = semanticModel.GetDeclaredSymbol(type) as INamedTypeSymbol;
-            if (symbol == null)
+            if (semanticModel.GetDeclaredSymbol(type) is not INamedTypeSymbol symbol)
                 return document.Project.Solution;
 
             var overridables = RoslynInternals.GetOverridableMembers(symbol, cancellationToken);
