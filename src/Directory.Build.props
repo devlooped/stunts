@@ -47,6 +47,9 @@
   <PropertyGroup Label="Build">
     <Configuration Condition="'$(Configuration)' == '' and $(CI)">Release</Configuration>
     <LangVersion>Latest</LangVersion>
+    <!-- CodeAnalysis.Analyzers 3.11 adds every .resx as an AdditionalFile and
+         blanks ThisAssembly.Strings' SourceItemType, so the strings generator emits nothing. -->
+    <SkipAddAllResxFilesAsAdditionalFiles>true</SkipAddAllResxFilesAsAdditionalFiles>
 
     <!-- See https://docs.microsoft.com/en-us/dotnet/standard/assembly/reference-assemblies -->
     <ProduceReferenceAssembly>false</ProduceReferenceAssembly>

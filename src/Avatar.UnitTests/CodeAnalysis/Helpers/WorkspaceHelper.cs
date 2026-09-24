@@ -18,7 +18,7 @@ public static class WorkspaceHelper
     public static (AdhocWorkspace workspace, Project project) CreateWorkspaceAndProject(
         string language, string assemblyName = "Code", bool includeAvatarApi = true, bool includeMockApi = false)
     {
-        var workspace = new AdhocWorkspace(WorkspaceServices.HostServices);
+        var workspace = new AdhocWorkspace();
         var projectInfo = CreateProjectInfo(language, assemblyName, includeAvatarApi, includeMockApi);
         var project = workspace.AddProject(projectInfo);
 

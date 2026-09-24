@@ -46,21 +46,39 @@ namespace Avatars
 
             if (supportedProcessors.TryGetValue(ProcessorPhase.Prepare, out var prepares))
                 foreach (var processor in prepares)
-                    syntax = processor.Process(syntax, context with { Compilation = context.Compilation.AddSyntaxTrees(syntax.SyntaxTree) });
+                    syntax = Apply(processor, syntax, context);
 
             if (supportedProcessors.TryGetValue(ProcessorPhase.Scaffold, out var scaffolds))
                 foreach (var processor in scaffolds)
-                    syntax = processor.Process(syntax, context with { Compilation = context.Compilation.AddSyntaxTrees(syntax.SyntaxTree) });
+                    syntax = Apply(processor, syntax, context);
 
             if (supportedProcessors.TryGetValue(ProcessorPhase.Rewrite, out var rewriters))
                 foreach (var processor in rewriters)
-                    syntax = processor.Process(syntax, context with { Compilation = context.Compilation.AddSyntaxTrees(syntax.SyntaxTree) });
+                    syntax = Apply(processor, syntax, context);
 
             if (supportedProcessors.TryGetValue(ProcessorPhase.Fixup, out var fixups))
                 foreach (var processor in fixups)
-                    syntax = processor.Process(syntax, context with { Compilation = context.Compilation.AddSyntaxTrees(syntax.SyntaxTree) });
+                    syntax = Apply(processor, syntax, context);
 
             return syntax;
+        }
+
+        // SyntaxFactory trees use default parse options. A net10 host compilation
+        // carries /features:InterceptorsNamespaces, and Roslyn refuses to mix them.
+        // The node passed to the processor has to be the root of the tree that was added,
+        // or GetSemanticModel throws because the original tree is not in the compilation.
+        static SyntaxNode Apply(ISyntaxProcessor processor, SyntaxNode syntax, ProcessorContext context)
+        {
+            var tree = syntax.SyntaxTree;
+            var options = context.Compilation.SyntaxTrees.FirstOrDefault()?.Options;
+            if (options != null && !tree.Options.Equals(options))
+            {
+                tree = tree.WithRootAndOptions(tree.GetRoot(), options);
+                syntax = tree.GetRoot();
+            }
+
+            var compilation = context.Compilation.AddSyntaxTrees(tree);
+            return processor.Process(syntax, context with { Compilation = compilation });
         }
     }
 }

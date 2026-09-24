@@ -46,7 +46,7 @@ namespace Avatars.Processors
                     var baseType = symbol.BaseType;
                     while (baseType != null)
                     {
-                        foreach (var e in baseType.GetMembers().OfType<IEventSymbol>().Where(e => e.IsVirtual))
+                        foreach (var e in baseType.GetMembers().OfType<IEventSymbol>().Where(e => e.IsVirtual && !e.IsAbstract))
                             virtualEvents.Add(e.Name);
 
                         baseType = baseType.BaseType;
@@ -309,6 +309,7 @@ namespace Avatars.Processors
                     {
                         method = method
                             .WithExpressionBody(null)
+                            .WithSemicolonToken(default)
                             .WithBody(body.AddStatements(
                                 // return ref _result.AsRef<T>().Value;
                                 ReturnStatement(
@@ -323,6 +324,7 @@ namespace Avatars.Processors
                     {
                         method = method
                             .WithExpressionBody(null)
+                            .WithSemicolonToken(default)
                             .WithBody(body.AddStatements(
                                 // return (T)_result.ReturnValue;
                                 ReturnStatement(
@@ -338,6 +340,7 @@ namespace Avatars.Processors
                     {
                         method = method
                             .WithExpressionBody(null)
+                            .WithSemicolonToken(default)
                             .WithBody(body);
                     }
                 }
@@ -511,7 +514,7 @@ namespace Avatars.Processors
                                 MemberAccessExpression(
                                     SyntaxKind.SimpleMemberAccessExpression,
                                     BaseExpression(),
-                                    IdentifierName("TurnedOn")),
+                                    IdentifierName(node.Identifier)),
                                 IdentifierName("value"))));
 
                     var add = body(SyntaxKind.AddAssignmentExpression);

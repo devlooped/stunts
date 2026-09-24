@@ -71,7 +71,7 @@ namespace Avatars.UnitTests
             .Take(2)
 #endif
             .Where(x =>
-                x.FullName == typeof(Microsoft.DiaSymReader.ISymUnmanagedReader5).FullName
+                x.FullName == "Microsoft.DiaSymReader.ISymUnmanagedReader5"
             )
             .Select(type => new object[] { type });
 

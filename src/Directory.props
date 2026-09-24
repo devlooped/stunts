@@ -16,9 +16,8 @@
   </PropertyGroup>
 
   <!-- We need this in .props so it kicks-in before all the common.props defaulting -->
-  <PropertyGroup Label="Avatar.StaticProxy" Condition="$(MSBuildProjectName.StartsWith('Avatar.StaticProxy'))">
-    <RoslynVersion>$(MSBuildProjectName.Substring(18).TrimStart('.'))</RoslynVersion>
-    <RoslynVersion Condition="'$(RoslynVersion)' == ''">3.8.0</RoslynVersion>
+  <PropertyGroup Label="Avatar.StaticProxy" Condition="$(MSBuildProjectName) == 'Avatar.StaticProxy'">
+    <RoslynVersion>4.14.0</RoslynVersion>
     <BaseIntermediateOutputPath>obj\$(RoslynVersion)\</BaseIntermediateOutputPath>
     <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
     <OutputPath>bin\$(RoslynVersion)\$(Configuration)</OutputPath>

@@ -30,8 +30,6 @@ service.AddBehavior(...);
     <ProjectReference Include="..\Avatar.CodeAnalysis\Avatar.CodeAnalysis.csproj" AdditionalProperties="IsPackable=false" />
     <ProjectReference Include="..\Avatar.DynamicProxy\Avatar.DynamicProxy.csproj" AdditionalProperties="IsPackable=false" />
     <ProjectReference Include="..\Avatar.StaticProxy\Avatar.StaticProxy.csproj" AdditionalProperties="IsPackable=false" />
-    <ProjectReference Include="..\Avatar.StaticProxy\Avatar.StaticProxy.3.9.0.csproj" AdditionalProperties="IsPackable=false" />
-    <ProjectReference Include="..\Avatar.StaticProxy\Avatar.StaticProxy.3.10.0.csproj" AdditionalProperties="IsPackable=false" />
   </ItemGroup>
   <Target Name="CopyVersion" Inputs="Avatar.Version.props" Outputs="$(IntermediateOutputPath)Avatar.Version.props">
     <Copy SourceFiles="Avatar.Version.props" DestinationFiles="$(IntermediateOutputPath)Avatar.Version.props" SkipUnchangedFiles="true" />

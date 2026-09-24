@@ -26,7 +26,7 @@ namespace Avatars.Processors
         public SyntaxNode Process(SyntaxNode syntax, ProcessorContext context)
         {
             // This codefix is available for both C# and VB
-            //document = await document.ApplyCodeFixAsync(CodeFixNames.All.RemoveUnnecessaryImports);
+
 
             // TODO: remove unused ones?
 
