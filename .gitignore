@@ -1,9 +1,24 @@
 bin
 obj
+out
 artifacts
 pack
+agent-tools
+terminals
+TestResults
+results
+BenchmarkDotNet.Artifacts
+mcps
+/app
+/temp
 .vs
 .vscode
+.genaiscript
+.idea
+local.settings.json
+.env
+.next
+*.local
 
 *.suo
 *.sdf
@@ -12,9 +27,13 @@ pack
 *.nupkg
 *.metaproj
 *.tmp
+*.log
 *.cache
 *.binlog
 *.zip
+__azurite*.*
+AzuriteConfig
+__*__
 
 .nuget
 *.lock.json
@@ -25,5 +44,6 @@ node_modules
 _site
 .jekyll-metadata
 .jekyll-cache
+.sass-cache
 Gemfile.lock
 package-lock.json
