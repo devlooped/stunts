@@ -117,9 +117,7 @@ public static class INamedTypeSymbolExtensions
     {
         if (left.Name != right.Name || left.Kind != right.Kind)
             return false;
-        var leftMethod = left as IMethodSymbol;
-        var rightMethod = right as IMethodSymbol;
-        if (leftMethod == null || rightMethod == null)
+        if (left is not IMethodSymbol leftMethod || right is not IMethodSymbol rightMethod)
             return true;
         if (leftMethod.Parameters.Length != rightMethod.Parameters.Length || leftMethod.TypeParameters.Length != rightMethod.TypeParameters.Length)
             return false;
