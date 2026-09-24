@@ -19,6 +19,8 @@
     <PackageReference Include="xunit.runner.visualstudio" />
 
     <PackageReference Include="Superpower" />
+    <PackageReference Include="Newtonsoft.Json" />
+    <PackageReference Include="System.Security.Cryptography.Xml" />
   </ItemGroup>
 
   <ItemGroup Label="Targets">

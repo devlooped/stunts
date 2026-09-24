@@ -30,8 +30,12 @@
     <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="9.0.0" />
     <PackageVersion Include="Microsoft.Bcl.HashCode" Version="1.1.1" />
 
-    <!-- Unit tests need to pack this for tests to run on macOS, for example -->
-    <PackageVersion Include="SQLitePCLRaw.bundle_green" Version="2.1.11" />
+    <!-- Native SQLite for tests on macOS. 3.x drops the vulnerable SQLitePCLRaw.lib.e_sqlite3 package. -->
+    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
+
+    <!-- Transitive pins so restore does not keep vulnerable versions. -->
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.12" />
   </ItemGroup>
 
   <ItemGroup Label="Tests">
