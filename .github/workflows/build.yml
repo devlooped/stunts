@@ -96,5 +96,5 @@ jobs:
           path: bin
 
       - name: 🧪 test
-        run: dotnet test -f net10.0 -p:VersionLabel="$GITHUB_REF.$GITHUB_RUN_NUMBER"
+        run: dotnet test Acceptance.slnx -f net10.0 -p:VersionLabel="$GITHUB_REF.$GITHUB_RUN_NUMBER"
         working-directory: src/Acceptance

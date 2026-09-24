@@ -3,6 +3,9 @@
   <Import Project="..\Directory.Build.props"/>
   
   <PropertyGroup>
+    <IsTestProject>true</IsTestProject>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);NU1903</NoWarn>
     <DebugSymbols>true</DebugSymbols>
     <Nullable>annotations</Nullable>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
