@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Build.targets" />
+  </Folder>
+  <Project Path="../../samples/Samples/Samples.csproj" />
+  <Project Path="Dynamic.Basic/Dynamic.Basic.vbproj" />
+  <Project Path="Dynamic/Dynamic.csproj" />
+  <Project Path="Static/Static.csproj" />
+</Solution>
