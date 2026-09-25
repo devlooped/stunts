@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <PackageVersion Include="Stunts" Version="$(Version)" />
+    <PackageVersion Include="Stunts.DynamicProxy" Version="$(Version)" />
     <PackageVersion Include="ManualStunts" Version="$(Version)" />
   </ItemGroup>
 
