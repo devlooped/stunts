@@ -158,13 +158,14 @@
 	weak
 [file "oss.cs"]
 	url = https://github.com/devlooped/oss/blob/main/oss.cs
-	sha = 81cc6072bc12076c6c689693274e39108565a038
-	etag = 04903bbb7d3dfc548d1677ca8c5a13b60a09fbb8314e57f1d542d66c97e85238
-	weak
+	skip
 [file "readme.tmp.md"]
 	url = https://github.com/devlooped/oss/blob/main/readme.tmp.md
-	sha = 2cc4ada8059b1e2e3f32089e67dab27a8ddeb7fb
-	etag = c7c0694bd13d2d7fdc8b0530c80d5cf032cb9fdaaa5e1f814e951e9e6489746a
+	skip
+[file "osmfeula.txt"]
+	url = https://github.com/devlooped/.github/blob/main/osmfeula.txt
+	sha = 666a2a7c315f72199c418f11482a950fc69a8901
+	etag = 91ea15c07bfd784036c6ca931f5b2df7e9767b8367146d96c79caef09d63899f
 	weak
 [file "src/nuget.config"]
 	url = https://github.com/devlooped/oss/blob/main/src/nuget.config

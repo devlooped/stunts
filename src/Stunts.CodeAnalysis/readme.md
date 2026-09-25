@@ -1,28 +1,8 @@
-<h1 id="stunts"><img src="https://github.com/devlooped/stunts/raw/main/docs/images/icon.png" alt="Icon" height="48" width="48" style="vertical-align: text-top; border: 0px; padding: 0px; margin: 0px">  Stunts</h1>
-
-[![Version](https://img.shields.io/nuget/vpre/Stunts.svg?color=royalblue)](https://www.nuget.org/packages/Stunts)
-[![Downloads](https://img.shields.io/nuget/dt/Stunts?color=darkmagenta)](https://www.nuget.org/packages/Stunts)
 [![EULA](https://img.shields.io/badge/EULA-OSMF-blue?labelColor=black&color=C9FF30)](osmfeula.txt)
 [![OSS](https://img.shields.io/github/license/devlooped/oss.svg?color=blue)](license.txt)
-[![Discord Chat](https://img.shields.io/badge/chat-on%20discord-7289DA.svg)](https://discord.gg/AfGsdRa)
 [![GitHub](https://img.shields.io/badge/-source-181717.svg?logo=GitHub)](https://github.com/devlooped/stunts)
 
-[![CI Version](https://img.shields.io/endpoint?url=https://shields.kzu.io/vpre/devlooped/main&label=nuget.ci&color=brightgreen)](https://pkg.kzu.io/index.json)
-[![GH CI Status](https://github.com/devlooped/stunts/workflows/build/badge.svg?branch=main)](https://github.com/devlooped/stunts/actions?query=branch%3Amain+workflow%3Abuild+)
-
-<!-- include https://github.com/devlooped/.github/raw/main/osmf.md -->
-## Open Source Maintenance Fee
-
-To ensure the long-term sustainability of this project, users of this package who generate 
-revenue must pay an [Open Source Maintenance Fee](https://opensourcemaintenancefee.org). 
-While the source code is freely available under the terms of the [License](license.txt), 
-this package and other aspects of the project require [adherence to the Maintenance Fee](osmfeula.txt).
-
-To pay the Maintenance Fee, [become a Sponsor](https://github.com/sponsors/devlooped) at the proper 
-OSMF tier. A single fee covers all of [Devlooped packages](https://www.nuget.org/profiles/Devlooped).
-
-<!-- https://github.com/devlooped/.github/raw/main/osmf.md -->
-
+<!-- include ../../readme.md#content -->
 <!-- #content -->
 A modern interception library that runs everywhere, even where run-time code generation (Reflection.Emit) is forbidden or limitted (i.e. physical iOS devices and game consoles), through compile-time code generation.
 
@@ -147,6 +127,20 @@ The `samples` folder in the repository contains a few interesting examples of ho
 * Logging all calls to a stunt to the Xunit output helper.
 <!-- #samples -->
 <!-- #content -->
+<!-- ../../readme.md#content -->
+
+<!-- include https://github.com/devlooped/.github/raw/main/osmf.md -->
+## Open Source Maintenance Fee
+
+To ensure the long-term sustainability of this project, users of this package who generate 
+revenue must pay an [Open Source Maintenance Fee](https://opensourcemaintenancefee.org). 
+While the source code is freely available under the terms of the [License](license.txt), 
+this package and other aspects of the project require [adherence to the Maintenance Fee](osmfeula.txt).
+
+To pay the Maintenance Fee, [become a Sponsor](https://github.com/sponsors/devlooped) at the proper 
+OSMF tier. A single fee covers all of [Devlooped packages](https://www.nuget.org/profiles/Devlooped).
+
+<!-- https://github.com/devlooped/.github/raw/main/osmf.md -->
 
 <!-- include https://github.com/devlooped/sponsors/raw/main/footer.md -->
 # Sponsors 
