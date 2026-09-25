@@ -22,7 +22,7 @@ service.AddBehavior(...);
     <None Include="*.props;*.targets" Exclude="Stunts.Version.props" PackFolder="build\netstandard2.0" />
     <!-- Default items still include the unversioned file. Only the poked copy in obj should ship. -->
     <None Remove="Stunts.Version.props" />
-    <PackageFile Include="@(None)" PackFolder="buildTransitive\netstandard2.0" />
+    <PackageFile Include="@(None)" Exclude="@(None -> WithMetadataValue('Filename', 'readme'))" PackFolder="buildTransitive\netstandard2.0" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Update="NuGetizer" Version="$(DogfoodingVersion)" Visible="false" Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\nugetizer\bin\')" />
