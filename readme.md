@@ -9,13 +9,7 @@
   <a href="https://www.nuget.org/packages/Stunts"><img src="https://img.shields.io/nuget/dt/Stunts?color=darkmagenta" alt="Downloads"></a>
   <a href="osmfeula.txt"><img src="https://img.shields.io/badge/EULA-OSMF-blue?labelColor=black&amp;color=C9FF30" alt="EULA"></a>
   <a href="license.txt"><img src="https://img.shields.io/github/license/devlooped/oss.svg?color=blue" alt="OSS"></a>
-  <a href="https://discord.gg/AfGsdRa"><img src="https://img.shields.io/badge/chat-on%20discord-7289DA.svg" alt="Discord Chat"></a>
-  <a href="https://github.com/devlooped/stunts"><img src="https://img.shields.io/badge/-source-181717.svg?logo=GitHub" alt="GitHub"></a>
-</p>
-
-<p align="center">
-  <a href="https://pkg.kzu.io/index.json"><img src="https://img.shields.io/endpoint?url=https://shields.kzu.io/vpre/devlooped/main&amp;label=nuget.ci&amp;color=brightgreen" alt="CI Version"></a>
-  <a href="https://github.com/devlooped/stunts/actions?query=branch%3Amain+workflow%3Abuild+"><img src="https://github.com/devlooped/stunts/workflows/build/badge.svg?branch=main" alt="GH CI Status"></a>
+  <a href="https://discord.gg/zETqV7HQ3Q"><img src="https://img.shields.io/badge/chat-on%20discord-7289DA.svg" alt="Discord Chat"></a>
 </p>
 
 <!-- include https://github.com/devlooped/.github/raw/main/osmf.md -->
