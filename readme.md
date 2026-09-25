@@ -1,14 +1,22 @@
-<h1 id="stunts"><img src="https://github.com/devlooped/stunts/raw/main/docs/images/icon.png" alt="Icon" height="48" width="48" style="vertical-align: text-top; border: 0px; padding: 0px; margin: 0px">  Stunts</h1>
+<p align="center">
+  <img src="https://github.com/devlooped/stunts/raw/main/docs/images/hero.jpg" alt="Stunts" width="256">
+</p>
 
-[![Version](https://img.shields.io/nuget/vpre/Stunts.svg?color=royalblue)](https://www.nuget.org/packages/Stunts)
-[![Downloads](https://img.shields.io/nuget/dt/Stunts?color=darkmagenta)](https://www.nuget.org/packages/Stunts)
-[![EULA](https://img.shields.io/badge/EULA-OSMF-blue?labelColor=black&color=C9FF30)](osmfeula.txt)
-[![OSS](https://img.shields.io/github/license/devlooped/oss.svg?color=blue)](license.txt)
-[![Discord Chat](https://img.shields.io/badge/chat-on%20discord-7289DA.svg)](https://discord.gg/AfGsdRa)
-[![GitHub](https://img.shields.io/badge/-source-181717.svg?logo=GitHub)](https://github.com/devlooped/stunts)
+<h1 id="stunts" align="center">Stunts</h1>
 
-[![CI Version](https://img.shields.io/endpoint?url=https://shields.kzu.io/vpre/devlooped/main&label=nuget.ci&color=brightgreen)](https://pkg.kzu.io/index.json)
-[![GH CI Status](https://github.com/devlooped/stunts/workflows/build/badge.svg?branch=main)](https://github.com/devlooped/stunts/actions?query=branch%3Amain+workflow%3Abuild+)
+<p align="center">
+  <a href="https://www.nuget.org/packages/Stunts"><img src="https://img.shields.io/nuget/vpre/Stunts.svg?color=royalblue" alt="Version"></a>
+  <a href="https://www.nuget.org/packages/Stunts"><img src="https://img.shields.io/nuget/dt/Stunts?color=darkmagenta" alt="Downloads"></a>
+  <a href="osmfeula.txt"><img src="https://img.shields.io/badge/EULA-OSMF-blue?labelColor=black&amp;color=C9FF30" alt="EULA"></a>
+  <a href="license.txt"><img src="https://img.shields.io/github/license/devlooped/oss.svg?color=blue" alt="OSS"></a>
+  <a href="https://discord.gg/AfGsdRa"><img src="https://img.shields.io/badge/chat-on%20discord-7289DA.svg" alt="Discord Chat"></a>
+  <a href="https://github.com/devlooped/stunts"><img src="https://img.shields.io/badge/-source-181717.svg?logo=GitHub" alt="GitHub"></a>
+</p>
+
+<p align="center">
+  <a href="https://pkg.kzu.io/index.json"><img src="https://img.shields.io/endpoint?url=https://shields.kzu.io/vpre/devlooped/main&amp;label=nuget.ci&amp;color=brightgreen" alt="CI Version"></a>
+  <a href="https://github.com/devlooped/stunts/actions?query=branch%3Amain+workflow%3Abuild+"><img src="https://github.com/devlooped/stunts/workflows/build/badge.svg?branch=main" alt="GH CI Status"></a>
+</p>
 
 <!-- include https://github.com/devlooped/.github/raw/main/osmf.md -->
 ## Open Source Maintenance Fee
