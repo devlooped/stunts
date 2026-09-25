@@ -24,7 +24,7 @@
     <PackageVersion Include="System.Runtime.CompilerServices.Unsafe" Version="6.1.2" />
 
     <!-- When running under .netframework, this dependency will be needed -->
-    <PackageVersion Include="System.ValueTuple" Version="4.5.0" />
+    <PackageVersion Include="System.ValueTuple" Version="4.6.2" />
     
     <!-- For packaging purposes -->
     <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="9.0.0" />
