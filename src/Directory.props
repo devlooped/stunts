@@ -1,6 +1,7 @@
 <Project>
 
   <PropertyGroup>
+    <Product>Stunts</Product>
     <RootNamespace>Stunts</RootNamespace>
     
     <!-- Use Directory.Packages.props -->
