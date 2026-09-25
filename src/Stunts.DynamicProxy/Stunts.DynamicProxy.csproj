@@ -6,8 +6,8 @@
     <IsPackable>true</IsPackable>
     <Description>
       Provides run-time stunt generation using Castle DynamicProxy, for projects that 
-      cannot use the compile-time stunt generation provided built-in Stunts, which 
-      requires C# 9.0.
+      cannot use the compile-time stunt generation built into Stunts, which 
+      requires C# 9.0. Installing this package disables compile-time stunts.
     </Description>
   </PropertyGroup>
 
@@ -22,14 +22,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Stunts\Stunts.csproj" Pack="false" />
+    <ProjectReference Include="..\Stunts.Package\Stunts.Package.msbuildproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
   
   <ItemGroup>
-    <!-- When not packed standalone, include the build targets/sources too.
-         The project readme is the package readme, not a build asset. -->
-    <None Remove="readme.md" Condition="'$(IsPackable)' != 'true'" />
-    <None Update="@(None)" PackFolder="build\netstandard2.0" Condition="'$(IsPackable)' != 'true'" />
-    <PackageFile Include="@(None)" PackFolder="buildTransitive\netstandard2.0" Condition="'$(IsPackable)' != 'true'" />
+    <None Update="Stunt.*.*;*.props;*.targets" PackFolder="build\netstandard2.0" />
+    <PackageFile Include="Stunt.*.*;*.props;*.targets" PackFolder="buildTransitive\netstandard2.0" />
   </ItemGroup>
 
 </Project>

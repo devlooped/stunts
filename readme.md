@@ -40,7 +40,7 @@ Stunts is a .NET Standard 2.0 library and runs on any runtime that supports that
 
 Compile-time proxy generation leverages [Roslyn source generators](https://github.com/dotnet/roslyn/blob/master/docs/features/source-generators.cookbook.md) and therefore requires C# 9.0, which at this time is included in Visual Studio 16.8 (preview or later) and the .NET 5.0 SDK (RC or later). Compile-time generated proxies support the broadest possible run-time platforms since they don't require any Reflection.Emit, and also don't pay that performance cost either.
 
-Whenever compile-time proxy generation is not available, a fallback generation strategy is used instead, which leverages [Castle DynamicProxy](https://github.com/castleproject/Core/blob/master/docs/dynamicproxy-introduction.md) to provide the run-time code generation.
+Whenever compile-time proxy generation is not available (i.e. Visual Basic or C# versions before 9.0), install the `Stunts.DynamicProxy` package instead, which leverages [Castle DynamicProxy](https://github.com/castleproject/Core/blob/master/docs/dynamicproxy-introduction.md) to provide the run-time code generation.
 
 The client API for configuring proxy behaviors in either case is exactly the same.
 
@@ -109,17 +109,17 @@ As you can see, the Stunts API itself uses the same extensibility mechanism that
 
 ### Static vs Dynamic Stunts
 
-Depending on the project and platform, Stunts will automatically choose whether to use run-time proxies or compile-time ones (powered by Roslyn source generators). The latter are only supported when building C# 9.0+ projects.
+By default, Stunts generates proxies at compile-time (powered by Roslyn source generators), which is only supported when building C# 9.0+ projects.
 
-You can opt out of the static stunts by setting `EnableCompileTimeStunts=false` in your project file:
+Whenever compile-time stunts are not supported (or not wanted), install the `Stunts.DynamicProxy` package, which switches the project to run-time proxies based on Castle.Core:
 
 ```xml
-<PropertyGroup>
-    <EnableCompileTimeStunts>false</EnableCompileTimeStunts>
-</PropertyGroup>
+<ItemGroup>
+    <PackageReference Include="Stunts.DynamicProxy" Version="..." />
+</ItemGroup>
 ```
 
-This will switch the project to run-time proxies based on Castle.Core.
+The package sets `EnableCompileTimeStunts=false` for you. Projects that can't use compile-time stunts and don't reference `Stunts.DynamicProxy` get a build warning (`ST011`).
 
 ## Debugging Optimizations
 

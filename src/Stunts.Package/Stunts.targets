@@ -36,7 +36,7 @@
     </PropertyGroup>
 
     <Error Condition="!Exists('$(StuntsAnalyzerDir)\Stunts.StaticProxy.dll')" Code="ST010"
-           Text="Stunts.StaticProxy was not found under tools\4.14.0. Set 'EnableCompileTimeStunts=false' to use run-time stunts." />
+           Text="Stunts.StaticProxy was not found under tools\4.14.0. Install the Stunts.DynamicProxy package to use run-time stunts." />
 
     <ItemGroup>
       <Analyzer Include="$(StuntsAnalyzerDir)\Stunts.StaticProxy.dll" NuGetPackageId="Stunts" NuGetPackageVersion="$(StuntsVersion)" />
@@ -44,7 +44,10 @@
 
   </Target>
 
-  <Import Project="Stunts.DynamicProxy.targets"
-          Condition="'$(EnableCompileTimeStunts)' != 'true' AND  Exists('Stunts.DynamicProxy.targets')" />
+  <Target Name="CheckRunTimeStunts" BeforeTargets="CoreCompile"
+          Condition="'$(EnableCompileTimeStunts)' != 'true' AND '$(StuntsDynamicProxy)' != 'true' AND '$(DesignTimeBuild)' != 'true'">
+    <Warning Code="ST011"
+             Text="Compile-time stunts are disabled or not supported by this project. Install the Stunts.DynamicProxy package to use run-time stunts." />
+  </Target>
 
 </Project>

@@ -1,0 +1,8 @@
+<Project>
+
+  <PropertyGroup>
+    <EnableCompileTimeStunts>false</EnableCompileTimeStunts>
+    <StuntsDynamicProxy>true</StuntsDynamicProxy>
+  </PropertyGroup>
+
+</Project>
