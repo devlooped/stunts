@@ -9,7 +9,8 @@
 
   <!-- When packaged as part of Stunts.Package, we get this property as false so we pack differently as a tool -->
   <PropertyGroup Condition="'$(IsPackable)' != 'true'">
-    <PackFolder>tools\$(RoslynVersion)</PackFolder>
+    <RoslynToolsVersion Condition="'$(RoslynToolsVersion)' == ''">5.0</RoslynToolsVersion>
+    <PackFolder>tools\$(RoslynToolsVersion)</PackFolder>
     <DisableTransitiveProjectReferences>true</DisableTransitiveProjectReferences>
     <DisableTransitiveFrameworkReferences>true</DisableTransitiveFrameworkReferences>
   </PropertyGroup>
@@ -41,7 +42,7 @@
                                and '%(Filename)' != 'Microsoft.CodeAnalysis'
                                and '%(Filename)' != 'Microsoft.CodeAnalysis.CSharp'
                                and '%(Filename)' != 'Microsoft.CodeAnalysis.VisualBasic'" />
-      <PackageFile Include="@(AnalyzerFile -> '%(FullPath)')" PackagePath="tools\$(RoslynVersion)\%(Filename)%(Extension)" />
+      <PackageFile Include="@(AnalyzerFile -> '%(FullPath)')" PackagePath="tools\$(RoslynToolsVersion)\%(Filename)%(Extension)" />
     </ItemGroup>
   </Target>
 

@@ -25,12 +25,12 @@
 
   <ItemGroup Label="Targets">
     <PackageReference Include="Microsoft.ApplicationInsights" />
-    <PackageVersion Include="Microsoft.ApplicationInsights" Version="2.17.0" />
+    <PackageVersion Include="Microsoft.ApplicationInsights" Version="3.1.2" />
   </ItemGroup>
 
   <ItemGroup Label="net10 Targets" Condition="'$(TargetFramework)' == 'net10.0'">
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="5.0.5" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
 
     <PackageReference Include="Microsoft.AspNetCore.Mvc" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc" Version="2.3.13" />
@@ -38,13 +38,13 @@
 
   <ItemGroup Label="net48 Targets" Condition="'$(TargetFramework)' == 'net48'">
     <PackageReference Include="EntityFramework" />
-    <PackageVersion Include="EntityFramework" Version="6.4.4" />
+    <PackageVersion Include="EntityFramework" Version="6.5.2" />
 
     <PackageReference Include="Microsoft.AspNet.Mvc" />
-    <PackageVersion Include="Microsoft.AspNet.Mvc" Version="5.2.7" />
+    <PackageVersion Include="Microsoft.AspNet.Mvc" Version="5.3.0" />
 
     <PackageReference Include="Microsoft.AspNet.WebApi" />
-    <PackageVersion Include="Microsoft.AspNet.WebApi" Version="5.2.7" />
+    <PackageVersion Include="Microsoft.AspNet.WebApi" Version="5.3.0" />
   </ItemGroup>
 
   <ItemGroup>

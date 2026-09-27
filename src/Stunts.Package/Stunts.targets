@@ -30,13 +30,13 @@
           Condition="'$(EnableCompileTimeStunts)' == 'true' AND '$(SkipCompilerExecution)' != 'true' AND '$(DesignTimeBuild)' != 'true'">
 
     <PropertyGroup>
-      <!-- One generator, built against the public Roslyn 4.14 API. The host
-           compiler supplies Microsoft.CodeAnalysis. -->
-      <StuntsAnalyzerDir>$([MSBuild]::NormalizePath($(MSBuildThisFileDirectory)..\..\tools\4.14.0))</StuntsAnalyzerDir>
+      <!-- One generator, built against the public Roslyn 5.0 API so it loads
+           on any 5.x compiler. The host supplies Microsoft.CodeAnalysis. -->
+      <StuntsAnalyzerDir>$([MSBuild]::NormalizePath($(MSBuildThisFileDirectory)..\..\tools\5.0))</StuntsAnalyzerDir>
     </PropertyGroup>
 
     <Error Condition="!Exists('$(StuntsAnalyzerDir)\Stunts.StaticProxy.dll')" Code="ST010"
-           Text="Stunts.StaticProxy was not found under tools\4.14.0. Install the Stunts.DynamicProxy package to use run-time stunts." />
+           Text="Stunts.StaticProxy was not found under tools\5.0. Install the Stunts.DynamicProxy package to use run-time stunts." />
 
     <ItemGroup>
       <Analyzer Include="$(StuntsAnalyzerDir)\Stunts.StaticProxy.dll" NuGetPackageId="Stunts" NuGetPackageVersion="$(StuntsVersion)" />
