@@ -18,7 +18,10 @@
 
   <!-- We need this in .props so it kicks-in before all the common.props defaulting -->
   <PropertyGroup Label="Stunts.StaticProxy" Condition="$(MSBuildProjectName) == 'Stunts.StaticProxy'">
-    <RoslynVersion>4.14.0</RoslynVersion>
+    <!-- Compile against the 5.0 public API. tools\5.0 is the 5.x band, so the
+         same generator loads on 5.0 through the latest 5.x compiler. -->
+    <RoslynVersion>5.0.0</RoslynVersion>
+    <RoslynToolsVersion>5.0</RoslynToolsVersion>
     <BaseIntermediateOutputPath>obj\$(RoslynVersion)\</BaseIntermediateOutputPath>
     <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
     <OutputPath>bin\$(RoslynVersion)\$(Configuration)</OutputPath>

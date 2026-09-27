@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.Build.NoTargets/3.7.134" DefaultTargets="Pack">
+﻿<Project Sdk="Microsoft.Build.NoTargets/3.7.134" DefaultTargets="Pack">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <!-- NoTargets 3.7 excludes these projects from generated solutions. This one is the package project. -->

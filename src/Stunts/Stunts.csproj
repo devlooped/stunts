@@ -22,7 +22,6 @@
     <PackageReference Include="TypeNameFormatter.Sources" PrivateAssets="all" />
     <PackageReference Include="docfx.console" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.CodeStyle" Pack="false" />
-    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Pack="false" />
   </ItemGroup>
 
