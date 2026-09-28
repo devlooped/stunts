@@ -1,5 +1,13 @@
 # Changelog
 
+## [v1.0.0-beta.2](https://github.com/devlooped/stunts/tree/v1.0.0-beta.2) (2026-09-28)
+
+[Full Changelog](https://github.com/devlooped/stunts/compare/v1.0.0-beta.1...v1.0.0-beta.2)
+
+:twisted_rightwards_arrows: Merged:
+
+- Stop inlining expanded content in package readmes [\#228](https://github.com/devlooped/stunts/pull/228) (@kzu)
+
 ## [v1.0.0-beta.1](https://github.com/devlooped/stunts/tree/v1.0.0-beta.1) (2026-09-28)
 
 [Full Changelog](https://github.com/devlooped/stunts/compare/v1.0.0-beta...v1.0.0-beta.1)
