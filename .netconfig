@@ -72,7 +72,9 @@
 
 [file "src/kzu.snk"]
 	url = https://github.com/devlooped/oss/blob/main/src/kzu.snk
-	skip
+	sha = 0683ee777d7d878d4bf013d7deea352685135a05
+	etag = b8d789b5b6bea017cdcc8badcea888ad78de3e34298efca922054e9fb0e7b6b9
+	weak
 
 [file ".github/workflows/pages.yml"]
 	url = https://github.com/clarius/pages/blob/main/.github/workflows/pages.yml
