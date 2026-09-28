@@ -41,7 +41,7 @@ namespace Samples
     }
 
     /// <summary>
-    /// Mostly copied from https://github.com/netfx/extensions/blob/master/Extensions/Testing/IpsumGenerator/Source/Ipsum.cs
+    /// Mostly copied from https://github.com/devlooped/catbag/blob/main/System/Ipsum.cs
     /// </summary>
     static class Ipsum
     {
