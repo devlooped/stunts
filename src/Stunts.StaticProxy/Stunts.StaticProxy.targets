@@ -18,7 +18,7 @@
   <ItemGroup>
     <PackageReference Include="NuGetizer" Version="1.5.0" PrivateAssets="all" />
     <PackageReference Include="PolySharp" Version="1.16.0" PrivateAssets="all" />
-    <PackageReference Include="ThisAssembly" Version="2.1.5" PrivateAssets="all" />
+    <PackageReference Include="ThisAssembly" Version="2.1.6" PrivateAssets="all" />
 
     <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="$(RoslynVersion)$(RoslynLabel)" Pack="false" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="$(RoslynVersion)$(RoslynLabel)" Pack="false" />
@@ -41,7 +41,8 @@
                     Condition="'%(ReferenceCopyLocalPaths.AssetType)' != 'resources'
                                and '%(Filename)' != 'Microsoft.CodeAnalysis'
                                and '%(Filename)' != 'Microsoft.CodeAnalysis.CSharp'
-                               and '%(Filename)' != 'Microsoft.CodeAnalysis.VisualBasic'" />
+                               and '%(Filename)' != 'Microsoft.CodeAnalysis.VisualBasic'
+                               and '%(Filename)' != 'Microsoft.CSharp'" />
       <PackageFile Include="@(AnalyzerFile -> '%(FullPath)')" PackagePath="tools\$(RoslynToolsVersion)\%(Filename)%(Extension)" />
     </ItemGroup>
   </Target>
