@@ -24,7 +24,7 @@ To pay the Maintenance Fee, [become a Sponsor](https://github.com/sponsors/devlo
 OSMF tier. A single fee covers all of [Devlooped packages](https://www.nuget.org/profiles/Devlooped).
 
 <!-- https://github.com/devlooped/.github/raw/main/osmf.md -->
-
+---
 <!-- #content -->
 A modern interception library that runs everywhere, even where run-time code generation (Reflection.Emit) is forbidden or limitted (i.e. physical iOS devices and game consoles), through compile-time code generation.
 
