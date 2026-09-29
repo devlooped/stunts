@@ -69,7 +69,15 @@ namespace Stunts
         /// Gets the runtime stunt full name from its base type and implemented interfaces.
         /// </summary>
         public static string GetFullName(string rootNamespace, string suffix, Type baseType, params Type[] additionalInterfaces)
-            => GetNamespace(rootNamespace, baseType.Namespace) + "." + GetName(suffix, baseType, additionalInterfaces);
+        {
+            var name = GetName(suffix, baseType, additionalInterfaces);
+            // Private, protected, and private protected nested types are inherited
+            // by a stunt nested in the declaring type, so the runtime name matches.
+            if (baseType.IsNested && (baseType.IsNestedPrivate || baseType.IsNestedFamily || baseType.IsNestedFamANDAssem))
+                return baseType.DeclaringType.FullName + "+" + name;
+
+            return GetNamespace(rootNamespace, baseType.Namespace) + "." + name;
+        }
 
         static string GetNamespace(string rootNamespace, string typeNamespace)
             => string.IsNullOrEmpty(typeNamespace) ? rootNamespace : rootNamespace + "." + typeNamespace;

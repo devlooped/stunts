@@ -31,7 +31,7 @@ public static class INamedTypeSymbolExtensions
             foreach (var member in type.GetMembers())
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (!IsOverridable(member) || !seen.Add(member))
+                if (!IsOverridable(member, containingType) || !seen.Add(member))
                     continue;
                 ordered.Add(member);
             }
@@ -124,20 +124,37 @@ public static class INamedTypeSymbolExtensions
         _ => false,
     };
 
-    static bool IsOverridable(ISymbol member)
+    static bool IsOverridable(ISymbol member, INamedTypeSymbol stunt)
     {
         if (member.IsStatic || member.IsSealed)
             return false;
         if (!member.IsAbstract && !member.IsVirtual && !member.IsOverride)
             return false;
-        if (member.DeclaredAccessibility != Accessibility.Public &&
-            member.DeclaredAccessibility != Accessibility.Protected &&
-            member.DeclaredAccessibility != Accessibility.ProtectedOrInternal)
+        if (!Accessible(member, stunt))
             return false;
 
         if (member is IMethodSymbol method)
             return method.MethodKind == MethodKind.Ordinary && method.CanBeReferencedByName;
         return member is IPropertySymbol || member is IEventSymbol;
+    }
+
+    // The stunt derives from the member's type, in this compilation's assembly.
+    // Internal includes InternalsVisibleTo; private protected does not.
+    static bool Accessible(ISymbol member, INamedTypeSymbol stunt)
+    {
+        switch (member.DeclaredAccessibility)
+        {
+            case Accessibility.Public:
+            case Accessibility.Protected:
+            case Accessibility.ProtectedOrInternal:
+                return true;
+            case Accessibility.Internal:
+                return member.ContainingAssembly.GivesAccessTo(stunt.ContainingAssembly);
+            case Accessibility.ProtectedAndInternal:
+                return SymbolEqualityComparer.Default.Equals(member.ContainingAssembly, stunt.ContainingAssembly);
+            default:
+                return false;
+        }
     }
 
     static void RemoveOverridden(List<ISymbol> ordered, HashSet<ISymbol> seen, INamedTypeSymbol type)

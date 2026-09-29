@@ -31,10 +31,17 @@ namespace Stunts.Processors
         class CSharpStuntVisitor : CSharpSyntaxRewriter
         {
             public override SyntaxNode? VisitClassDeclaration(ClassDeclarationSyntax node)
-                => Finish((ClassDeclarationSyntax)base.VisitClassDeclaration(node)!);
+            {
+                node = (ClassDeclarationSyntax)base.VisitClassDeclaration(node)!;
+                // Enclosing partials exist only so the stunt can inherit a private nested type.
+                return node.BaseList == null ? node : Finish(node);
+            }
 
             public override SyntaxNode? VisitRecordDeclaration(RecordDeclarationSyntax node)
-                => Finish((RecordDeclarationSyntax)base.VisitRecordDeclaration(node)!);
+            {
+                node = (RecordDeclarationSyntax)base.VisitRecordDeclaration(node)!;
+                return node.BaseList == null ? node : Finish(node);
+            }
 
             static TDeclaration Finish<TDeclaration>(TDeclaration node)
                 where TDeclaration : TypeDeclarationSyntax
