@@ -169,7 +169,7 @@ namespace Stunts.UnitTests
             if (diagnostics.Any())
                 return (diagnostics, compilation);
 
-            var driver = CSharpGeneratorDriver.Create(
+            GeneratorDriver driver = CSharpGeneratorDriver.Create(
                 new[] { new StuntGenerator() },
                 parseOptions: parseOptions,
                 optionsProvider: EditorConfigOptionsProvider.Create(Directory.EnumerateFiles(
@@ -179,8 +179,26 @@ namespace Stunts.UnitTests
             // Don't timeout if we're debugging.
             var token = Debugger.IsAttached ? default : new CancellationTokenSource(5000).Token;
 
-            driver.RunGeneratorsAndUpdateCompilation(compilation, out var output, out diagnostics, token);
+            driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var output, out diagnostics, token);
             diagnostics = diagnostics.RemoveAll(ignored);
+
+            if (bool.TryParse(ThisAssembly.Project.EmitCompilerGeneratedFiles, out var emit) && emit)
+            {
+                // Not under "generated", since ThisAssembly.*.cs sources are collected recursively from there.
+                var outputDir = Path.Combine(
+                    ThisAssembly.Project.MSBuildProjectDirectory,
+                    ThisAssembly.Project.IntermediateOutputPath,
+                    "scenarios",
+                    Path.GetFileNameWithoutExtension(path));
+
+                if (Directory.Exists(outputDir))
+                    Directory.Delete(outputDir, true);
+
+                Directory.CreateDirectory(outputDir);
+
+                foreach (var source in driver.GetRunResult().Results.SelectMany(x => x.GeneratedSources))
+                    File.WriteAllText(Path.Combine(outputDir, source.HintName), source.SourceText.ToString(), Encoding.UTF8);
+            }
 
             return (diagnostics, output);
         }
