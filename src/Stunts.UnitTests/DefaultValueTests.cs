@@ -122,6 +122,15 @@ namespace Stunts.UnitTests
         }
 
         [Fact]
+        public async Task DefaultForValueTaskOfReferenceTypeIsCompleted()
+        {
+            var value = new DefaultValueProvider().GetDefault<ValueTask<string>>();
+
+            Assert.True(value.IsCompleted);
+            Assert.Null(await value);
+        }
+
+        [Fact]
         public async Task DefaultForTaskOfEnumIsDefaultValue()
         {
             var value = new DefaultValueProvider().GetDefault<Task<PlatformID>>();

@@ -147,9 +147,14 @@ namespace Stunts
         // See https://github.com/dotnet/runtime/blob/master/src/libraries/System.Private.CoreLib/src/System/Threading/Tasks/ValueTask.cs#L114
         static object CreateValueTask(Type type) => default(ValueTask);
 
-        object CreateValueTaskOf(Type type) => Activator.CreateInstance(
-            typeof(ValueTask<>).MakeGenericType(type.GetGenericArguments()[0]), GetDefault(type.GetGenericArguments()[0]))
-            ?? throw new NotSupportedException();
+        object CreateValueTaskOf(Type type)
+        {
+            var resultType = type.GetGenericArguments()[0];
+            // A null result would also match the ValueTask<T>(Task<T>) constructor.
+            var constructor = type.GetConstructor(new[] { resultType }) ?? throw new NotSupportedException();
+
+            return constructor.Invoke(new[] { GetDefault(resultType) });
+        }
 
         static object CreateTask(Type type) => Task.CompletedTask;
 
