@@ -115,7 +115,7 @@ namespace UnitTests
                     "*.editorconfig", SearchOption.TopDirectoryOnly));
 
             var driver = CSharpGeneratorDriver.Create(
-                new[] { new StuntGenerator() },
+                new ISourceGenerator[] { new StuntGenerator(), new SignatureRefGenerator().AsSourceGenerator() },
                 parseOptions: args.ParseOptions.WithLanguageVersion(LanguageVersion.Latest),
                 optionsProvider: options);
 

@@ -261,7 +261,7 @@ public class BaseTypeInternalCtor
                 return (diagnostics, compilation);
 
             var driver = CSharpGeneratorDriver.Create(
-                new[] { new StuntGenerator() },
+                new ISourceGenerator[] { new StuntGenerator(), new SignatureRefGenerator().AsSourceGenerator() },
                 parseOptions: parseOptions,
                 optionsProvider: EditorConfigOptionsProvider.Create(Directory.EnumerateFiles(
                     Path.Combine(ThisAssembly.Project.MSBuildProjectDirectory, ThisAssembly.Project.IntermediateOutputPath),

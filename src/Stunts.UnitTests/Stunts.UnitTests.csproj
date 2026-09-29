@@ -8,6 +8,8 @@
     <Nullable>annotations</Nullable>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- In-process generator runs read these from the generated editorconfig. -->
+    <EnableCompileTimeStunts>true</EnableCompileTimeStunts>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <RootNamespace>Stunts.UnitTests</RootNamespace>
     <!-- Used in WriteCscCommandLineArgs target -->
@@ -19,6 +21,11 @@
     <NoWarn>$(NoWarn);NU1701</NoWarn>
     <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
   </PropertyGroup>
+
+  <ItemGroup>
+    <CompilerVisibleProperty Include="EnableCompileTimeStunts" />
+    <CompilerVisibleProperty Include="AllowUnsafeBlocks" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectProperty Include="MSBuildProjectDirectory" />
@@ -72,7 +79,7 @@
   <ItemGroup>
     <Compile Include="..\Stunts.Package\Stunt.cs" Link="Stunt\Stunt.cs" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="..\Stunts.Package\Stunt.StaticFactory.cs" Link="Stunt\Stunt.StaticFactory.cs" CopyToOutputDirectory="PreserveNewest" />
-    <Compile Include="..\Stunts.CompiledProxy\SignatureRef.cs" Link="SignatureRef.cs" />
+    <Compile Include="..\Stunts.CodeAnalysis\SignatureRef.cs" Link="SignatureRef.cs" />
   </ItemGroup>
 
   <Target Name="ClearMSBuild" AfterTargets="Build">

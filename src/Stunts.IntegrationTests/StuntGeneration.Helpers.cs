@@ -36,9 +36,11 @@ namespace Stunts.AcceptanceTests
             if (diagnostics.Any())
                 return (diagnostics, compilation);
 
-            ISourceGenerator generator = new StuntGenerator();
-
-            var driver = CSharpGeneratorDriver.Create(generator);
+            var driver = CSharpGeneratorDriver.Create(new ISourceGenerator[]
+            {
+                new StuntGenerator(),
+                new SignatureRefGenerator().AsSourceGenerator(),
+            });
             driver.RunGeneratorsAndUpdateCompilation(compilation, out var output, out diagnostics);
 
             return (diagnostics, output);
