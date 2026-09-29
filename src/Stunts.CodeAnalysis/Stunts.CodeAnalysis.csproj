@@ -45,4 +45,10 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- netstandard2.0 cannot compile allows ref struct. The generator emits this source instead. -->
+    <Compile Remove="SignatureRef.cs" />
+    <EmbeddedResource Include="SignatureRef.cs" />
+  </ItemGroup>
+
 </Project>

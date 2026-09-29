@@ -5,7 +5,7 @@ namespace Stunts
     /// <summary>
     /// Refers to a live <c>ref struct</c> for the duration of an intercepted call.
     /// A class cannot store a <c>ref struct</c>, so this keeps the address of that stack slot.
-    /// The generic <c>StructRef&lt;T&gt;</c> is emitted into the compilation that needs it.
+    /// The generic <c>StructRef&lt;T&gt;</c> is added when compile-time stunts and unsafe blocks are enabled, the compilation does not already define it, and it references <c>Span&lt;T&gt;</c>.
     /// </summary>
     public unsafe class StructRef
     {

@@ -11,10 +11,4 @@
 
   <Import Project="Stunts.CompiledProxy.targets"/>
 
-  <ItemGroup>
-    <!-- Emitted into compilations that proxy a ref struct or pointer. netstandard2.0 cannot compile it. -->
-    <Compile Remove="SignatureRef.cs" />
-    <EmbeddedResource Include="SignatureRef.cs" />
-  </ItemGroup>
-
 </Project>

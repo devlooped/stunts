@@ -13,6 +13,12 @@
     <CompilerVisibleProperty Include="StuntsAnalyzerDir" />
   </ItemGroup>
 
+  <!-- The ref-struct generator skips its source unless both are true. -->
+  <ItemGroup>
+    <CompilerVisibleProperty Include="EnableCompileTimeStunts" />
+    <CompilerVisibleProperty Include="AllowUnsafeBlocks" />
+  </ItemGroup>
+
   <ItemGroup Condition="'$(EnableCompileTimeStunts)' == 'true'">
     <Compile Include="$(MSBuildThisFileDirectory)Stunt.StaticFactory$(DefaultLanguageSourceExtension)"
              Condition="Exists('$(MSBuildThisFileDirectory)Stunt.StaticFactory$(DefaultLanguageSourceExtension)')"
