@@ -1,9 +1,11 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Shared.Extensions;
+using Stunts.CodeAnalysis;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Stunts.Processors
@@ -55,21 +57,53 @@ namespace Stunts.Processors
                 members.Add(Stub(member, isOverride: true, explicitInterface: null));
             }
 
-            foreach (var member in symbol.GetUnimplementedInterfaceMembers(context.CancellationToken))
-            {
-                var key = ParameterSignature(member);
-                if (generated.ContainsKey(key))
-                {
-                    // Same parameters, different return type: IEnumerable.GetEnumerator vs IEnumerable<T>.GetEnumerator.
-                    members.Add(Stub(member, isOverride: false, explicitInterface: member.ContainingType));
-                    continue;
-                }
+            members.AddRange(InterfaceStubs(symbol, generated, context.CancellationToken));
 
-                generated.Add(key, member);
-                members.Add(Stub(member, isOverride: false, explicitInterface: null));
+            foreach (var (member, provider) in symbol.GetDefaultImplementedInterfaceMembers(context.CancellationToken))
+            {
+                context.DefaultImplementations.Add(provider);
+                var instance = DefaultInstance(context.NamingConvention, provider, member.ContainingType);
+                members.Add(Stub(member, isOverride: false, explicitInterface: Collides(member, generated), instance));
             }
 
             return syntax.ReplaceNode(declaration, declaration.AddMembers(members.ToArray()));
+        }
+
+        /// <summary>
+        /// Members of the interfaces the <paramref name="symbol"/> has not implemented yet, 
+        /// throwing <see cref="System.NotImplementedException"/>.
+        /// </summary>
+        internal static IEnumerable<MemberDeclarationSyntax> InterfaceStubs(INamedTypeSymbol symbol, Dictionary<string, ISymbol> generated, CancellationToken cancellationToken)
+        {
+            foreach (var member in symbol.GetUnimplementedInterfaceMembers(cancellationToken))
+                yield return Stub(member, isOverride: false, explicitInterface: Collides(member, generated));
+        }
+
+        // Same parameters, different return type: IEnumerable.GetEnumerator vs IEnumerable<T>.GetEnumerator.
+        // The first one stays public, the rest are implemented explicitly.
+        static INamedTypeSymbol? Collides(ISymbol member, Dictionary<string, ISymbol> generated)
+        {
+            var key = ParameterSignature(member);
+            if (generated.ContainsKey(key))
+                return member.ContainingType;
+
+            generated.Add(key, member);
+            return null;
+        }
+
+        // => global::Stunts.DefaultIFoo.Default, cast to the member's interface when a derived 
+        // interface provides the default for a base interface member.
+        static ExpressionSyntax DefaultInstance(NamingConvention naming, INamedTypeSymbol provider, INamedTypeSymbol iface)
+        {
+            ExpressionSyntax instance = MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                ParseName("global::" + naming.GetDefaultImplementationFullName(provider)),
+                IdentifierName(DefaultImplementation.InstanceName));
+
+            if (SymbolEqualityComparer.Default.Equals(provider, iface))
+                return instance;
+
+            return ParenthesizedExpression(CastExpression(TypeName(iface), instance));
         }
 
         static IEnumerable<ConstructorDeclarationSyntax> Constructors(INamedTypeSymbol symbol)
@@ -113,21 +147,24 @@ namespace Stunts.Processors
             }
         }
 
-        static MemberDeclarationSyntax Stub(ISymbol member, bool isOverride, INamedTypeSymbol? explicitInterface)
+        // A null receiver throws NotImplementedException. Otherwise, the member proceeds to 
+        // base (overrides) or to the default instance (default interface implementations).
+        static MemberDeclarationSyntax Stub(ISymbol member, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? defaultInstance = null)
         {
+            var receiver = defaultInstance ?? (isOverride && !member.IsAbstract ? BaseExpression() : null);
             if (member is IMethodSymbol method)
-                return Method(method, isOverride, explicitInterface);
+                return Method(method, isOverride, explicitInterface, receiver);
             if (member is IPropertySymbol property)
-                return property.IsIndexer ? Indexer(property, isOverride, explicitInterface) : Property(property, isOverride, explicitInterface);
-            return Event((IEventSymbol)member, isOverride, explicitInterface);
+                return property.IsIndexer ? Indexer(property, isOverride, explicitInterface, receiver) : Property(property, isOverride, explicitInterface, receiver);
+            return Event((IEventSymbol)member, isOverride, explicitInterface, defaultInstance);
         }
 
-        static MethodDeclarationSyntax Method(IMethodSymbol method, bool isOverride, INamedTypeSymbol? explicitInterface)
+        static MethodDeclarationSyntax Method(IMethodSymbol method, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? receiver)
         {
             var declaration = MethodDeclaration(TypeName(method.ReturnType), method.Name)
                 .WithModifiers(Modifiers(method, isOverride, explicitInterface != null))
                 .WithParameterList(ParameterList(SeparatedList(method.Parameters.Select(Parameter))))
-                .WithExpressionBody(ArrowExpressionClause(Body(method, isOverride && !method.IsAbstract)))
+                .WithExpressionBody(ArrowExpressionClause(Body(method, receiver)))
                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
             if (explicitInterface != null)
                 declaration = declaration.WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(ParseName(explicitInterface.ToDisplayString(TypeFormat))));
@@ -146,50 +183,63 @@ namespace Stunts.Processors
             return declaration;
         }
 
-        static PropertyDeclarationSyntax Property(IPropertySymbol property, bool isOverride, INamedTypeSymbol? explicitInterface)
+        static PropertyDeclarationSyntax Property(IPropertySymbol property, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? receiver)
         {
             var declaration = PropertyDeclaration(TypeName(property.Type), property.Name)
                 .WithModifiers(Modifiers(property, isOverride, explicitInterface != null))
-                .WithAccessorList(AccessorList(List(Accessors(property, isOverride))));
+                .WithAccessorList(AccessorList(List(Accessors(property, receiver))));
             return explicitInterface == null
                 ? declaration
                 : declaration.WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(ParseName(explicitInterface.ToDisplayString(TypeFormat))));
         }
 
-        static IndexerDeclarationSyntax Indexer(IPropertySymbol property, bool isOverride, INamedTypeSymbol? explicitInterface)
+        static IndexerDeclarationSyntax Indexer(IPropertySymbol property, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? receiver)
         {
             var declaration = IndexerDeclaration(TypeName(property.Type))
                 .WithModifiers(Modifiers(property, isOverride, explicitInterface != null))
                 .WithParameterList(BracketedParameterList(SeparatedList(property.Parameters.Select(Parameter))))
-                .WithAccessorList(AccessorList(List(Accessors(property, isOverride))));
+                .WithAccessorList(AccessorList(List(Accessors(property, receiver))));
             return explicitInterface == null
                 ? declaration
                 : declaration.WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(ParseName(explicitInterface.ToDisplayString(TypeFormat))));
         }
 
-        static EventDeclarationSyntax Event(IEventSymbol ev, bool isOverride, INamedTypeSymbol? explicitInterface)
+        static EventDeclarationSyntax Event(IEventSymbol ev, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? defaultInstance)
         {
+            AccessorDeclarationSyntax Accessor(SyntaxKind kind, SyntaxKind assignment)
+            {
+                var accessor = AccessorDeclaration(kind);
+                if (defaultInstance == null)
+                    return accessor.WithBody(Block());
+
+                return accessor
+                    .WithExpressionBody(ArrowExpressionClause(Proceed(defaultInstance, AssignmentExpression(
+                        assignment,
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, defaultInstance, IdentifierName(ev.Name)),
+                        IdentifierName("value")))))
+                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+            }
+
             var declaration = EventDeclaration(TypeName(ev.Type), ev.Name)
                 .WithModifiers(Modifiers(ev, isOverride, explicitInterface != null))
                 .WithAccessorList(AccessorList(List(new[]
                 {
-                    AccessorDeclaration(SyntaxKind.AddAccessorDeclaration).WithBody(Block()),
-                    AccessorDeclaration(SyntaxKind.RemoveAccessorDeclaration).WithBody(Block()),
+                    Accessor(SyntaxKind.AddAccessorDeclaration, SyntaxKind.AddAssignmentExpression),
+                    Accessor(SyntaxKind.RemoveAccessorDeclaration, SyntaxKind.SubtractAssignmentExpression),
                 })));
             return explicitInterface == null
                 ? declaration
                 : declaration.WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(ParseName(explicitInterface.ToDisplayString(TypeFormat))));
         }
 
-        static IEnumerable<AccessorDeclarationSyntax> Accessors(IPropertySymbol property, bool isOverride)
+        static IEnumerable<AccessorDeclarationSyntax> Accessors(IPropertySymbol property, ExpressionSyntax? receiver)
         {
-            var callBase = isOverride && !property.IsAbstract;
             if (property.GetMethod != null)
             {
-                ExpressionSyntax value = callBase
-                    ? property.IsIndexer
-                        ? (ExpressionSyntax)BaseElementAccess(property)
-                        : MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, BaseExpression(), IdentifierName(property.Name))
+                ExpressionSyntax value = receiver != null
+                    ? Proceed(receiver, property.IsIndexer
+                        ? (ExpressionSyntax)ElementAccess(receiver, property)
+                        : MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, receiver, IdentifierName(property.Name)))
                     : ThrowNotImplemented();
                 if (property.GetMethod.ReturnsByRef || property.GetMethod.ReturnsByRefReadonly)
                     value = RefExpression(value);
@@ -200,12 +250,12 @@ namespace Stunts.Processors
 
             if (property.SetMethod != null && property.SetMethod.DeclaredAccessibility != Accessibility.Private)
             {
-                ExpressionSyntax value = callBase
-                    ? property.IsIndexer
-                        ? AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, BaseElementAccess(property), IdentifierName("value"))
+                ExpressionSyntax value = receiver != null
+                    ? Proceed(receiver, property.IsIndexer
+                        ? AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, ElementAccess(receiver, property), IdentifierName("value"))
                         : AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
-                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, BaseExpression(), IdentifierName(property.Name)),
-                            IdentifierName("value"))
+                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, receiver, IdentifierName(property.Name)),
+                            IdentifierName("value")))
                     : ThrowNotImplemented();
                 var accessor = AccessorDeclaration(SetterKind(property.SetMethod))
                     .WithExpressionBody(ArrowExpressionClause(value))
@@ -248,30 +298,36 @@ namespace Stunts.Processors
             return List(clauses);
         }
 
-        static ExpressionSyntax Body(IMethodSymbol method, bool callBase)
+        static ExpressionSyntax Body(IMethodSymbol method, ExpressionSyntax? receiver)
         {
-            if (!callBase)
+            if (receiver == null)
                 return ThrowNotImplemented();
 
-            var access = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, BaseExpression(), IdentifierName(method.Name));
+            var access = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, receiver, IdentifierName(method.Name));
             if (method.IsGenericMethod)
             {
                 access = MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
-                    BaseExpression(),
+                    receiver,
                     GenericName(method.Name).WithTypeArgumentList(TypeArgumentList(SeparatedList(
                         method.TypeArguments.Select(TypeName)))));
             }
 
-            ExpressionSyntax invocation = InvocationExpression(access, ArgumentList(SeparatedList(method.Parameters.Select(ArgumentFor))));
+            ExpressionSyntax invocation = Proceed(receiver, InvocationExpression(access, ArgumentList(SeparatedList(method.Parameters.Select(ArgumentFor)))));
             if (method.ReturnsByRef || method.ReturnsByRefReadonly)
                 invocation = RefExpression(invocation);
             return invocation;
         }
 
-        static ElementAccessExpressionSyntax BaseElementAccess(IPropertySymbol property)
+        // CSharpRewrite finds base calls by the base keyword. Calls to a default 
+        // implementation are flagged with an annotation instead.
+        static TExpression Proceed<TExpression>(ExpressionSyntax receiver, TExpression expression) where TExpression : ExpressionSyntax
+            => receiver is BaseExpressionSyntax ? expression :
+                expression.WithAdditionalAnnotations(new SyntaxAnnotation(DefaultImplementation.Annotation));
+
+        static ElementAccessExpressionSyntax ElementAccess(ExpressionSyntax receiver, IPropertySymbol property)
             => ElementAccessExpression(
-                BaseExpression(),
+                receiver,
                 BracketedArgumentList(SeparatedList(property.Parameters.Select(ArgumentFor))));
 
         static ParameterSyntax Parameter(IParameterSymbol parameter)
@@ -303,7 +359,7 @@ namespace Stunts.Processors
             }
         }
 
-        static TypeSyntax TypeName(ITypeSymbol type) => ParseTypeName(type.ToDisplayString(TypeFormat));
+        internal static TypeSyntax TypeName(ITypeSymbol type) => ParseTypeName(type.ToDisplayString(TypeFormat));
 
         static SyntaxTokenList Modifiers(ISymbol symbol, bool isOverride, bool explicitInterface)
         {

@@ -122,7 +122,7 @@ namespace Stunts
                 return;
             }
 
-            OnExecute(new ProcessorContext(context), NamingConvention);
+            OnExecute(new ProcessorContext(context) { NamingConvention = NamingConvention }, NamingConvention);
         }
 
         /// <inheritdoc/>
@@ -179,6 +179,7 @@ namespace Stunts
             var driver = new SyntaxProcessorDriver(processors);
             var factory = StuntSyntaxFactory.CreateFactory(context.Language);
             var stunts = new HashSet<string>();
+            var defaults = new HashSet<string>();
 
             foreach (var (source, candidate) in context.SyntaxReceivers
                 .OfType<IStuntCandidatesReceiver>()
@@ -189,7 +190,8 @@ namespace Stunts
                     continue;
 
                 var syntax = factory.CreateSyntax(naming, candidate);
-                var updated = driver.Process(syntax, context);
+                var stuntContext = context with { DefaultImplementations = new(SymbolEqualityComparer.Default) };
+                var updated = driver.Process(syntax, stuntContext);
                 if (syntax.IsEquivalentTo(updated))
                     continue;
 
@@ -204,47 +206,61 @@ namespace Stunts
                     continue;
                 }
 
-                var code = updated.NormalizeWhitespace().ToFullString();
-                var shouldEmit = false;
-
-                // Additional pretty-printing when emitting generated files, improves whitespace handling for C#
-                if (context.AnalyzerConfigOptions.GlobalOptions.TryGetValue("build_property.EmitCompilerGeneratedFiles", out var emitSources) &&
-                    bool.TryParse(emitSources, out shouldEmit) &&
-                    shouldEmit &&
-                    // NOTE: checking for C# last, since the Debugger.Attached section below would depend on 
-                    // the proper initialization of shouldEmit too, regardless of language
-                    context.Language == LanguageNames.CSharp)
-                {
-                    updated = CSharpSyntaxTree.ParseText(code, (CSharpParseOptions)context.ParseOptions).GetRoot();
-                    updated = new CSharpFormatter().Visit(updated);
-                    code = updated.GetText().ToString();
-                }
-
                 stunts.Add(name);
-                context.AddSource(name, SourceText.From(code, Encoding.UTF8));
+                AddSource(context, name, updated);
+
+                foreach (var iface in stuntContext.DefaultImplementations)
+                {
+                    if (!defaults.Add(naming.GetDefaultImplementationFullName(iface)))
+                        continue;
+
+                    AddSource(context, naming.GetDefaultImplementationName(iface),
+                        DefaultImplementation.Driver.Process(DefaultImplementation.CreateSyntax(naming, iface), context));
+                }
+            }
+        }
+
+        static void AddSource(ProcessorContext context, string name, SyntaxNode updated)
+        {
+            var code = updated.NormalizeWhitespace().ToFullString();
+            var shouldEmit = false;
+
+            // Additional pretty-printing when emitting generated files, improves whitespace handling for C#
+            if (context.AnalyzerConfigOptions.GlobalOptions.TryGetValue("build_property.EmitCompilerGeneratedFiles", out var emitSources) &&
+                bool.TryParse(emitSources, out shouldEmit) &&
+                shouldEmit &&
+                // NOTE: checking for C# last, since the Debugger.Attached section below would depend on 
+                // the proper initialization of shouldEmit too, regardless of language
+                context.Language == LanguageNames.CSharp)
+            {
+                updated = CSharpSyntaxTree.ParseText(code, (CSharpParseOptions)context.ParseOptions).GetRoot();
+                updated = new CSharpFormatter().Visit(updated);
+                code = updated.GetText().ToString();
+            }
+
+            context.AddSource(name, SourceText.From(code, Encoding.UTF8));
 
 #if DEBUG
-                if (Debugger.IsAttached)
+            if (Debugger.IsAttached)
+            {
+                if (shouldEmit &&
+                    context.AnalyzerConfigOptions.GlobalOptions.TryGetValue("build_property.IntermediateOutputPath", out var intermediateDir) &&
+                    context.AnalyzerConfigOptions.GlobalOptions.TryGetValue("build_property.MSBuildProjectDirectory", out var projectDir))
                 {
-                    if (shouldEmit &&
-                        context.AnalyzerConfigOptions.GlobalOptions.TryGetValue("build_property.IntermediateOutputPath", out var intermediateDir) &&
-                        context.AnalyzerConfigOptions.GlobalOptions.TryGetValue("build_property.MSBuildProjectDirectory", out var projectDir))
-                    {
-                        var targetDir = Path.Combine(projectDir, intermediateDir, "generated", nameof(StuntGenerator));
-                        Directory.CreateDirectory(targetDir);
+                    var targetDir = Path.Combine(projectDir, intermediateDir, "generated", nameof(StuntGenerator));
+                    Directory.CreateDirectory(targetDir);
 
-                        var filePath = Path.Combine(targetDir, name + (context.Language == LanguageNames.CSharp ? ".cs" : ".vb"));
-                        File.WriteAllText(filePath, code);
-                        Debugger.Log(0, "", "Stunt Generated: " + filePath + Environment.NewLine);
-                    }
-
-                    Debugger.Log(0, "", string.Join(
-                            Environment.NewLine,
-                            code.Split(new[] { Environment.NewLine }, StringSplitOptions.None)
-                                .Select((line, index) => index.ToString().PadLeft(3) + " " + line)) + Environment.NewLine);
+                    var filePath = Path.Combine(targetDir, name + (context.Language == LanguageNames.CSharp ? ".cs" : ".vb"));
+                    File.WriteAllText(filePath, code);
+                    Debugger.Log(0, "", "Stunt Generated: " + filePath + Environment.NewLine);
                 }
-#endif
+
+                Debugger.Log(0, "", string.Join(
+                        Environment.NewLine,
+                        code.Split(new[] { Environment.NewLine }, StringSplitOptions.None)
+                            .Select((line, index) => index.ToString().PadLeft(3) + " " + line)) + Environment.NewLine);
             }
+#endif
         }
 
         class CSharpFormatter : CSharpSyntaxRewriter

@@ -21,6 +21,12 @@ namespace Stunts.CodeAnalysis
         public virtual string NameSuffix => StuntNaming.DefaultSuffix;
 
         /// <summary>
+        /// Prefix of the class that holds the default member implementations 
+        /// of an interface, i.e. <c>DefaultIFoo</c>.
+        /// </summary>
+        public virtual string DefaultImplementationPrefix => "Default";
+
+        /// <summary>
         /// The type name to generate for the given (optional) base type and implemented interfaces.
         /// </summary>
         public string GetName(IEnumerable<INamedTypeSymbol> symbols)
@@ -29,6 +35,24 @@ namespace Stunts.CodeAnalysis
             AddNames(builder, Sorted(symbols));
             return builder.Append(NameSuffix).ToString();
         }
+
+        /// <summary>
+        /// The type name of the class that holds the default member implementations 
+        /// of the given interface.
+        /// </summary>
+        public string GetDefaultImplementationName(INamedTypeSymbol symbol)
+        {
+            var builder = new StringBuilder(DefaultImplementationPrefix);
+            AddNames(builder, new[] { symbol });
+            return builder.ToString();
+        }
+
+        /// <summary>
+        /// The full type name of the class that holds the default member implementations 
+        /// of the given interface.
+        /// </summary>
+        public string GetDefaultImplementationFullName(INamedTypeSymbol symbol)
+            => GetNamespace(new[] { symbol }) + "." + GetDefaultImplementationName(symbol);
 
         static void AddNames(StringBuilder builder, IEnumerable<ITypeSymbol> symbols)
         {
