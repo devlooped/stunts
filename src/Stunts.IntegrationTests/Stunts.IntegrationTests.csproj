@@ -51,7 +51,7 @@
     <ProjectReference Include="..\Stunts\Stunts.csproj" />
     <ProjectReference Include="..\Stunts.CodeAnalysis\Stunts.CodeAnalysis.csproj" />
     <ProjectReference Include="..\Stunts.DynamicProxy\Stunts.DynamicProxy.csproj" />
-    <ProjectReference Include="..\Stunts.StaticProxy\Stunts.StaticProxy.csproj" />
+    <ProjectReference Include="..\Stunts.CompiledProxy\Stunts.CompiledProxy.csproj" />
     <ProjectReference Include="..\ManualStunts\ManualStunts.csproj" />
   </ItemGroup>
 

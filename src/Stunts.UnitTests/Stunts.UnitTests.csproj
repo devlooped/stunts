@@ -59,7 +59,7 @@
     <ProjectReference Include="..\Stunts.CodeAnalysis\Stunts.CodeAnalysis.csproj" />
     <ProjectReference Include="..\Stunts.CodeFixes\Stunts.CodeFixes.csproj" />
     <ProjectReference Include="..\Stunts.DynamicProxy\Stunts.DynamicProxy.csproj" />
-    <ProjectReference Include="..\Stunts.StaticProxy\Stunts.StaticProxy.csproj" />
+    <ProjectReference Include="..\Stunts.CompiledProxy\Stunts.CompiledProxy.csproj" />
     <ProjectReference Include="..\ManualStunts\ManualStunts.csproj" />
   </ItemGroup>
 
@@ -72,7 +72,7 @@
   <ItemGroup>
     <Compile Include="..\Stunts.Package\Stunt.cs" Link="Stunt\Stunt.cs" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="..\Stunts.Package\Stunt.StaticFactory.cs" Link="Stunt\Stunt.StaticFactory.cs" CopyToOutputDirectory="PreserveNewest" />
-    <Compile Include="..\Stunts.StaticProxy\SignatureRef.cs" Link="SignatureRef.cs" />
+    <Compile Include="..\Stunts.CompiledProxy\SignatureRef.cs" Link="SignatureRef.cs" />
   </ItemGroup>
 
   <Target Name="ClearMSBuild" AfterTargets="Build">
