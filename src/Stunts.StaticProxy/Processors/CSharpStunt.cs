@@ -31,15 +31,20 @@ namespace Stunts.Processors
         class CSharpStuntVisitor : CSharpSyntaxRewriter
         {
             public override SyntaxNode? VisitClassDeclaration(ClassDeclarationSyntax node)
-            {
-                node = (ClassDeclarationSyntax)base.VisitClassDeclaration(node)!;
+                => Finish((ClassDeclarationSyntax)base.VisitClassDeclaration(node)!);
 
+            public override SyntaxNode? VisitRecordDeclaration(RecordDeclarationSyntax node)
+                => Finish((RecordDeclarationSyntax)base.VisitRecordDeclaration(node)!);
+
+            static TDeclaration Finish<TDeclaration>(TDeclaration node)
+                where TDeclaration : TypeDeclarationSyntax
+            {
                 if (node.BaseList != null && !node.BaseList.Types.Any(x =>
                     x.ToString() == nameof(IStunt) ||
                     x.ToString() == typeof(IStunt).FullName))
                 {
                     // Only add the base type if it isn't already there
-                    node = node.AddBaseListTypes(SimpleBaseType(IdentifierName(nameof(IStunt))));
+                    node = (TDeclaration)node.AddBaseListTypes(SimpleBaseType(IdentifierName(nameof(IStunt))));
                 }
 
                 if (!node.Members.OfType<PropertyDeclarationSyntax>().Any(prop => prop.Identifier.ToString() == nameof(IStunt.Behaviors)))
@@ -62,14 +67,14 @@ namespace Stunts.Processors
                         .WithTrailingTrivia(CarriageReturnLineFeed, CarriageReturnLineFeed);
 
                     if (node.Members.Count > 0)
-                        node = node.InsertNodesAfter(node.Members.First(), new[] { behaviors });
+                        node = (TDeclaration)node.InsertNodesAfter(node.Members.First(), new[] { behaviors });
                     else
-                        node = node.AddMembers(behaviors);
+                        node = (TDeclaration)node.AddMembers(behaviors);
                 }
 
                 if (!node.Members.OfType<FieldDeclarationSyntax>().Any(x => x.Declaration.Variables.Any(v => v.Identifier.ToString() == "pipeline")))
                 {
-                    node = node.InsertNodesBefore(node.Members.First(), new[]
+                    node = (TDeclaration)node.InsertNodesBefore(node.Members.First(), new[]
                     {
                         FieldDeclaration(
                             VariableDeclaration(

@@ -15,7 +15,7 @@ using Xunit;
 namespace Stunts.UnitTests
 {
     /// <summary>
-    /// Runs all the scenarios in the Scenarios folder using the source 
+    /// Runs all the scenarios in the Scenarios and Castle folders using the source
     /// generator to process them.
     /// </summary>
     public class Scenarios
@@ -79,8 +79,15 @@ namespace Stunts.UnitTests
         }
 
         public static IEnumerable<object[]> GetScenarios()
-            => Directory.EnumerateFiles(Path.Combine(ThisAssembly.Project.MSBuildProjectDirectory, "Scenarios"), "*.cs")
-                .Select(file => new object[] { Path.Combine("Scenarios", Path.GetFileName(file)) });
+            => new[] { "Scenarios", "Castle" }
+                .SelectMany(folder => Directory.EnumerateFiles(
+                    Path.Combine(ThisAssembly.Project.MSBuildProjectDirectory, folder), "*.cs"))
+                .Select(file => new object[]
+                {
+                    Path.Combine(
+                        Path.GetFileName(Path.GetDirectoryName(file)),
+                        Path.GetFileName(file))
+                });
 
         static Scenarios()
         {

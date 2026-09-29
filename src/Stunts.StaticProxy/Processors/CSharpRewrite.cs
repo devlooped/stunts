@@ -59,12 +59,18 @@ namespace Stunts.Processors
 
         class EventVisitor : CSharpSyntaxWalker
         {
-            public List<ClassDeclarationSyntax> Types { get; } = new();
+            public List<TypeDeclarationSyntax> Types { get; } = new();
             public List<EventDeclarationSyntax> Events { get; } = new();
 
             public override void VisitClassDeclaration(ClassDeclarationSyntax node)
             {
                 base.VisitClassDeclaration(node);
+                Types.Add(node);
+            }
+
+            public override void VisitRecordDeclaration(RecordDeclarationSyntax node)
+            {
+                base.VisitRecordDeclaration(node);
                 Types.Add(node);
             }
 
@@ -83,17 +89,22 @@ namespace Stunts.Processors
             public CSharpRewriteVisitor(HashSet<string> virtualEvents) => this.virtualEvents = virtualEvents;
 
             public override SyntaxNode? VisitClassDeclaration(ClassDeclarationSyntax node)
+                => base.VisitClassDeclaration(PromoteEventFields(node));
+
+            public override SyntaxNode? VisitRecordDeclaration(RecordDeclarationSyntax node)
+                => base.VisitRecordDeclaration(PromoteEventFields(node));
+
+            static TDeclaration PromoteEventFields<TDeclaration>(TDeclaration node)
+                where TDeclaration : TypeDeclarationSyntax
             {
                 // Turn event fields into event declarations.
                 var events = node.ChildNodes().OfType<EventFieldDeclarationSyntax>().ToArray();
                 node = node.RemoveNodes(events, SyntaxRemoveOptions.KeepNoTrivia)!;
 
-                node = node.AddMembers(events
+                return (TDeclaration)node.AddMembers(events
                     .Select(x => EventDeclaration(x.Declaration.Type, x.Declaration.Variables.First().Identifier)
                         .WithModifiers(x.Modifiers))
                     .ToArray());
-
-                return base.VisitClassDeclaration(node);
             }
 
             public override SyntaxNode? VisitConstructorDeclaration(ConstructorDeclarationSyntax node)

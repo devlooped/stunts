@@ -39,6 +39,14 @@ namespace Stunts.Processors
                 return base.VisitClassDeclaration(AddAttributes(node));
             }
 
+            public override SyntaxNode? VisitRecordDeclaration(RecordDeclarationSyntax node)
+            {
+                if (node.AttributeLists.HasAttribute("CompilerGenerated"))
+                    return base.VisitRecordDeclaration(node);
+
+                return base.VisitRecordDeclaration(AddAttributes(node));
+            }
+
             public override SyntaxNode? VisitConstructorDeclaration(ConstructorDeclarationSyntax node)
             {
                 if (node.AttributeLists.HasAttribute("CompilerGenerated"))

@@ -44,7 +44,7 @@ namespace Stunts
                             NamespaceDeclaration(ParseName(naming.GetNamespace(symbols)))
                             .WithMembers(
                                 SingletonList<MemberDeclarationSyntax>(
-                                    ClassDeclaration(name)
+                                    TypeDeclaration(name, baseType)
                                     .WithModifiers(TokenList(Token(SyntaxKind.PartialKeyword)))
                                     .WithBaseList(
                                         BaseList(
@@ -73,6 +73,21 @@ namespace Stunts
             // Fully qualified so nested types bind in the scaffold compilation.
             // IdentifierName("Outer.Inner") is one identifier and does not.
             TypeSyntax AsTypeSyntax(ITypeSymbol symbol) => ParseTypeName(symbol.ToDisplayString(TypeFormat));
+
+            // A class cannot inherit a record (CS8865). The blank stunt has to be a record
+            // when its base is one; interfaces and ordinary classes stay classes.
+            static TypeDeclarationSyntax TypeDeclaration(string name, INamedTypeSymbol? baseType)
+            {
+                if (baseType?.IsRecord != true)
+                    return ClassDeclaration(name);
+
+                return RecordDeclaration(
+                        SyntaxKind.RecordDeclaration,
+                        Token(SyntaxKind.RecordKeyword),
+                        Identifier(name))
+                    .WithOpenBraceToken(Token(SyntaxKind.OpenBraceToken))
+                    .WithCloseBraceToken(Token(SyntaxKind.CloseBraceToken));
+            }
         }
     }
 }

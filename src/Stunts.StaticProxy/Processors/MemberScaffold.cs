@@ -35,7 +35,8 @@ namespace Stunts.Processors
         public SyntaxNode Process(SyntaxNode syntax, ProcessorContext context)
         {
             var model = context.Compilation.GetSemanticModel(syntax.SyntaxTree);
-            var declaration = syntax.DescendantNodes().OfType<ClassDeclarationSyntax>().FirstOrDefault();
+            var declaration = syntax.DescendantNodes().OfType<TypeDeclarationSyntax>()
+                .FirstOrDefault(type => type is ClassDeclarationSyntax or RecordDeclarationSyntax);
             if (model == null || declaration == null)
                 return syntax;
 
