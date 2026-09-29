@@ -514,7 +514,22 @@ namespace Stunts.Processors
                 var value = Parameter("value", node.Type);
                 var parameters = new[] { value };
 
-                if (virtualEvents.Contains(node.Identifier.ValueText))
+                var defaultAdd = GetDefaultCall(node.AccessorList?.Accessors.FirstOrDefault(x => x.IsKind(SyntaxKind.AddAccessorDeclaration)));
+                var defaultRemove = GetDefaultCall(node.AccessorList?.Accessors.FirstOrDefault(x => x.IsKind(SyntaxKind.RemoveAccessorDeclaration)));
+
+                if (defaultAdd != null && defaultRemove != null)
+                {
+                    node = node.WithAccessorList(AccessorList(List(new AccessorDeclarationSyntax[]
+                    {
+                        AccessorDeclaration(SyntaxKind.AddAccessorDeclaration)
+                            .WithExpressionBody(ArrowExpressionClause(Execute(null, parameters, defaultAdd)))
+                            .WithSemicolon(),
+                        AccessorDeclaration(SyntaxKind.RemoveAccessorDeclaration)
+                            .WithExpressionBody(ArrowExpressionClause(Execute(null, parameters, defaultRemove)))
+                            .WithSemicolon()
+                    })));
+                }
+                else if (virtualEvents.Contains(node.Identifier.ValueText))
                 {
                     ArrowExpressionClauseSyntax body(SyntaxKind kind)
                         => ArrowExpressionClause(
@@ -573,11 +588,17 @@ namespace Stunts.Processors
 
             static ExpressionSyntax? GetBaseCall(BasePropertyDeclarationSyntax node, SyntaxKind kind)
             {
-                if (!node.Modifiers.Any(SyntaxKind.OverrideKeyword) || node.AccessorList == null)
+                if (node.AccessorList == null)
                     return null;
 
                 var accessor = node.DescendantNodes().OfType<AccessorDeclarationSyntax>().FirstOrDefault(x => x.IsKind(kind));
                 if (accessor == null)
+                    return null;
+
+                if (GetDefaultCall(accessor) is ExpressionSyntax defaultCall)
+                    return defaultCall;
+
+                if (!node.Modifiers.Any(SyntaxKind.OverrideKeyword))
                     return null;
 
                 var baseCall = accessor
@@ -595,7 +616,14 @@ namespace Stunts.Processors
 
             static InvocationExpressionSyntax? GetBaseInvocation(SyntaxNode? syntax)
                 => syntax?.DescendantNodes().OfType<InvocationExpressionSyntax>().FirstOrDefault(i =>
+                        i.HasAnnotations(DefaultImplementation.Annotation) ||
                         i.DescendantNodes().OfType<BaseExpressionSyntax>().Any());
+
+            // The scaffold flags calls to a default interface implementation, which 
+            // proceed like base calls do for class members.
+            static ExpressionSyntax? GetDefaultCall(SyntaxNode? syntax)
+                => syntax?.DescendantNodes().OfType<ExpressionSyntax>().FirstOrDefault(x =>
+                        x.HasAnnotations(DefaultImplementation.Annotation));
 
             static ExpressionSyntax Execute(TypeSyntax? returnType, IEnumerable<ParameterSyntax> parameters, ExpressionSyntax? baseCall = null, TypeParameterListSyntax? typeParameters = null)
             {

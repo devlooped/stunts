@@ -52,6 +52,18 @@ namespace Stunts
         public Compilation Compilation { get; init; }
 
         /// <summary>
+        /// The naming convention applied to generated types.
+        /// </summary>
+        public NamingConvention NamingConvention { get; init; } = StuntGenerator.DefaultNamingConvention;
+
+        /// <summary>
+        /// Interfaces whose default member implementations are invoked by the generated stunt, 
+        /// through the class named by <see cref="NamingConvention.GetDefaultImplementationName"/>. 
+        /// The generator emits one such class per interface.
+        /// </summary>
+        internal HashSet<INamedTypeSymbol> DefaultImplementations { get; init; } = new(SymbolEqualityComparer.Default);
+
+        /// <summary>
         /// Get the <see cref="ParseOptions"/> that will be used to parse any added sources.
         /// </summary>
         public ParseOptions ParseOptions { get; }

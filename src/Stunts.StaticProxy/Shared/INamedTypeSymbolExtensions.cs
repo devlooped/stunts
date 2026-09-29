@@ -59,7 +59,7 @@ public static class INamedTypeSymbolExtensions
             foreach (var member in iface.GetMembers())
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (member.IsStatic || member.IsImplicitlyDeclared)
+                if (member.IsStatic || member.IsImplicitlyDeclared || IsExplicitImplementation(member))
                     continue;
                 if (member is IMethodSymbol method && method.MethodKind != MethodKind.Ordinary)
                     continue;
@@ -72,6 +72,57 @@ public static class INamedTypeSymbolExtensions
 
         return result.ToImmutableArray();
     }
+
+    /// <summary>
+    /// Interface members whose implementation is a default provided by an interface, 
+    /// together with the interface that provides it (the member's own interface, or 
+    /// a derived one that supplies a more specific default).
+    /// </summary>
+    /// <remarks>
+    /// Only interfaces the type declares (directly or through interface inheritance) are 
+    /// considered. Interfaces inherited from a base class keep that class' mapping, since 
+    /// a member declared in the derived type does not re-implement them.
+    /// </remarks>
+    public static ImmutableArray<(ISymbol Member, INamedTypeSymbol Provider)> GetDefaultImplementedInterfaceMembers(this INamedTypeSymbol containingType, System.Threading.CancellationToken cancellationToken = default)
+    {
+        var result = new List<(ISymbol, INamedTypeSymbol)>();
+        var seen = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
+        var interfaces = containingType.Interfaces
+            .SelectMany(iface => new[] { iface }.Concat(iface.AllInterfaces))
+            .Distinct<INamedTypeSymbol>(SymbolEqualityComparer.Default)
+            .OrderByDescending(iface => iface.AllInterfaces.Length);
+
+        foreach (var iface in interfaces)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            foreach (var member in iface.GetMembers())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (member.IsStatic || member.IsImplicitlyDeclared || member.DeclaredAccessibility != Accessibility.Public)
+                    continue;
+                // Sealed interface members cannot be implemented.
+                if (!member.IsVirtual && !member.IsAbstract)
+                    continue;
+                if (member is IMethodSymbol method && method.MethodKind != MethodKind.Ordinary)
+                    continue;
+                if (containingType.FindImplementationForInterfaceMember(member) is not { ContainingType: { TypeKind: TypeKind.Interface } provider })
+                    continue;
+                if (seen.Add(member))
+                    result.Add((member, provider));
+            }
+        }
+
+        return result.ToImmutableArray();
+    }
+
+    // A derived interface providing a default for a base interface member (int IFoo.Value => 6).
+    static bool IsExplicitImplementation(ISymbol member) => member switch
+    {
+        IMethodSymbol method => method.ExplicitInterfaceImplementations.Length > 0,
+        IPropertySymbol property => property.ExplicitInterfaceImplementations.Length > 0,
+        IEventSymbol ev => ev.ExplicitInterfaceImplementations.Length > 0,
+        _ => false,
+    };
 
     static bool IsOverridable(ISymbol member)
     {
