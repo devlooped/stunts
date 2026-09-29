@@ -189,6 +189,10 @@ namespace Stunts
                 if (stunts.Contains(name))
                     continue;
 
+                if (candidate.FirstOrDefault(type => type.TypeKind != TypeKind.Interface) is INamedTypeSymbol nested &&
+                    NestedTypeStunt.NonPartialContainer(nested) != null)
+                    continue;
+
                 var syntax = factory.CreateSyntax(naming, candidate);
                 var stuntContext = context with { DefaultImplementations = new(SymbolEqualityComparer.Default) };
                 var updated = driver.Process(syntax, stuntContext);

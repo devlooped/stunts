@@ -39,7 +39,8 @@ namespace Stunts.CodeAnalysis
                 StuntDiagnostics.BaseTypeNotFirst,
                 StuntDiagnostics.DuplicateBaseType,
                 StuntDiagnostics.SealedBaseType,
-                StuntDiagnostics.EnumType);
+                StuntDiagnostics.EnumType,
+                StuntDiagnostics.ContainingTypeNotPartial);
 
         /// <summary>
         /// Registers the analyzer to take action on method invocation expressions.
@@ -92,6 +93,15 @@ namespace Stunts.CodeAnalysis
                             StuntDiagnostics.BaseTypeNotFirst,
                             invocation.Syntax.GetLocation(),
                             classes[0].Name));
+                    }
+                    else if (classes[0] is INamedTypeSymbol named &&
+                        NestedTypeStunt.NonPartialContainer(named) is INamedTypeSymbol container)
+                    {
+                        context.ReportDiagnostic(Diagnostic.Create(
+                            StuntDiagnostics.ContainingTypeNotPartial,
+                            invocation.Syntax.GetLocation(),
+                            named.Name,
+                            container.Name));
                     }
                 }
             }

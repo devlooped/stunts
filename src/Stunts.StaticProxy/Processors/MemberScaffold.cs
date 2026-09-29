@@ -37,8 +37,10 @@ namespace Stunts.Processors
         public SyntaxNode Process(SyntaxNode syntax, ProcessorContext context)
         {
             var model = context.Compilation.GetSemanticModel(syntax.SyntaxTree);
+            // The stunt is the type with the base list. Enclosing partials, used so a
+            // private nested type can be inherited, have no base list.
             var declaration = syntax.DescendantNodes().OfType<TypeDeclarationSyntax>()
-                .FirstOrDefault(type => type is ClassDeclarationSyntax or RecordDeclarationSyntax);
+                .FirstOrDefault(type => type.BaseList != null && type is ClassDeclarationSyntax or RecordDeclarationSyntax);
             if (model == null || declaration == null)
                 return syntax;
 
@@ -141,6 +143,8 @@ namespace Stunts.Processors
                 case Accessibility.ProtectedOrInternal:
                     return true;
                 case Accessibility.Internal:
+                    return constructor.ContainingAssembly.GivesAccessTo(stunt.ContainingAssembly);
+                case Accessibility.ProtectedAndInternal:
                     return SymbolEqualityComparer.Default.Equals(constructor.ContainingAssembly, stunt.ContainingAssembly);
                 default:
                     return false;
@@ -402,13 +406,22 @@ namespace Stunts.Processors
             if (explicitInterface)
                 return TokenList();
 
-            // Overrides cannot widen accessibility. Protected-or-internal across
-            // assemblies is emitted as protected, which is the legal override.
+            // An override cannot change accessibility (CS0507).
             var tokens = new List<SyntaxToken>();
             switch (symbol.DeclaredAccessibility)
             {
                 case Accessibility.Protected:
+                    tokens.Add(Token(SyntaxKind.ProtectedKeyword));
+                    break;
+                case Accessibility.Internal:
+                    tokens.Add(Token(SyntaxKind.InternalKeyword));
+                    break;
                 case Accessibility.ProtectedOrInternal:
+                    tokens.Add(Token(SyntaxKind.ProtectedKeyword));
+                    tokens.Add(Token(SyntaxKind.InternalKeyword));
+                    break;
+                case Accessibility.ProtectedAndInternal:
+                    tokens.Add(Token(SyntaxKind.PrivateKeyword));
                     tokens.Add(Token(SyntaxKind.ProtectedKeyword));
                     break;
                 default:

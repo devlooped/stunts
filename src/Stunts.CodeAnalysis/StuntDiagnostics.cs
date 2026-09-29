@@ -93,6 +93,19 @@ namespace Stunts.CodeAnalysis
         /// stunt-generating invocations cannot be located in the current compilation for some 
         /// reason.
         /// </summary>
+        /// <summary>
+        /// Diagnostic reported when a nested type can only be inherited from inside its 
+        /// containing type, and that type is not partial in this compilation.
+        /// </summary>
+        public static DiagnosticDescriptor ContainingTypeNotPartial { get; } = new DiagnosticDescriptor(
+            "ST008",
+            "Containing type is not partial",
+            "'{0}' can only be inherited from inside '{1}', which must be partial",
+            "Build",
+            DiagnosticSeverity.Error,
+            true,
+            "Private, protected, and private protected nested types are proxied by a stunt nested in the containing type. That type has to be declared partial.");
+
         public static DiagnosticDescriptor GeneratorAttributeNotFound { get; } = new DiagnosticDescriptor(
             "ST007",
             Strings.GeneratorAttributeNotFound.Title,

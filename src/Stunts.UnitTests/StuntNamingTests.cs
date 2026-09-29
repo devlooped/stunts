@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Sample;
 using Xunit;
 
@@ -82,11 +83,20 @@ namespace Stunts.UnitTests
         }
 
         [Fact]
+        public void PrivateNestedFullNameUsesTheDeclaringType()
+        {
+            var inner = typeof(StuntNamingTests).GetNestedType(nameof(Hidden), BindingFlags.NonPublic);
+
+            Assert.Equal(typeof(StuntNamingTests).FullName + "+Hidden" + StuntNaming.DefaultSuffix, StuntNaming.GetFullName(inner));
+        }
+
         public void GenericOfTwoGenericNames()
         {
             var name = StuntNaming.GetName(typeof(ICollection<KeyValuePair<string, ICalculator>>));
 
             Assert.Equal($"ICollectionOfKeyValuePairOfString{nameof(ICalculator)}{StuntNaming.DefaultSuffix}", name);
         }
+
+        class Hidden { }
     }
 }
