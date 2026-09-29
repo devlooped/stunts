@@ -1,5 +1,13 @@
 # Changelog
 
+## [v1.0.0-beta.3](https://github.com/devlooped/stunts/tree/v1.0.0-beta.3) (2026-09-29)
+
+[Full Changelog](https://github.com/devlooped/stunts/compare/v1.0.0-beta.2...v1.0.0-beta.3)
+
+:bug: Fixed bugs:
+
+- Fix AmbiguousMatchException for default ValueTask\<T\> of reference types [\#231](https://github.com/devlooped/stunts/pull/231) (@kzu)
+
 ## [v1.0.0-beta.2](https://github.com/devlooped/stunts/tree/v1.0.0-beta.2) (2026-09-28)
 
 [Full Changelog](https://github.com/devlooped/stunts/compare/v1.0.0-beta.1...v1.0.0-beta.2)
