@@ -1,6 +1,6 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
-  <!-- If source generators aren't supported, we just won't register the static one -->
+  <!-- If source generators aren't supported, we just won't register the compiled one -->
   <PropertyGroup>
     <SourceGeneratorSupported Condition="'$(Language)' == 'C#' AND $([System.Version]::Parse('16.8.0').CompareTo($([System.Version]::Parse($(MSBuildVersion))))) != 1">true</SourceGeneratorSupported>
     <EnableCompileTimeStunts Condition="'$(EnableCompileTimeStunts)' == '' AND '$(SourceGeneratorSupported)' == 'true'">true</EnableCompileTimeStunts>
@@ -35,11 +35,11 @@
       <StuntsAnalyzerDir>$([MSBuild]::NormalizePath($(MSBuildThisFileDirectory)..\..\tools\5.0))</StuntsAnalyzerDir>
     </PropertyGroup>
 
-    <Error Condition="!Exists('$(StuntsAnalyzerDir)\Stunts.StaticProxy.dll')" Code="ST010"
-           Text="Stunts.StaticProxy was not found under tools\5.0. Install the Stunts.DynamicProxy package to use run-time stunts." />
+    <Error Condition="!Exists('$(StuntsAnalyzerDir)\Stunts.CompiledProxy.dll')" Code="ST010"
+           Text="Stunts.CompiledProxy was not found under tools\5.0. Install the Stunts.DynamicProxy package to use run-time stunts." />
 
     <ItemGroup>
-      <Analyzer Include="$(StuntsAnalyzerDir)\Stunts.StaticProxy.dll" NuGetPackageId="Stunts" NuGetPackageVersion="$(StuntsVersion)" />
+      <Analyzer Include="$(StuntsAnalyzerDir)\Stunts.CompiledProxy.dll" NuGetPackageId="Stunts" NuGetPackageVersion="$(StuntsVersion)" />
     </ItemGroup>
 
   </Target>

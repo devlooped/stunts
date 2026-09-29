@@ -9,7 +9,7 @@
     <NoWarn>$(NoWarn);RS1042;RS1036</NoWarn>
   </PropertyGroup>
 
-  <Import Project="Stunts.StaticProxy.targets"/>
+  <Import Project="Stunts.CompiledProxy.targets"/>
 
   <ItemGroup>
     <!-- Emitted into compilations that proxy a ref struct or pointer. netstandard2.0 cannot compile it. -->

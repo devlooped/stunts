@@ -54,7 +54,7 @@
   <Project Path="src/Stunts.DynamicProxy/Stunts.DynamicProxy.csproj" />
   <Project Path="src/Stunts.IntegrationTests/Stunts.IntegrationTests.csproj" />
   <Project Path="src/Stunts.Package/Stunts.Package.msbuildproj" Type="13b669be-bb05-4ddf-9536-439f39a36129" />
-  <Project Path="src/Stunts.StaticProxy/Stunts.StaticProxy.csproj" />
+  <Project Path="src/Stunts.CompiledProxy/Stunts.CompiledProxy.csproj" />
   <Project Path="src/Stunts.UnitTests/Stunts.UnitTests.csproj" />
   <Project Path="src/Stunts/Stunts.csproj" />
 </Solution>

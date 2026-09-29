@@ -31,7 +31,7 @@ service.AddBehavior(...);
     <ProjectReference Include="..\Stunts\Stunts.csproj" />
     <ProjectReference Include="..\Stunts.CodeAnalysis\Stunts.CodeAnalysis.csproj" AdditionalProperties="IsPackable=false" />
     <ProjectReference Include="..\Stunts.CodeFixes\Stunts.CodeFixes.csproj" AdditionalProperties="IsPackable=false" />
-    <ProjectReference Include="..\Stunts.StaticProxy\Stunts.StaticProxy.csproj" AdditionalProperties="IsPackable=false" />
+    <ProjectReference Include="..\Stunts.CompiledProxy\Stunts.CompiledProxy.csproj" AdditionalProperties="IsPackable=false" />
   </ItemGroup>
   <Target Name="CopyVersion" Inputs="Stunts.Version.props" Outputs="$(IntermediateOutputPath)Stunts.Version.props">
     <Copy SourceFiles="Stunts.Version.props" DestinationFiles="$(IntermediateOutputPath)Stunts.Version.props" SkipUnchangedFiles="true" />
