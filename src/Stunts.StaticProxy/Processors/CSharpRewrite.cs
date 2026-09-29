@@ -155,9 +155,7 @@ namespace Stunts.Processors
                         LocalDeclarationStatement(
                             VariableDeclaration(
                                 prefix + "method",
-                                InvocationExpression(
-                                    nameof(MethodBase),
-                                    nameof(MethodBase.GetCurrentMethod)))));
+                                CurrentMethod(method.TypeParameterList))));
 
                     body = body.AddStatements(
                         // outParam = default;
@@ -357,7 +355,7 @@ namespace Stunts.Processors
                 }
                 else
                 {
-                    var body = Execute(method.ReturnType, method.ParameterList.Parameters, baseCall);
+                    var body = Execute(method.ReturnType, method.ParameterList.Parameters, baseCall, method.TypeParameterList);
 
                     if (method.ReturnType.IsKind(SyntaxKind.RefType))
                         body = RefExpression(
@@ -599,10 +597,10 @@ namespace Stunts.Processors
                 => syntax?.DescendantNodes().OfType<InvocationExpressionSyntax>().FirstOrDefault(i =>
                         i.DescendantNodes().OfType<BaseExpressionSyntax>().Any());
 
-            static ExpressionSyntax Execute(TypeSyntax? returnType, IEnumerable<ParameterSyntax> parameters, ExpressionSyntax? baseCall = null)
+            static ExpressionSyntax Execute(TypeSyntax? returnType, IEnumerable<ParameterSyntax> parameters, ExpressionSyntax? baseCall = null, TypeParameterListSyntax? typeParameters = null)
             {
                 if (baseCall == null)
-                    return CreatePipelineInvocation(returnType.IsVoid() ? null : returnType, parameters);
+                    return CreatePipelineInvocation(returnType.IsVoid() ? null : returnType, parameters, typeParameters: typeParameters);
 
                 if (!returnType.IsVoid())
                     return CreatePipelineInvocation(returnType, parameters,
@@ -615,7 +613,8 @@ namespace Stunts.Processors
                             InvocationExpression(
                                 "m",
                                 "CreateValueReturn",
-                                Argument(baseCall))));
+                                Argument(baseCall))),
+                        typeParameters);
 
                 return CreatePipelineInvocation(null, parameters,
                         LambdaExpression(
@@ -628,10 +627,11 @@ namespace Stunts.Processors
                             ReturnStatement(
                                 InvocationExpression(
                                     "m",
-                                    "CreateReturn"))));
+                                    "CreateReturn"))),
+                        typeParameters);
             }
 
-            static InvocationExpressionSyntax CreatePipelineInvocation(TypeSyntax? returnType, IEnumerable<ParameterSyntax> parameters, LambdaExpressionSyntax? target = null)
+            static InvocationExpressionSyntax CreatePipelineInvocation(TypeSyntax? returnType, IEnumerable<ParameterSyntax> parameters, LambdaExpressionSyntax? target = null, TypeParameterListSyntax? typeParameters = null)
             {
                 SimpleNameSyntax execute = returnType.IsVoid() ?
                     IdentifierName("Execute") :
@@ -639,7 +639,7 @@ namespace Stunts.Processors
                     GenericName("ExecuteRef", ((RefTypeSyntax)returnType).Type) :
                     GenericName("Execute", returnType!);
 
-                var create = CreateMethodInvocation(parameters, target);
+                var create = CreateMethodInvocation(parameters, target, typeParameters);
 
                 return InvocationExpression(
                         IdentifierName("pipeline"),
@@ -647,15 +647,32 @@ namespace Stunts.Processors
                         Argument(create));
             }
 
-            static ExpressionSyntax CreateMethodInvocation(IEnumerable<ParameterSyntax> parameters, LambdaExpressionSyntax? target = null)
+            // GetCurrentMethod returns the generic method definition inside a generic method,
+            // whose parameter types are the open type parameters.
+            // => ((MethodInfo)MethodBase.GetCurrentMethod()).MakeGenericMethod(typeof(T), ...)
+            static ExpressionSyntax CurrentMethod(TypeParameterListSyntax? typeParameters)
+            {
+                var current = InvocationExpression(
+                    nameof(MethodBase),
+                    nameof(MethodBase.GetCurrentMethod));
+
+                if (typeParameters == null || typeParameters.Parameters.Count == 0)
+                    return current;
+
+                return InvocationExpression(
+                    ParenthesizedExpression(CastExpression(IdentifierName(nameof(MethodInfo)), current)),
+                    nameof(MethodInfo.MakeGenericMethod),
+                    typeParameters.Parameters
+                        .Select(x => Argument(TypeOfExpression(IdentifierName(x.Identifier))))
+                        .ToArray());
+            }
+
+            static ExpressionSyntax CreateMethodInvocation(IEnumerable<ParameterSyntax> parameters, LambdaExpressionSyntax? target = null, TypeParameterListSyntax? typeParameters = null)
             {
                 var arguments = new List<ArgumentSyntax>
                 {
                     Argument(ThisExpression()),
-                    Argument(
-                        InvocationExpression(
-                        nameof(MethodBase),
-                        nameof(MethodBase.GetCurrentMethod)))
+                    Argument(CurrentMethod(typeParameters))
                 };
 
                 if (target != null)
