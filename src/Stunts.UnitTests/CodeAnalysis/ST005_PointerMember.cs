@@ -10,27 +10,15 @@ namespace Stunts.UnitTests
     {
         protected override DiagnosticAnalyzer? GetCSharpDiagnosticAnalyzer() => new PointerMemberAnalyzer();
 
-        [Theory]
-        [InlineData(ThisAssembly.Constants.CodeAnalysis.ST005.Diagnostic.PublicClass, 9, 25)]
-        public void Verify_Diagnostic(string path, int line, int column)
+        [Fact]
+        public void Verify_NoDiagnostic()
         {
-            var expected = new DiagnosticResult
-            {
-                Id = StuntDiagnostics.PointerMember.Id,
-                Message = string.Format(Resources.PointerMember_Message, "IPointers"),
-                Severity = DiagnosticSeverity.Error,
-                Locations = new[] {
-                    new DiagnosticResultLocation("Test0.cs", line, column)
-                },
-            };
-
             VerifyCSharpDiagnostic(
                 new[]
                 {
-                    File.ReadAllText(path),
+                    File.ReadAllText(ThisAssembly.Constants.CodeAnalysis.ST005.Diagnostic.PublicClass),
                     File.ReadAllText(@"Stunt/Stunt.cs"),
-                },
-                expected);
+                });
         }
     }
 }

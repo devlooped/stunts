@@ -148,6 +148,12 @@ namespace Stunts.Processors
                 while (method.ParameterList.Parameters.Any(x => x.Identifier.ValueText.StartsWith(prefix, StringComparison.Ordinal)))
                     prefix += "_";
 
+                if (NeedsHold(method))
+                {
+                    method = Hold(method, baseCall, prefix);
+                    return base.VisitMethodDeclaration(method);
+                }
+
                 if (method.ParameterList.Parameters.Any(x => x.IsRefOut()))
                 {
                     var body = Block(
@@ -201,11 +207,12 @@ namespace Stunts.Processors
                                         Argument(
                                             LiteralExpression(parameter.Identifier.ToString())))));
 
+                        var captured = method.ParameterList.Parameters;
                         baseCall = baseCall.WithArguments(
-                            baseCall.ArgumentList.Arguments.Select(arg =>
-                                arg.IsRefOut() ?
+                            baseCall.ArgumentList.Arguments.Select((arg, index) =>
+                                arg.IsRefOut() || (index < captured.Count && captured[index].Modifiers.Any(SyntaxKind.ReadOnlyKeyword)) ?
                                 // Replace original args with _ args for the base call, 
-                                // since the lambda can't reference ref/out args from within it.
+                                // since the lambda can't reference ref/out/ref readonly args from within it.
                                 arg.WithExpression(
                                     IdentifierName(prefix + arg.Expression)) :
                                 arg));
@@ -299,7 +306,7 @@ namespace Stunts.Processors
 
                     body = body.AddStatements(
                         // x = _result.Outputs.GetNullable<int>("x");
-                        method.ParameterList.Parameters.Where(prm => prm.IsRefOut()).Select(x => ExpressionStatement(
+                        method.ParameterList.Parameters.Where(prm => prm.IsRefOut() && !prm.Modifiers.Any(SyntaxKind.ReadOnlyKeyword)).Select(x => ExpressionStatement(
                             AssignmentExpression(
                                 x.Identifier,
                                 InvocationExpression(
@@ -392,7 +399,7 @@ namespace Stunts.Processors
                 {
                     var baseCall = GetBaseCall(prop, SyntaxKind.GetAccessorDeclaration);
                     node = node
-                        .WithExpressionBody(ArrowExpressionClause(Execute(
+                        .WithExpressionBody(ArrowExpressionClause(Executed(
                             node.Type, Enumerable.Empty<ParameterSyntax>(), baseCall)))
                         .WithSemicolon();
                 }
@@ -401,7 +408,7 @@ namespace Stunts.Processors
                     if (getter != null)
                     {
                         var baseCall = GetBaseCall(prop, SyntaxKind.GetAccessorDeclaration);
-                        node = node.AddAccessorListAccessors(WithBody(getter, Execute(
+                        node = node.AddAccessorListAccessors(WithBody(getter, Executed(
                             node.Type, Enumerable.Empty<ParameterSyntax>(), baseCall)));
                     }
                     if (setter != null)
@@ -452,7 +459,7 @@ namespace Stunts.Processors
                 {
                     return node.WithExpressionBody(
                         ArrowExpressionClause(
-                            Execute(
+                            Executed(
                                 node.Type, node.ParameterList.Parameters,
                                 FixBaseCall(
                                     prop,
@@ -465,7 +472,7 @@ namespace Stunts.Processors
                 {
                     if (getter != null)
                     {
-                        node = node.AddAccessorListAccessors(WithBody(getter, Execute(
+                        node = node.AddAccessorListAccessors(WithBody(getter, Executed(
                             node.Type, node.ParameterList.Parameters,
                             FixBaseCall(
                                 prop,
@@ -618,14 +625,14 @@ namespace Stunts.Processors
 
             static InvocationExpressionSyntax? GetBaseInvocation(SyntaxNode? syntax)
                 => syntax?.DescendantNodes().OfType<InvocationExpressionSyntax>().FirstOrDefault(i =>
-                        i.HasAnnotations(DefaultImplementation.Annotation) ||
+                        i.HasAnnotation(Annotations.DefaultImplementation) ||
                         i.DescendantNodes().OfType<BaseExpressionSyntax>().Any());
 
             // The scaffold flags calls to a default interface implementation, which 
             // proceed like base calls do for class members.
             static ExpressionSyntax? GetDefaultCall(SyntaxNode? syntax)
                 => syntax?.DescendantNodes().OfType<ExpressionSyntax>().FirstOrDefault(x =>
-                        x.HasAnnotations(DefaultImplementation.Annotation));
+                        x.HasAnnotation(Annotations.DefaultImplementation));
 
             static ExpressionSyntax Execute(TypeSyntax? returnType, IEnumerable<ParameterSyntax> parameters, ExpressionSyntax? baseCall = null, TypeParameterListSyntax? typeParameters = null)
             {
@@ -714,6 +721,266 @@ namespace Stunts.Processors
                     nameof(MethodInvocation),
                     nameof(MethodInvocation.Create),
                     arguments);
+            }
+
+            static ExpressionSyntax Executed(TypeSyntax type, IEnumerable<ParameterSyntax> parameters, ExpressionSyntax? baseCall, TypeParameterListSyntax? typeParameters = null)
+            {
+                var body = Execute(type, parameters, baseCall, typeParameters);
+                return type is RefTypeSyntax ? RefExpression(MemberAccessExpression(body, "Value")) : body;
+            }
+
+            static bool NeedsHold(MethodDeclarationSyntax method)
+                => method.HasAnnotation(Annotations.StructRef) || method.HasAnnotation(Annotations.PointerRef)
+                    || method.ParameterList.Parameters.Any(parameter =>
+                        parameter.HasAnnotation(Annotations.StructRef) || parameter.HasAnnotation(Annotations.PointerRef));
+
+            static MethodDeclarationSyntax Hold(MethodDeclarationSyntax method, InvocationExpressionSyntax? baseCall, string prefix)
+            {
+                var parameters = method.ParameterList.Parameters;
+                var statements = new List<StatementSyntax>();
+                var finallyStatements = new List<StatementSyntax>();
+                foreach (var parameter in parameters)
+                {
+                    if (!parameter.HasAnnotation(Annotations.StructRef) && !parameter.HasAnnotation(Annotations.PointerRef))
+                        continue;
+
+                    var name = prefix + parameter.Identifier.ValueText + "Ref";
+                    statements.Add(LocalDeclarationStatement(VariableDeclaration(name, CreateHolder(parameter))));
+                    if (parameter.HasAnnotation(Annotations.StructRef))
+                    {
+                        finallyStatements.Add(ExpressionStatement(InvocationExpression(
+                            IdentifierName(name),
+                            IdentifierName("Invalidate"),
+                            RefSlot(parameter))));
+                    }
+                }
+
+                var returnType = method.ReturnType;
+                var innerReturn = returnType is RefTypeSyntax refType ? refType.Type : returnType;
+                var returnIsStruct = method.HasAnnotation(Annotations.StructRef);
+                var returnIsPointer = method.HasAnnotation(Annotations.PointerRef);
+                var returned = prefix + "returned";
+                var returnedRef = prefix + "returnedRef";
+                if (returnIsStruct)
+                {
+                    statements.Add(LocalDeclarationStatement(VariableDeclaration(returned, innerReturn, DefaultLiteralExpression)));
+                    statements.Add(LocalDeclarationStatement(VariableDeclaration(
+                        returnedRef,
+                        ObjectCreationExpression(
+                            HolderType(innerReturn),
+                            Argument(IdentifierName(returned)).WithRefKindKeyword(Token(SyntaxKind.RefKeyword))))));
+                    finallyStatements.Add(ExpressionStatement(InvocationExpression(
+                        IdentifierName(returnedRef),
+                        IdentifierName("Invalidate"),
+                        Argument(IdentifierName(returned)).WithRefKindKeyword(Token(SyntaxKind.RefKeyword)))));
+                }
+
+                if (baseCall != null)
+                    baseCall = RewriteCall(baseCall, parameters, prefix);
+
+                var create = CreateHeld(
+                    parameters.Select(parameter => Argument(IdentifierName(
+                        parameter.HasAnnotation(Annotations.StructRef) || parameter.HasAnnotation(Annotations.PointerRef)
+                            ? prefix + parameter.Identifier.ValueText + "Ref"
+                            : parameter.Identifier.ValueText))),
+                    Target(baseCall, returnType, returnIsStruct, returnIsPointer, returnedRef),
+                    method.TypeParameterList);
+
+                ExpressionSyntax pipeline = returnIsStruct || returnIsPointer || returnType.IsVoid()
+                    ? InvocationExpression(IdentifierName("pipeline"), IdentifierName("Execute"), Argument(create))
+                    : returnType is RefTypeSyntax refReturn
+                        ? InvocationExpression(IdentifierName("pipeline"), GenericName("ExecuteRef", refReturn.Type), Argument(create))
+                        : InvocationExpression(IdentifierName("pipeline"), GenericName("Execute", returnType), Argument(create));
+
+                var attempt = new List<StatementSyntax>();
+                if (returnType.IsVoid())
+                    attempt.Add(ExpressionStatement(pipeline));
+                else if (returnIsStruct)
+                {
+                    attempt.Add(LocalDeclarationStatement(VariableDeclaration(prefix + "result", pipeline)));
+                    attempt.Add(ExpressionStatement(AssignmentExpression(
+                        IdentifierName(returned),
+                        MemberAccessExpression(
+                            ParenthesizedExpression(CastExpression(
+                                HolderType(innerReturn),
+                                PostfixUnaryExpression(
+                                    SyntaxKind.SuppressNullableWarningExpression,
+                                    MemberAccessExpression(prefix + "result", nameof(IMethodReturn.ReturnValue))))),
+                            "Value"))));
+                    attempt.Add(ReturnStatement(IdentifierName(returned)));
+                }
+                else if (returnIsPointer)
+                {
+                    attempt.Add(LocalDeclarationStatement(VariableDeclaration(prefix + "result", pipeline)));
+                    attempt.Add(ReturnStatement(CastExpression(
+                        innerReturn,
+                        MemberAccessExpression(
+                            ParenthesizedExpression(CastExpression(
+                                IdentifierName("PointerRef"),
+                                PostfixUnaryExpression(
+                                    SyntaxKind.SuppressNullableWarningExpression,
+                                    MemberAccessExpression(prefix + "result", nameof(IMethodReturn.ReturnValue))))),
+                            "Value"))));
+                }
+                else if (returnType is RefTypeSyntax)
+                    attempt.Add(ReturnStatement(RefExpression(MemberAccessExpression(pipeline, "Value"))));
+                else
+                    attempt.Add(ReturnStatement(pipeline));
+
+                if (finallyStatements.Count == 0)
+                    statements.AddRange(attempt);
+                else
+                    statements.Add(TryStatement(Block(attempt), default, FinallyClause(Block(finallyStatements))));
+
+                if (returnIsPointer || parameters.Any(parameter => parameter.HasAnnotation(Annotations.PointerRef)))
+                    method = method.AddModifiers(Token(SyntaxKind.UnsafeKeyword));
+
+                return method
+                    .WithExpressionBody(null)
+                    .WithSemicolonToken(default)
+                    .WithBody(Block(statements));
+            }
+
+            static LambdaExpressionSyntax? Target(InvocationExpressionSyntax? baseCall, TypeSyntax returnType, bool returnIsStruct, bool returnIsPointer, string returnedRef)
+            {
+                if (baseCall == null)
+                    return null;
+
+                var parameters = new[] { Parameter("m"), Parameter("n") };
+                if (returnIsStruct)
+                {
+                    return LambdaExpression(
+                        parameters,
+                        ExpressionStatement(AssignmentExpression(
+                            MemberAccessExpression(IdentifierName(returnedRef), IdentifierName("Value")),
+                            baseCall)),
+                        ReturnStatement(InvocationExpression("m", "CreateValueReturn", Argument(IdentifierName(returnedRef)))));
+                }
+
+                if (returnIsPointer)
+                {
+                    return LambdaExpression(
+                        parameters,
+                        ReturnStatement(InvocationExpression(
+                            "m",
+                            "CreateValueReturn",
+                            Argument(ObjectCreationExpression(
+                                IdentifierName("PointerRef"),
+                                Argument(CastExpression(
+                                    PointerType(PredefinedType(Token(SyntaxKind.VoidKeyword))),
+                                    baseCall)))))));
+                }
+
+                if (returnType.IsVoid())
+                {
+                    return LambdaExpression(
+                        parameters,
+                        ExpressionStatement(baseCall),
+                        ReturnStatement(InvocationExpression("m", "CreateReturn")));
+                }
+
+                return LambdaExpression(parameters, InvocationExpression("m", "CreateValueReturn", Argument(baseCall)));
+            }
+
+            static ExpressionSyntax CreateHeld(IEnumerable<ArgumentSyntax> values, LambdaExpressionSyntax? target, TypeParameterListSyntax? typeParameters)
+            {
+                var arguments = new List<ArgumentSyntax>
+                {
+                    Argument(ThisExpression()),
+                    Argument(CurrentMethod(typeParameters)),
+                };
+                if (target != null)
+                    arguments.Add(Argument(target));
+                arguments.AddRange(values);
+                return InvocationExpression(nameof(MethodInvocation), nameof(MethodInvocation.Create), arguments);
+            }
+
+            static ExpressionSyntax CreateHolder(ParameterSyntax parameter)
+            {
+                if (parameter.HasAnnotation(Annotations.PointerRef))
+                {
+                    return ObjectCreationExpression(
+                        IdentifierName("PointerRef"),
+                        Argument(CastExpression(
+                            PointerType(PredefinedType(Token(SyntaxKind.VoidKeyword))),
+                            IdentifierName(parameter.Identifier))));
+                }
+
+                return ObjectCreationExpression(
+                    HolderType(parameter.Type!),
+                    RefSlot(parameter));
+            }
+
+            static ArgumentSyntax RefSlot(ParameterSyntax parameter)
+            {
+                ExpressionSyntax target = IdentifierName(parameter.Identifier);
+                if (parameter.Modifiers.Any(SyntaxKind.ReadOnlyKeyword) || parameter.Modifiers.Any(SyntaxKind.InKeyword))
+                {
+                    target = InvocationExpression(
+                        MemberAccessExpression(ParseName("global::System.Runtime.CompilerServices.Unsafe"), IdentifierName("AsRef")),
+                        Argument(target).WithRefKindKeyword(Token(SyntaxKind.InKeyword)));
+                }
+
+                return Argument(target).WithRefKindKeyword(Token(SyntaxKind.RefKeyword));
+            }
+
+            static TypeSyntax HolderType(TypeSyntax type)
+            {
+                var inner = type is RefTypeSyntax refType ? refType.Type : type;
+                if (TrySpan(inner, "Span", out var argument))
+                    return GenericName("SpanRef", argument);
+                if (TrySpan(inner, "ReadOnlySpan", out argument))
+                    return GenericName("ReadOnlySpanRef", argument);
+                if (inner is PointerTypeSyntax || inner is FunctionPointerTypeSyntax)
+                    return IdentifierName("PointerRef");
+                return GenericName("StructRef", inner);
+            }
+
+            static bool TrySpan(TypeSyntax type, string name, out TypeSyntax argument)
+            {
+                switch (type)
+                {
+                    case GenericNameSyntax generic when generic.Identifier.ValueText == name && generic.TypeArgumentList.Arguments.Count == 1:
+                        argument = generic.TypeArgumentList.Arguments[0];
+                        return true;
+                    case QualifiedNameSyntax qualified:
+                        return TrySpan(qualified.Right, name, out argument);
+                    case AliasQualifiedNameSyntax alias:
+                        return TrySpan(alias.Name, name, out argument);
+                    default:
+                        argument = type;
+                        return false;
+                }
+            }
+
+            static InvocationExpressionSyntax RewriteCall(InvocationExpressionSyntax call, SeparatedSyntaxList<ParameterSyntax> parameters, string prefix)
+            {
+                var args = call.ArgumentList.Arguments;
+                var rewritten = new List<ArgumentSyntax>(args.Count);
+                for (var i = 0; i < args.Count; i++)
+                {
+                    var arg = args[i];
+                    if (i >= parameters.Count)
+                    {
+                        rewritten.Add(arg);
+                        continue;
+                    }
+
+                    var parameter = parameters[i];
+                    var holder = IdentifierName(prefix + parameter.Identifier.ValueText + "Ref");
+                    if (parameter.HasAnnotation(Annotations.PointerRef) && !arg.IsRefOut())
+                    {
+                        rewritten.Add(arg.WithExpression(CastExpression(
+                            parameter.Type!,
+                            MemberAccessExpression(holder, "Value"))));
+                    }
+                    else if (parameter.HasAnnotation(Annotations.StructRef))
+                        rewritten.Add(arg.WithExpression(MemberAccessExpression(holder, "Value")));
+                    else
+                        rewritten.Add(arg);
+                }
+
+                return call.WithArgumentList(ArgumentList(SeparatedList(rewritten)));
             }
         }
     }

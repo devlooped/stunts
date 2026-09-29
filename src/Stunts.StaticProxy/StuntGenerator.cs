@@ -180,6 +180,7 @@ namespace Stunts
             var factory = StuntSyntaxFactory.CreateFactory(context.Language);
             var stunts = new HashSet<string>();
             var defaults = new HashSet<string>();
+            var needsSignatureRef = false;
 
             foreach (var (source, candidate) in context.SyntaxReceivers
                 .OfType<IStuntCandidatesReceiver>()
@@ -192,6 +193,9 @@ namespace Stunts
                 if (candidate.FirstOrDefault(type => type.TypeKind != TypeKind.Interface) is INamedTypeSymbol nested &&
                     NestedTypeStunt.NonPartialContainer(nested) != null)
                     continue;
+
+                if (candidate.Any(UsesSignatureRef))
+                    needsSignatureRef = true;
 
                 var syntax = factory.CreateSyntax(naming, candidate);
                 var stuntContext = context with { DefaultImplementations = new(SymbolEqualityComparer.Default) };
@@ -222,7 +226,31 @@ namespace Stunts
                         DefaultImplementation.Driver.Process(DefaultImplementation.CreateSyntax(naming, iface), context));
                 }
             }
+
+            if (needsSignatureRef)
+                context.AddSource("SignatureRef.cs", SourceText.From(ThisAssembly.Resources.SignatureRef.Text, Encoding.UTF8));
         }
+
+        static bool UsesSignatureRef(INamedTypeSymbol type)
+        {
+            foreach (var member in type.GetMembers())
+            {
+                switch (member)
+                {
+                    case IMethodSymbol method when IsHeld(method.ReturnType) || method.Parameters.Any(parameter => IsHeld(parameter.Type)):
+                    case IPropertySymbol property when IsHeld(property.Type) || property.Parameters.Any(parameter => IsHeld(parameter.Type)):
+                        return true;
+                }
+            }
+
+            if (type.BaseType != null && type.BaseType.SpecialType != SpecialType.System_Object && UsesSignatureRef(type.BaseType))
+                return true;
+
+            return type.AllInterfaces.Any(UsesSignatureRef);
+        }
+
+        static bool IsHeld(ITypeSymbol type)
+            => type.IsRefLikeType || type.TypeKind is TypeKind.Pointer or TypeKind.FunctionPointer;
 
         static void AddSource(ProcessorContext context, string name, SyntaxNode updated)
         {
@@ -330,19 +358,7 @@ namespace Stunts
             }
         }
 
-        static bool CanGenerateFor(INamedTypeSymbol? symbol)
-        {
-            if (symbol == null)
-                return false;
-
-            // Cannot generate for types using pointer types
-            var usesPointers = symbol.GetMembers()
-                .OfType<IMethodSymbol>()
-                .SelectMany(method => method.Parameters)
-                .Any(parameter => parameter.Type.Kind == SymbolKind.PointerType);
-
-            return !usesPointers;
-        }
+        static bool CanGenerateFor(INamedTypeSymbol? symbol) => symbol != null;
 
         class AggregateSyntaxReceiver : ISyntaxReceiver, IEnumerable
         {

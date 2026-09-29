@@ -26,11 +26,6 @@ namespace Stunts
     static class DefaultImplementation
     {
         /// <summary>
-        /// Annotation on the scaffolded expression that invokes the default implementation.
-        /// </summary>
-        public const string Annotation = "Stunts.DefaultImplementation";
-
-        /// <summary>
         /// Name of the static property that exposes the instance typed as the interface.
         /// </summary>
         public const string InstanceName = "Default";

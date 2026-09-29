@@ -172,9 +172,11 @@ namespace Stunts.UnitTests
                 d.Severity == DiagnosticSeverity.Hidden ||
                 d.Severity == DiagnosticSeverity.Info;
 
-            var diagnostics = compilation.GetDiagnostics().RemoveAll(ignored);
-            if (diagnostics.Any())
-                return (diagnostics, compilation);
+            // Warnings in the scenario itself still fail here. Errors may name types
+            // the generator emits, so those are checked on the compilation after generation.
+            var before = compilation.GetDiagnostics().RemoveAll(ignored);
+            if (before.Any(d => d.Severity != DiagnosticSeverity.Error))
+                return (before, compilation);
 
             GeneratorDriver driver = CSharpGeneratorDriver.Create(
                 new[] { new StuntGenerator() },
@@ -186,8 +188,8 @@ namespace Stunts.UnitTests
             // Don't timeout if we're debugging.
             var token = Debugger.IsAttached ? default : new CancellationTokenSource(5000).Token;
 
-            driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var output, out diagnostics, token);
-            diagnostics = diagnostics.RemoveAll(ignored);
+            driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var output, out var diagnostics, token);
+            diagnostics = output.GetDiagnostics().RemoveAll(ignored).RemoveAll(d => d.Severity != DiagnosticSeverity.Error);
 
             if (bool.TryParse(ThisAssembly.Project.EmitCompilerGeneratedFiles, out var emit) && emit)
             {

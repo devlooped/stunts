@@ -165,7 +165,7 @@ namespace Stunts.Processors
 
         static MethodDeclarationSyntax Method(IMethodSymbol method, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? receiver)
         {
-            var declaration = MethodDeclaration(TypeName(method.ReturnType), method.Name)
+            var declaration = MethodDeclaration(ReturnType(method.ReturnType, method), method.Name)
                 .WithModifiers(Modifiers(method, isOverride, explicitInterface != null))
                 .WithParameterList(ParameterList(SeparatedList(method.Parameters.Select(Parameter))))
                 .WithExpressionBody(ArrowExpressionClause(Body(method, receiver)))
@@ -181,31 +181,28 @@ namespace Stunts.Processors
                     .WithConstraintClauses(Constraints(method));
             }
 
-            if (method.ReturnsByRef || method.ReturnsByRefReadonly)
-                declaration = declaration.WithReturnType(RefType(declaration.ReturnType));
-
-            return declaration;
+            return Annotate(declaration, method.ReturnType);
         }
 
         static PropertyDeclarationSyntax Property(IPropertySymbol property, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? receiver, INamedTypeSymbol? stunt)
         {
-            var declaration = PropertyDeclaration(TypeName(property.Type), property.Name)
+            var declaration = PropertyDeclaration(ReturnType(property.Type, property.GetMethod), property.Name)
                 .WithModifiers(Modifiers(property, isOverride, explicitInterface != null))
                 .WithAccessorList(AccessorList(List(Accessors(property, receiver, stunt))));
-            return explicitInterface == null
-                ? declaration
-                : declaration.WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(ParseName(explicitInterface.ToDisplayString(TypeFormat))));
+            if (explicitInterface != null)
+                declaration = declaration.WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(ParseName(explicitInterface.ToDisplayString(TypeFormat))));
+            return Annotate(declaration, property.Type);
         }
 
         static IndexerDeclarationSyntax Indexer(IPropertySymbol property, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? receiver, INamedTypeSymbol? stunt)
         {
-            var declaration = IndexerDeclaration(TypeName(property.Type))
+            var declaration = IndexerDeclaration(ReturnType(property.Type, property.GetMethod))
                 .WithModifiers(Modifiers(property, isOverride, explicitInterface != null))
                 .WithParameterList(BracketedParameterList(SeparatedList(property.Parameters.Select(Parameter))))
                 .WithAccessorList(AccessorList(List(Accessors(property, receiver, stunt))));
-            return explicitInterface == null
-                ? declaration
-                : declaration.WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(ParseName(explicitInterface.ToDisplayString(TypeFormat))));
+            if (explicitInterface != null)
+                declaration = declaration.WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(ParseName(explicitInterface.ToDisplayString(TypeFormat))));
+            return Annotate(declaration, property.Type);
         }
 
         static EventDeclarationSyntax Event(IEventSymbol ev, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? defaultInstance)
@@ -363,40 +360,75 @@ namespace Stunts.Processors
         // implementation are flagged with an annotation instead.
         static TExpression Proceed<TExpression>(ExpressionSyntax receiver, TExpression expression) where TExpression : ExpressionSyntax
             => receiver is BaseExpressionSyntax ? expression :
-                expression.WithAdditionalAnnotations(new SyntaxAnnotation(DefaultImplementation.Annotation));
+                expression.WithAdditionalAnnotations(Annotations.DefaultImplementation);
 
         static ElementAccessExpressionSyntax ElementAccess(ExpressionSyntax receiver, IPropertySymbol property)
             => ElementAccessExpression(
                 receiver,
                 BracketedArgumentList(SeparatedList(property.Parameters.Select(ArgumentFor))));
 
+        static TypeSyntax ReturnType(ITypeSymbol type, IMethodSymbol? accessor)
+        {
+            var syntax = TypeName(type);
+            if (accessor == null)
+                return syntax;
+            // RefKind.RefReadOnly and RefKind.In share the same value, so use the bools.
+            if (accessor.ReturnsByRefReadonly)
+                return RefType(syntax).WithReadOnlyKeyword(Token(SyntaxKind.ReadOnlyKeyword));
+            if (accessor.ReturnsByRef)
+                return RefType(syntax);
+            return syntax;
+        }
+
+        static TNode Annotate<TNode>(TNode node, ITypeSymbol type) where TNode : SyntaxNode
+        {
+            if (type.IsRefLikeType)
+                return (TNode)node.WithAdditionalAnnotations(Annotations.StructRef);
+            if (type.TypeKind is TypeKind.Pointer or TypeKind.FunctionPointer)
+                return (TNode)node.WithAdditionalAnnotations(Annotations.PointerRef);
+            return node;
+        }
+
         static ParameterSyntax Parameter(IParameterSymbol parameter)
         {
             var syntax = SyntaxFactory.Parameter(Identifier(parameter.Name)).WithType(TypeName(parameter.Type));
-            var kind = RefKind(parameter.RefKind);
-            if (kind != null)
-                syntax = syntax.WithModifiers(TokenList(Token(kind.Value)));
+            var modifiers = new List<SyntaxToken>();
+            switch (parameter.RefKind)
+            {
+                case Microsoft.CodeAnalysis.RefKind.Ref:
+                    modifiers.Add(Token(SyntaxKind.RefKeyword));
+                    break;
+                case Microsoft.CodeAnalysis.RefKind.Out:
+                    modifiers.Add(Token(SyntaxKind.OutKeyword));
+                    break;
+                case Microsoft.CodeAnalysis.RefKind.In:
+                    modifiers.Add(Token(SyntaxKind.InKeyword));
+                    break;
+                case Microsoft.CodeAnalysis.RefKind.RefReadOnlyParameter:
+                    modifiers.Add(Token(SyntaxKind.RefKeyword));
+                    modifiers.Add(Token(SyntaxKind.ReadOnlyKeyword));
+                    break;
+            }
+
             if (parameter.IsParams)
-                syntax = syntax.AddModifiers(Token(SyntaxKind.ParamsKeyword));
-            return syntax;
+                modifiers.Add(Token(SyntaxKind.ParamsKeyword));
+            if (modifiers.Count > 0)
+                syntax = syntax.WithModifiers(TokenList(modifiers));
+            return Annotate(syntax, parameter.Type);
         }
 
         static ArgumentSyntax ArgumentFor(IParameterSymbol parameter)
         {
             var argument = Argument(IdentifierName(parameter.Name));
-            var kind = RefKind(parameter.RefKind);
-            return kind == null ? argument : argument.WithRefKindKeyword(Token(kind.Value));
-        }
-
-        static SyntaxKind? RefKind(RefKind kind)
-        {
-            switch (kind)
+            SyntaxKind? kind = parameter.RefKind switch
             {
-                case Microsoft.CodeAnalysis.RefKind.Ref: return SyntaxKind.RefKeyword;
-                case Microsoft.CodeAnalysis.RefKind.Out: return SyntaxKind.OutKeyword;
-                case Microsoft.CodeAnalysis.RefKind.In: return SyntaxKind.InKeyword;
-                default: return null;
-            }
+                Microsoft.CodeAnalysis.RefKind.Ref => SyntaxKind.RefKeyword,
+                Microsoft.CodeAnalysis.RefKind.Out => SyntaxKind.OutKeyword,
+                Microsoft.CodeAnalysis.RefKind.In => SyntaxKind.InKeyword,
+                Microsoft.CodeAnalysis.RefKind.RefReadOnlyParameter => SyntaxKind.InKeyword,
+                _ => null,
+            };
+            return kind == null ? argument : argument.WithRefKindKeyword(Token(kind.Value));
         }
 
         internal static TypeSyntax TypeName(ITypeSymbol type) => ParseTypeName(type.ToDisplayString(TypeFormat));
