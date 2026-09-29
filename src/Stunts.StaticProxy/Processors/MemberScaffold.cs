@@ -54,7 +54,7 @@ namespace Stunts.Processors
                 if (generated.ContainsKey(ParameterSignature(member)))
                     continue;
                 generated.Add(ParameterSignature(member), member);
-                members.Add(Stub(member, isOverride: true, explicitInterface: null));
+                members.Add(Stub(member, isOverride: true, explicitInterface: null, stunt: symbol));
             }
 
             members.AddRange(InterfaceStubs(symbol, generated, context.CancellationToken));
@@ -63,7 +63,7 @@ namespace Stunts.Processors
             {
                 context.DefaultImplementations.Add(provider);
                 var instance = DefaultInstance(context.NamingConvention, provider, member.ContainingType);
-                members.Add(Stub(member, isOverride: false, explicitInterface: Collides(member, generated), instance));
+                members.Add(Stub(member, isOverride: false, explicitInterface: Collides(member, generated), instance, symbol));
             }
 
             return syntax.ReplaceNode(declaration, declaration.AddMembers(members.ToArray()));
@@ -149,13 +149,13 @@ namespace Stunts.Processors
 
         // A null receiver throws NotImplementedException. Otherwise, the member proceeds to 
         // base (overrides) or to the default instance (default interface implementations).
-        static MemberDeclarationSyntax Stub(ISymbol member, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? defaultInstance = null)
+        static MemberDeclarationSyntax Stub(ISymbol member, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? defaultInstance = null, INamedTypeSymbol? stunt = null)
         {
             var receiver = defaultInstance ?? (isOverride && !member.IsAbstract ? BaseExpression() : null);
             if (member is IMethodSymbol method)
                 return Method(method, isOverride, explicitInterface, receiver);
             if (member is IPropertySymbol property)
-                return property.IsIndexer ? Indexer(property, isOverride, explicitInterface, receiver) : Property(property, isOverride, explicitInterface, receiver);
+                return property.IsIndexer ? Indexer(property, isOverride, explicitInterface, receiver, stunt) : Property(property, isOverride, explicitInterface, receiver, stunt);
             return Event((IEventSymbol)member, isOverride, explicitInterface, defaultInstance);
         }
 
@@ -183,22 +183,22 @@ namespace Stunts.Processors
             return declaration;
         }
 
-        static PropertyDeclarationSyntax Property(IPropertySymbol property, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? receiver)
+        static PropertyDeclarationSyntax Property(IPropertySymbol property, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? receiver, INamedTypeSymbol? stunt)
         {
             var declaration = PropertyDeclaration(TypeName(property.Type), property.Name)
                 .WithModifiers(Modifiers(property, isOverride, explicitInterface != null))
-                .WithAccessorList(AccessorList(List(Accessors(property, receiver))));
+                .WithAccessorList(AccessorList(List(Accessors(property, receiver, stunt))));
             return explicitInterface == null
                 ? declaration
                 : declaration.WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(ParseName(explicitInterface.ToDisplayString(TypeFormat))));
         }
 
-        static IndexerDeclarationSyntax Indexer(IPropertySymbol property, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? receiver)
+        static IndexerDeclarationSyntax Indexer(IPropertySymbol property, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? receiver, INamedTypeSymbol? stunt)
         {
             var declaration = IndexerDeclaration(TypeName(property.Type))
                 .WithModifiers(Modifiers(property, isOverride, explicitInterface != null))
                 .WithParameterList(BracketedParameterList(SeparatedList(property.Parameters.Select(Parameter))))
-                .WithAccessorList(AccessorList(List(Accessors(property, receiver))));
+                .WithAccessorList(AccessorList(List(Accessors(property, receiver, stunt))));
             return explicitInterface == null
                 ? declaration
                 : declaration.WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(ParseName(explicitInterface.ToDisplayString(TypeFormat))));
@@ -232,9 +232,9 @@ namespace Stunts.Processors
                 : declaration.WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(ParseName(explicitInterface.ToDisplayString(TypeFormat))));
         }
 
-        static IEnumerable<AccessorDeclarationSyntax> Accessors(IPropertySymbol property, ExpressionSyntax? receiver)
+        static IEnumerable<AccessorDeclarationSyntax> Accessors(IPropertySymbol property, ExpressionSyntax? receiver, INamedTypeSymbol? stunt)
         {
-            if (property.GetMethod != null)
+            if (property.GetMethod != null && OverridableAccessor(property.GetMethod, stunt))
             {
                 ExpressionSyntax value = receiver != null
                     ? Proceed(receiver, property.IsIndexer
@@ -244,11 +244,12 @@ namespace Stunts.Processors
                 if (property.GetMethod.ReturnsByRef || property.GetMethod.ReturnsByRefReadonly)
                     value = RefExpression(value);
                 yield return AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                    .WithModifiers(NarrowedModifiers(property, property.GetMethod))
                     .WithExpressionBody(ArrowExpressionClause(value))
                     .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
             }
 
-            if (property.SetMethod != null && property.SetMethod.DeclaredAccessibility != Accessibility.Private)
+            if (property.SetMethod != null && OverridableAccessor(property.SetMethod, stunt))
             {
                 ExpressionSyntax value = receiver != null
                     ? Proceed(receiver, property.IsIndexer
@@ -257,13 +258,48 @@ namespace Stunts.Processors
                             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, receiver, IdentifierName(property.Name)),
                             IdentifierName("value")))
                     : ThrowNotImplemented();
-                var accessor = AccessorDeclaration(SetterKind(property.SetMethod))
+                yield return AccessorDeclaration(SetterKind(property.SetMethod))
+                    .WithModifiers(NarrowedModifiers(property, property.SetMethod))
                     .WithExpressionBody(ArrowExpressionClause(value))
                     .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
-                if (property.SetMethod.DeclaredAccessibility != property.DeclaredAccessibility &&
-                    property.SetMethod.DeclaredAccessibility == Accessibility.Protected)
-                    accessor = accessor.WithModifiers(TokenList(Token(SyntaxKind.ProtectedKeyword)));
-                yield return accessor;
+            }
+        }
+
+        // An override cannot widen an accessor (CS0507). Private, and internal or
+        // private protected from another assembly, are not part of the override.
+        static bool OverridableAccessor(IMethodSymbol accessor, INamedTypeSymbol? stunt)
+        {
+            switch (accessor.DeclaredAccessibility)
+            {
+                case Accessibility.Public:
+                case Accessibility.Protected:
+                case Accessibility.ProtectedOrInternal:
+                    return true;
+                case Accessibility.Internal:
+                case Accessibility.ProtectedAndInternal:
+                    return stunt != null && SymbolEqualityComparer.Default.Equals(accessor.ContainingAssembly, stunt.ContainingAssembly);
+                default:
+                    return false;
+            }
+        }
+
+        static SyntaxTokenList NarrowedModifiers(ISymbol property, IMethodSymbol accessor)
+        {
+            if (accessor.DeclaredAccessibility == property.DeclaredAccessibility)
+                return TokenList();
+
+            switch (accessor.DeclaredAccessibility)
+            {
+                case Accessibility.Protected:
+                    return TokenList(Token(SyntaxKind.ProtectedKeyword));
+                case Accessibility.Internal:
+                    return TokenList(Token(SyntaxKind.InternalKeyword));
+                case Accessibility.ProtectedOrInternal:
+                    return TokenList(Token(SyntaxKind.ProtectedKeyword), Token(SyntaxKind.InternalKeyword));
+                case Accessibility.ProtectedAndInternal:
+                    return TokenList(Token(SyntaxKind.PrivateKeyword), Token(SyntaxKind.ProtectedKeyword));
+                default:
+                    return TokenList();
             }
         }
 

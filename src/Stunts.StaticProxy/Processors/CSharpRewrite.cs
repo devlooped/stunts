@@ -377,9 +377,9 @@ namespace Stunts.Processors
                 if (node.AttributeLists.HasAttribute("CompilerGenerated"))
                     return base.VisitPropertyDeclaration(node);
 
-                var canRead = node.AccessorList?.Accessors.Any(SyntaxKind.GetAccessorDeclaration) == true;
-                var canWrite = node.AccessorList?.Accessors.Any(SyntaxKind.SetAccessorDeclaration) == true;
-                canRead |= node.ExpressionBody != null;
+                var getter = Accessor(node, SyntaxKind.GetAccessorDeclaration);
+                var setter = Accessor(node, SyntaxKind.SetAccessorDeclaration, SyntaxKind.InitAccessorDeclaration);
+                var canRead = getter != null || node.ExpressionBody != null;
 
                 var prop = node;
 
@@ -388,7 +388,7 @@ namespace Stunts.Processors
 
                 node = node.WithAccessorList(null);
 
-                if (canRead && !canWrite)
+                if (canRead && setter == null)
                 {
                     var baseCall = GetBaseCall(prop, SyntaxKind.GetAccessorDeclaration);
                     node = node
@@ -398,17 +398,15 @@ namespace Stunts.Processors
                 }
                 else
                 {
-                    if (canRead)
+                    if (getter != null)
                     {
                         var baseCall = GetBaseCall(prop, SyntaxKind.GetAccessorDeclaration);
-                        node = node.AddAccessorListAccessors(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
-                            .WithExpressionBody(ArrowExpressionClause(Execute(
-                                node.Type, Enumerable.Empty<ParameterSyntax>(), baseCall)))
-                            .WithSemicolon());
+                        node = node.AddAccessorListAccessors(WithBody(getter, Execute(
+                            node.Type, Enumerable.Empty<ParameterSyntax>(), baseCall)));
                     }
-                    if (canWrite)
+                    if (setter != null)
                     {
-                        var baseCall = (AssignmentExpressionSyntax?)GetBaseCall(prop, SyntaxKind.SetAccessorDeclaration);
+                        var baseCall = (AssignmentExpressionSyntax?)GetBaseCall(prop, setter.Kind());
                         // We must use the value in the invocation arguments received from the pipeline for the setter
                         // => base.Prop = m.Arguments.Get<T>();
                         baseCall = baseCall?.WithRight(InvocationExpression(
@@ -420,11 +418,9 @@ namespace Stunts.Processors
                             Argument(
                                 LiteralExpression("value"))));
 
-                        node = node.AddAccessorListAccessors(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
-                            .WithExpressionBody(ArrowExpressionClause(
-                                // NOTE: we always append the implicit "value" parameter for setters.
-                                Execute(null, new[] { Parameter(Identifier("value")).WithType(node.Type) }, baseCall)))
-                            .WithSemicolon());
+                        node = node.AddAccessorListAccessors(WithBody(setter,
+                            // NOTE: we always append the implicit "value" parameter for setters.
+                            Execute(null, new[] { Parameter(Identifier("value")).WithType(node.Type) }, baseCall)));
                     }
                 }
 
@@ -441,9 +437,9 @@ namespace Stunts.Processors
                 // NOTE: Most of this code could be shared with VisitPropertyDeclaration but the mutating With* 
                 // and props like ExpressionBody aren't available in the shared base BasePropertyDeclarationSyntax type :(
 
-                var canRead = node.AccessorList?.Accessors.Any(SyntaxKind.GetAccessorDeclaration) == true;
-                var canWrite = node.AccessorList?.Accessors.Any(SyntaxKind.SetAccessorDeclaration) == true;
-                canRead |= node.ExpressionBody != null;
+                var getter = Accessor(node, SyntaxKind.GetAccessorDeclaration);
+                var setter = Accessor(node, SyntaxKind.SetAccessorDeclaration, SyntaxKind.InitAccessorDeclaration);
+                var canRead = getter != null || node.ExpressionBody != null;
 
                 var prop = node;
 
@@ -452,7 +448,7 @@ namespace Stunts.Processors
 
                 node = node.WithAccessorList(null);
 
-                if (canRead && !canWrite)
+                if (canRead && setter == null)
                 {
                     return node.WithExpressionBody(
                         ArrowExpressionClause(
@@ -467,22 +463,20 @@ namespace Stunts.Processors
                 }
                 else
                 {
-                    if (canRead)
+                    if (getter != null)
                     {
-                        node = node.AddAccessorListAccessors(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
-                            .WithExpressionBody(ArrowExpressionClause(Execute(
-                                node.Type, node.ParameterList.Parameters,
-                                FixBaseCall(
+                        node = node.AddAccessorListAccessors(WithBody(getter, Execute(
+                            node.Type, node.ParameterList.Parameters,
+                            FixBaseCall(
+                                prop,
+                                (ElementAccessExpressionSyntax?)GetBaseCall(
                                     prop,
-                                    (ElementAccessExpressionSyntax?)GetBaseCall(
-                                        prop,
-                                        SyntaxKind.GetAccessorDeclaration)))))
-                            .WithSemicolon());
+                                    SyntaxKind.GetAccessorDeclaration)))));
                     }
 
-                    if (canWrite)
+                    if (setter != null)
                     {
-                        var baseCall = (AssignmentExpressionSyntax?)GetBaseCall(prop, SyntaxKind.SetAccessorDeclaration);
+                        var baseCall = (AssignmentExpressionSyntax?)GetBaseCall(prop, setter.Kind());
                         // Replace base indexer call args with references to pipeline invocation args
                         baseCall = baseCall?
                             .WithLeft(FixBaseCall(prop, (ElementAccessExpressionSyntax)baseCall.Left)!)
@@ -495,11 +489,9 @@ namespace Stunts.Processors
                                 Argument(
                                     LiteralExpression("value"))));
 
-                        node = node.AddAccessorListAccessors(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
-                            .WithExpressionBody(ArrowExpressionClause(
-                                Execute(null, node.ParameterList.Parameters.Concat(new[] { Parameter(Identifier("value")).WithType(node.Type) }),
-                                baseCall)))
-                            .WithSemicolon());
+                        node = node.AddAccessorListAccessors(WithBody(setter,
+                            Execute(null, node.ParameterList.Parameters.Concat(new[] { Parameter(Identifier("value")).WithType(node.Type) }),
+                            baseCall)));
                     }
                 }
 
@@ -571,6 +563,16 @@ namespace Stunts.Processors
 
                 return base.VisitEventDeclaration(node);
             }
+
+            static AccessorDeclarationSyntax? Accessor(BasePropertyDeclarationSyntax node, params SyntaxKind[] kinds)
+                => node.AccessorList?.Accessors.FirstOrDefault(accessor => kinds.Contains(accessor.Kind()));
+
+            // Keeps a narrowed accessor (protected set, internal get) on the override.
+            static AccessorDeclarationSyntax WithBody(AccessorDeclarationSyntax accessor, ExpressionSyntax body)
+                => AccessorDeclaration(accessor.Kind())
+                    .WithModifiers(accessor.Modifiers)
+                    .WithExpressionBody(ArrowExpressionClause(body))
+                    .WithSemicolon();
 
             static ElementAccessExpressionSyntax? FixBaseCall(IndexerDeclarationSyntax indexer, ElementAccessExpressionSyntax? baseCall)
                 // Replace base indexer call args with references to pipeline invocation args
