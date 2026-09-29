@@ -68,7 +68,7 @@ namespace Stunts
 
             if (value != null)
             {
-                if (type.IsAssignableFrom(value.GetType()))
+                if (type.IsAssignableFrom(value.GetType()) || AcceptsSignatureRef(type, value.GetType()))
                     return value;
                 else
                     throw new ArgumentException(ThisAssembly.Strings.ValueNotCompatible(Parameter.Name, value.GetType().GetFormattedName(), type.GetFormattedName()));
@@ -81,6 +81,40 @@ namespace Stunts
 
             throw new ArgumentNullException(nameof(value), ThisAssembly.Strings.ValueTypeIsNull(Parameter.Name, type.GetFormattedName()));
         }
+
+        /// <summary>
+        /// A <see cref="StructRef"/> or <see cref="PointerRef"/> stands in for a <c>ref struct</c> or pointer parameter.
+        /// </summary>
+        protected static bool AcceptsSignatureRef(Type parameterType, Type valueType)
+        {
+            if (!IsSignatureRef(valueType))
+                return false;
+
+            if (parameterType.IsByRef && parameterType.HasElementType)
+                parameterType = parameterType.GetElementType()!;
+
+            if (typeof(PointerRef).IsAssignableFrom(valueType))
+                return parameterType.IsPointer || IsFunctionPointer(parameterType);
+
+            return IsByRefLike(parameterType);
+        }
+
+        static bool IsSignatureRef(Type type)
+        {
+            for (var current = type; current != null; current = current.BaseType)
+            {
+                if (current == typeof(PointerRef) || current == typeof(StructRef))
+                    return true;
+            }
+
+            return false;
+        }
+
+        static bool IsByRefLike(Type type)
+            => typeof(Type).GetProperty("IsByRefLike")?.GetValue(type) is true;
+
+        static bool IsFunctionPointer(Type type)
+            => typeof(Type).GetProperty("IsFunctionPointer")?.GetValue(type) is true;
     }
 
     /// <summary>
@@ -132,7 +166,7 @@ namespace Stunts
                 if (Parameter.ParameterType.IsByRef && Parameter.ParameterType.HasElementType)
                     type = Parameter.ParameterType.GetElementType();
 
-                if (!type.IsAssignableFrom(typeof(T)))
+                if (!type.IsAssignableFrom(typeof(T)) && !AcceptsSignatureRef(type, typeof(T)))
                     throw new ArgumentException(ThisAssembly.Strings.TypeNotCompatible(
                         typeof(T).GetFormattedName(), type.GetFormattedName(), Parameter.Name));
 

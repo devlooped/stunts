@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Immutable;
-using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
@@ -9,9 +8,8 @@ using Stunts.CodeAnalysis;
 namespace Stunts
 {
     /// <summary>
-    /// Analyzes source code looking for method invocations to methods annotated with 
-    /// the <see cref="StuntGeneratorAttribute"/> and reports unsupported pointer types 
-    /// in method arguments for codegen.
+    /// Previously reported <see cref="StuntDiagnostics.PointerMember"/> for pointer signatures.
+    /// Those signatures are now generated, so the analyzer no longer reports.
     /// </summary>
     [DiagnosticAnalyzer(LanguageNames.CSharp, LanguageNames.VisualBasic)]
     public class PointerMemberAnalyzer : DiagnosticAnalyzer
@@ -48,35 +46,6 @@ namespace Stunts
         }
 
         void AnalyzeOperation(OperationAnalysisContext context)
-        {
-            var invocation = (IInvocationOperation)context.Operation;
-
-            // Get the matching symbol for the given generator attribute from the current compilation.
-            var generator = context.Compilation.GetTypeByMetadataName(generatorAttribute.FullName);
-            if (generator == null)
-                return;
-
-            if (invocation.TargetMethod.GetAttributes().Any(x =>
-                SymbolEqualityComparer.Default.Equals(x.AttributeClass, generator)))
-            {
-                var args = invocation.TargetMethod.TypeArguments
-                    .OfType<INamedTypeSymbol>()
-                    .Where(t => t.GetMembers()
-                    .OfType<IMethodSymbol>()
-                    .SelectMany(method => method.Parameters)
-                    .Any(parameter => parameter.Type.Kind == SymbolKind.PointerType))
-                    .ToArray();
-
-                if (args.Length > 0)
-                {
-                    var diagnostic = Diagnostic.Create(
-                        StuntDiagnostics.PointerMember,
-                        invocation.Syntax.GetLocation(),
-                        string.Join(", ", args.Select(t => t.Name)));
-
-                    context.ReportDiagnostic(diagnostic);
-                }
-            }
-        }
+            => _ = context.Compilation.GetTypeByMetadataName(generatorAttribute.FullName);
     }
 }

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -72,6 +72,7 @@
   <ItemGroup>
     <Compile Include="..\Stunts.Package\Stunt.cs" Link="Stunt\Stunt.cs" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="..\Stunts.Package\Stunt.StaticFactory.cs" Link="Stunt\Stunt.StaticFactory.cs" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="..\Stunts.StaticProxy\SignatureRef.cs" Link="SignatureRef.cs" />
   </ItemGroup>
 
   <Target Name="ClearMSBuild" AfterTargets="Build">
