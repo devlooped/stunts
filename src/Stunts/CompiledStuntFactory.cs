@@ -11,7 +11,7 @@ namespace Stunts
     /// assembly in <see cref="CreateStunt"/>.
     /// </summary>
     [EditorBrowsable(EditorBrowsableState.Never)]
-    public class StaticStuntFactory : IStuntFactory
+    public class CompiledStuntFactory : IStuntFactory
     {
         /// <summary>
         /// Uses the <see cref="StuntNaming.GetFullName(Type, Type[])"/> method to 

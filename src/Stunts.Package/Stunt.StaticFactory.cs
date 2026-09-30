@@ -11,7 +11,7 @@ namespace Stunts
     {
         static Stunt()
         {
-            StuntFactory.Default = new StaticStuntFactory();
+            StuntFactory.Default = new CompiledStuntFactory();
             OnInitialized();
         }
 

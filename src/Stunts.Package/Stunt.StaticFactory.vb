@@ -1,7 +1,7 @@
 Namespace Global.Stunts
     Partial Friend Class Stunt
         Shared Sub New()
-            StuntFactory.[Default] = New StaticStuntFactory
+            StuntFactory.[Default] = New CompiledStuntFactory
             OnInitialized()
         End Sub
 
