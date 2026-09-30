@@ -78,7 +78,7 @@ namespace Stunts.UnitTests
         [Fact]
         public void ConstructorInterceptionNotSupported()
         {
-            BehaviorPipelineFactory.LocalDefault = new RecordingBehaviorPipelineFactory();
+            using var ambient = BehaviorPipelineFactory.UseAmbient(new RecordingBehaviorPipelineFactory());
             StuntFactory.LocalDefault = new DynamicStuntFactory();
 
             var calculator = Stunt.Of<ICalculator>();

@@ -144,18 +144,10 @@ namespace Stunts.UnitTests.Castle
 
         public void VirtualCallDuringConstructionUsesThePipelineFactory()
         {
-            var previous = BehaviorPipelineFactory.LocalDefault;
-            BehaviorPipelineFactory.LocalDefault = new CtorBehaviorFactory();
-            try
-            {
-                var stunt = Stunt.Of<CtorCaller>();
+            using var ambient = BehaviorPipelineFactory.UseAmbient(new CtorBehaviorFactory());
+            var stunt = Stunt.Of<CtorCaller>();
 
-                Assert.Equal("proxy", stunt.Seen);
-            }
-            finally
-            {
-                BehaviorPipelineFactory.LocalDefault = previous;
-            }
+            Assert.Equal("proxy", stunt.Seen);
         }
 
         public void NestedClassAndCharReturn()
