@@ -31,6 +31,7 @@ The tests next to this file are the Castle scenarios the generator can carry. Th
 | Covariant returns | `LanguageFeaturesTests` |
 | Records (positional, empty, record plus an extra interface; `with` keeps the stunt type) | `LanguageFeaturesTests` |
 | `ref readonly`, `Span<T>` and other `ref struct` arguments and returns, pointer parameters | `Scenarios/SignatureRefs` |
+| Custom attributes on generated types, members, parameters, and returns; optional parameter defaults (including reflection invocation) | `AttributeTests` |
 
 Behaviors added with `AddBehavior` after `Stunt.Of` do not see virtual calls made from a base constructor. Castle passes interceptors into proxy creation, so they do. `BehaviorPipelineFactory` is the matching extension point, and `ClassProxyTests` uses it.
 
@@ -46,24 +47,28 @@ Castle's `IProxyGenerationHook` omits members from the proxy type. Stunts overri
 
 ### Metadata Castle copies onto the proxy
 
-The scaffold copies signatures, names, and generic constraints. It does not copy:
+The generator copies C#-expressible metadata, including custom attributes and optional
+parameter default values (covered by `AttributeTests`). Remaining metadata gaps are:
 
-- custom attributes on methods, properties, parameters, or the type (`[Serializable]`, `[Guid]`, parameter attributes)
-- metadata-only custom modifiers (`modopt` / `modreq`) that have no C# spelling. `in`, `ref readonly`, and function-pointer calling conventions are emitted as those keywords, and the compiler writes the matching modifier
-- optional-parameter default values (callers compiled against the original type still get the compiler default; reflection on the proxy method does not)
+- metadata-only custom modifiers (`modopt` / `modreq`) with no C# spelling
 - extra attributes supplied at generation time (`ProxyGenerationOptions.AdditionalAttributes`)
 
 ### Serialization
 
-Castle's proxy serialization (BinaryFormatter, `ISerializable`, restoring interceptors, mixins, selector, and generation options, including graphs with delegates back to the proxy) is a generator feature. Compile-time stunts are ordinary classes with none of that infrastructure. XML serialization of a proxy is the same kind of gap: the generated type does not replicate the attributes and constructor shape `XmlSerializer` expects.
+Castle-specific proxy serialization (`ISerializable`, restoring interceptors, mixins,
+selector, and generation options, including graphs with delegates back to the proxy) is
+not implemented by compile-time stunts. Copying `[Serializable]` and other attributes
+does not provide that proxy-serialization infrastructure.
 
 ### Delegates as additional type arguments
 
 `Stunt.Of<SomeDelegate>()` returns a delegate bound to a generated `Invoke`, and `Stunt.Of<SomeDelegate>(implementation)` forwards `next` to that delegate. A delegate combined with a class or another interface is `ST010`. Castle can also mix a delegate `Invoke` onto some other proxy (`AsDelegate` is the missing cast).
 
-### Same signature on two interfaces
+### Cannot distinguish identical interface slots
 
-One public method implements both. Both calls are intercepted, and a behavior cannot tell which interface was used. Castle emits explicit implementations so `IInvocation.Method` differs.
+Identical signatures from two interfaces share one generated implementation. Both calls
+are intercepted, but a behavior cannot tell which interface slot was called. Castle can
+emit explicit implementations so `IInvocation.Method` differs.
 
 ### Fixed additional-interface arity
 
