@@ -23,7 +23,7 @@ namespace Stunts.UnitTests.Castle
 
         public void PropertyRoundTripOnAClass()
         {
-            var stunt = Stunt.Of<Switch>();
+            Switch stunt = Stunt.Of<Switch>();
 
             stunt.Name = "on";
 
@@ -33,7 +33,7 @@ namespace Stunts.UnitTests.Castle
         public void PropertyCanBeSuppliedByABehavior()
         {
             string stored = null;
-            var stunt = Stunt.Of<INamed>().AddBehavior((invocation, next) =>
+            INamed stunt = Stunt.For<INamed>().AddBehavior((invocation, next) =>
             {
                 if (invocation.MethodBase.Name.StartsWith("set_", StringComparison.Ordinal))
                 {
@@ -42,7 +42,7 @@ namespace Stunts.UnitTests.Castle
                 }
 
                 return invocation.CreateValueReturn(stored);
-            });
+            }).ToObject();
 
             stunt.Name = "Ada";
 
@@ -52,11 +52,11 @@ namespace Stunts.UnitTests.Castle
         public void SetterOnlyProperty()
         {
             var seen = 0;
-            var stunt = Stunt.Of<IWriteOnly>().AddBehavior((invocation, next) =>
+            IWriteOnly stunt = Stunt.For<IWriteOnly>().AddBehavior((invocation, next) =>
             {
                 seen = (int)invocation.Arguments.GetValue(0);
                 return invocation.CreateReturn();
-            });
+            }, invocation => !invocation.MethodBase.IsConstructor).ToObject();
 
             stunt.Value = 12;
 
@@ -65,7 +65,7 @@ namespace Stunts.UnitTests.Castle
 
         public void IndexerRoundTrip()
         {
-            var stunt = Stunt.Of<Bag>();
+            Bag stunt = Stunt.Of<Bag>();
 
             stunt[2] = "two";
 
@@ -75,7 +75,7 @@ namespace Stunts.UnitTests.Castle
 
         public void VirtualEventReachesTheBaseField()
         {
-            var stunt = Stunt.Of<Switch>();
+            Switch stunt = Stunt.Of<Switch>();
             var raised = false;
             stunt.Toggled += (_, _) => raised = true;
 
@@ -88,14 +88,14 @@ namespace Stunts.UnitTests.Castle
         {
             var added = 0;
             var removed = 0;
-            var stunt = Stunt.Of<INotify>().AddBehavior((invocation, next) =>
+            INotify stunt = Stunt.For<INotify>().AddBehavior((invocation, next) =>
             {
                 if (invocation.MethodBase.Name.StartsWith("add_", StringComparison.Ordinal))
                     added++;
                 if (invocation.MethodBase.Name.StartsWith("remove_", StringComparison.Ordinal))
                     removed++;
                 return invocation.CreateReturn();
-            });
+            }).ToObject();
 
             void Handler(object sender, EventArgs args) { }
 
@@ -109,11 +109,11 @@ namespace Stunts.UnitTests.Castle
         public void DifferentlyCasedMembersStayDistinct()
         {
             var seen = new List<string>();
-            var stunt = Stunt.Of<ICased>().AddBehavior((invocation, next) =>
+            ICased stunt = Stunt.For<ICased>().AddBehavior((invocation, next) =>
             {
                 seen.Add(invocation.MethodBase.Name);
                 return invocation.CreateValueReturn(seen.Count);
-            });
+            }, invocation => !invocation.MethodBase.IsConstructor).ToObject();
 
             Assert.Equal(1, stunt.foo());
             Assert.Equal(2, stunt.Foo());
@@ -122,26 +122,26 @@ namespace Stunts.UnitTests.Castle
 
         public void NarrowedAccessorsStayNarrowAndAreIntercepted()
         {
-            var stunt = Stunt.Of<Levels>().AddBehavior((invocation, next) =>
+            Levels stunt = Stunt.For<Levels>().AddBehavior((invocation, next) =>
                 invocation.MethodBase.Name == "set_Name"
                     ? invocation.CreateReturn()
-                    : next(invocation, next));
+                    : next(invocation, next)).ToObject();
 
             stunt.Rename("Ada");
 
             Assert.Equal("base", stunt.Name);
 
-            var hidden = Stunt.Of<Levels>();
+            Levels hidden = Stunt.Of<Levels>();
             hidden.Hidden = 4;
 
             Assert.Equal(4, hidden.Read());
 
-            var coded = Stunt.Of<Levels>();
+            Levels coded = Stunt.Of<Levels>();
             coded.SetCode("A1");
 
             Assert.Equal("A1", coded.Code);
 
-            var slots = Stunt.Of<Levels>();
+            Levels slots = Stunt.Of<Levels>();
             slots.Put(1, "one");
 
             Assert.Equal("one", slots[1]);

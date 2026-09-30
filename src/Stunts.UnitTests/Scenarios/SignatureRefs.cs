@@ -57,14 +57,16 @@ namespace Stunts.Scenarios.SignatureRefs
         static void RefReadonlyKeepsTheModifierAndTheValue()
         {
             var stunt = Stunt.Of<Counter>();
-            ref readonly var current = ref stunt.Current();
+            Counter counter = stunt;
+
+            ref readonly var current = ref counter.Current();
             Assert.Equal(7, current);
 
             var amount = 3;
-            stunt.Add(in amount);
-            Assert.Equal(10, stunt.Current());
+            counter.Add(in amount);
+            Assert.Equal(10, counter.Current());
 
-            var type = stunt.GetType();
+            var type = counter.GetType();
             Assert.Equal(
                 typeof(Counter).GetMethod(nameof(Counter.Current))!.ReturnParameter.GetRequiredCustomModifiers(),
                 type.GetMethod(nameof(Counter.Current))!.ReturnParameter.GetRequiredCustomModifiers());
@@ -75,43 +77,49 @@ namespace Stunts.Scenarios.SignatureRefs
 
         static void SpanIsVisibleToTheBehavior()
         {
-            var stunt = Stunt.Of<Buffer>();
+            var stunt = Stunt.For<Buffer>();
             stunt.AddBehavior((invocation, next) =>
             {
                 var span = (SpanRef<int>)invocation.Arguments.GetValue("data")!;
                 span.Value[0] = 10;
                 return next(invocation, next);
-            });
+            }, invocation => !invocation.MethodBase.IsConstructor);
 
-            Assert.Equal(15, stunt.Sum(new[] { 1, 2, 3 }));
+            Buffer buffer = stunt.ToObject();
+
+            Assert.Equal(15, buffer.Sum(new[] { 1, 2, 3 }));
         }
 
         static void SpanReturnProceedsThroughStructRef()
         {
-            var stunt = Stunt.Of<Buffer>();
+            var stunt = Stunt.For<Buffer>();
             stunt.AddBehavior((invocation, next) => next(invocation, next));
 
+            Buffer buffer = stunt.ToObject();
+
             var data = new[] { 4, 5 };
-            Assert.Equal(4, stunt.First(data)[0]);
+            Assert.Equal(4, buffer.First(data)[0]);
         }
 
         static void CustomRefStructRoundTrips()
         {
-            var stunt = Stunt.Of<Parser>();
+            var stunt = Stunt.For<Parser>();
             stunt.AddBehavior((invocation, next) =>
             {
                 var token = (StructRef<Token>)invocation.Arguments.GetValue("token")!;
                 Assert.Equal(1, token.Value.Value);
                 token.Value = new Token(4);
                 return next(invocation, next);
-            });
+            }, invocation => !invocation.MethodBase.IsConstructor);
 
-            Assert.Equal(4, stunt.Read(new Token(1)));
+            Parser parser = stunt.ToObject();
+
+            Assert.Equal(4, parser.Read(new Token(1)));
         }
 
         static void PointerIsVisibleToTheBehavior()
         {
-            var stunt = Stunt.Of<Reader>();
+            var stunt = Stunt.For<Reader>();
             stunt.AddBehavior((invocation, next) =>
             {
                 var pointer = (PointerRef)invocation.Arguments.GetValue("value")!;
@@ -121,12 +129,13 @@ namespace Stunts.Scenarios.SignatureRefs
                 }
 
                 return next(invocation, next);
-            });
+            }, invocation => !invocation.MethodBase.IsConstructor);
 
             var value = 4;
+            Reader reader = stunt.ToObject();
             unsafe
             {
-                Assert.Equal(9, stunt.Read(&value));
+                Assert.Equal(9, reader.Read(&value));
             }
 
             Assert.Equal(9, value);

@@ -28,12 +28,12 @@ namespace Stunts.Scenario.ValueTypeNull
 
         static void NullReturnThrowsDescriptiveArgumentNullException()
         {
-            var stunt = Stunt.Of<IValues>().AddBehavior((invocation, next) =>
-                invocation.CreateValueReturn((object)null));
+            IValues values = Stunt.For<IValues>().AddBehavior((invocation, next) =>
+                invocation.CreateValueReturn((object)null)).ToObject();
 
             var exception = Assert.Throws<ArgumentNullException>(() =>
             {
-                stunt.GetValue();
+                values.GetValue();
             });
 
             Assert.Equal(nameof(IMethodReturn.ReturnValue), exception.ParamName);
@@ -43,11 +43,12 @@ namespace Stunts.Scenario.ValueTypeNull
 
         static void NullReturnWithRefArgumentThrowsDescriptiveArgumentNullException()
         {
-            var stunt = Stunt.Of<IValues>().AddBehavior((invocation, next) =>
-                invocation.CreateValueReturn((object)null, invocation.Arguments.Get<int>("value")));
+            IValues values = Stunt.For<IValues>().AddBehavior((invocation, next) =>
+                invocation.CreateValueReturn((object)null, invocation.Arguments.Get<int>("value")),
+                invocation => !invocation.MethodBase.IsConstructor).ToObject();
             var value = 1;
 
-            var exception = Assert.Throws<ArgumentNullException>(() => stunt.GetValue(ref value));
+            var exception = Assert.Throws<ArgumentNullException>(() => values.GetValue(ref value));
 
             Assert.Equal(nameof(IMethodReturn.ReturnValue), exception.ParamName);
             Assert.Contains(nameof(IMethodReturn.ReturnValue), exception.Message);
@@ -56,11 +57,12 @@ namespace Stunts.Scenario.ValueTypeNull
 
         static void NullDelegateReturnWithRefArgumentThrowsDescriptiveArgumentNullException()
         {
-            var stunt = Stunt.Of<ValueDelegate>().AddBehavior((invocation, next) =>
-                invocation.CreateValueReturn((object)null, invocation.Arguments.Get<int>("value")));
+            ValueDelegate values = Stunt.For<ValueDelegate>().AddBehavior((invocation, next) =>
+                invocation.CreateValueReturn((object)null, invocation.Arguments.Get<int>("value")),
+                invocation => !invocation.MethodBase.IsConstructor).ToObject();
             var value = 1;
 
-            var exception = Assert.Throws<ArgumentNullException>(() => stunt(ref value));
+            var exception = Assert.Throws<ArgumentNullException>(() => values(ref value));
 
             Assert.Equal(nameof(IMethodReturn.ReturnValue), exception.ParamName);
             Assert.Contains(nameof(IMethodReturn.ReturnValue), exception.Message);
@@ -69,12 +71,13 @@ namespace Stunts.Scenario.ValueTypeNull
 
         static void NullOutputThrowsDescriptiveArgumentNullException()
         {
-            var stunt = Stunt.Of<IValues>().AddBehavior((invocation, next) =>
-                invocation.CreateValueReturn(true, (object)null));
+            IValues values = Stunt.For<IValues>().AddBehavior((invocation, next) =>
+                invocation.CreateValueReturn(true, (object)null),
+                invocation => !invocation.MethodBase.IsConstructor).ToObject();
 
             var exception = Assert.Throws<ArgumentNullException>(() =>
             {
-                stunt.TryGetValue(out _);
+                values.TryGetValue(out _);
             });
 
             Assert.Equal("value", exception.ParamName);

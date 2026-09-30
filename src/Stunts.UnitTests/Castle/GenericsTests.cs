@@ -23,7 +23,7 @@ namespace Stunts.UnitTests.Castle
 
         public void GenericInterfaceMethodSeesTheConstructedMethod()
         {
-            var stunt = Stunt.Of<IBox<string>>().AddBehavior((invocation, next) =>
+            IBox<string> stunt = Stunt.For<IBox<string>>().AddBehavior((invocation, next) =>
             {
                 var method = (MethodInfo)invocation.MethodBase;
 
@@ -32,32 +32,34 @@ namespace Stunts.UnitTests.Castle
                 Assert.Equal(typeof(int), method.GetParameters()[0].ParameterType);
 
                 return invocation.CreateValueReturn(invocation.Arguments.Get<int>("value") * 2);
-            });
+            }, invocation => !invocation.MethodBase.IsConstructor).ToObject();
 
             Assert.Equal(42, stunt.Echo(21));
         }
 
         public void GenericClassMethodProceedsToBase()
         {
-            var stunt = Stunt.Of<Box<string>>("Ada");
+            var stunt = Stunt.For<Box<string>>("Ada");
+            Box<string> box = stunt.ToObject();
 
-            Assert.Equal("Bea", stunt.Echo("Bea"));
-            Assert.Null(stunt.Echo<string>(null!));
+            Assert.Equal("Bea", box.Echo("Bea"));
+            Assert.Null(box.Echo<string>(null!));
 
             stunt.AddBehavior((invocation, next) =>
                 invocation.MethodBase.Name == nameof(Box<string>.Echo)
                     ? invocation.CreateValueReturn("proxy")
                     : next(invocation, next));
 
-            Assert.Equal("proxy", stunt.Echo("Bea"));
+            Assert.Equal("proxy", box.Echo("Bea"));
         }
 
         public void GenericMethodWithInAndOutParameters()
         {
-            var stunt = Stunt.Of<IGenericParameters>().AddBehavior((invocation, next) =>
+            IGenericParameters stunt = Stunt.For<IGenericParameters>().AddBehavior((invocation, next) =>
                 invocation.MethodBase.Name == nameof(IGenericParameters.Read)
                     ? invocation.CreateValueReturn(invocation.Arguments.Get<Point>("value").X)
-                    : invocation.CreateValueReturn(true, "Ada"));
+                    : invocation.CreateValueReturn(true, "Ada"),
+                invocation => !invocation.MethodBase.IsConstructor).ToObject();
 
             var point = new Point(6);
 
@@ -68,17 +70,17 @@ namespace Stunts.UnitTests.Castle
 
         public void ClosedGenericInterface()
         {
-            var stunt = Stunt.Of<IBox<string>>().AddBehavior((invocation, next) =>
+            IBox<string> stunt = Stunt.For<IBox<string>>().AddBehavior((invocation, next) =>
                 invocation.MethodBase.Name.StartsWith("set_", StringComparison.Ordinal)
                     ? invocation.CreateReturn()
-                    : invocation.CreateValueReturn("Ada"));
+                    : invocation.CreateValueReturn("Ada")).ToObject();
 
             Assert.Equal("Ada", stunt.Value);
         }
 
         public void ClosedGenericClassUsesTheSuppliedConstructor()
         {
-            var stunt = Stunt.Of<Box<string>>("Ada");
+            Box<string> stunt = Stunt.Of<Box<string>>("Ada");
 
             Assert.Equal("Ada", stunt.Value);
             Assert.Equal("Ada!", stunt.Decorate("!"));
@@ -86,14 +88,14 @@ namespace Stunts.UnitTests.Castle
 
         public void ClassInheritingAnOpenGenericCanBeProxiedClosed()
         {
-            var stunt = Stunt.Of<StringBox>();
+            StringBox stunt = Stunt.Of<StringBox>();
 
             Assert.Equal("base", stunt.Value);
         }
 
         public void GenericConstraintsAreGenerated()
         {
-            var stunt = Stunt.Of<IConstraints>().AddBehavior(new DefaultValueBehavior());
+            IConstraints stunt = Stunt.For<IConstraints>().AddBehavior(new DefaultValueBehavior()).ToObject();
 
             stunt.ClassAndNew<StringBuilder>();
             stunt.Struct<int>();
