@@ -34,20 +34,6 @@ Stunts essentially implements the [proxy pattern](https://en.wikipedia.org/wiki/
 
 > NOTE: Stunts provides a fairly low-level API with just the essential building blocks on top of which higher-level APIs can be built, such as the upcoming Moq vNext API.
 
-## Requirements
-
-Stunts is a .NET Standard 2.0 library and runs on any runtime that supports that.
-
-Compile-time proxy generation leverages [Roslyn source generators](https://github.com/dotnet/roslyn/blob/master/docs/features/source-generators.cookbook.md) and therefore support the broadest possible run-time platforms since they don't require any Reflection.Emit, and also don't pay that performance cost either.
-
-Whenever compile-time proxy generation is not available (i.e. Visual Basic or C# versions before 9.0), install the `Stunts.DynamicProxy` package instead, which leverages [Castle DynamicProxy](https://github.com/castleproject/Core/blob/master/docs/dynamicproxy-introduction.md) to provide the run-time code generation.
-
-The client API for configuring proxy behaviors in either case is exactly the same.
-
-<!-- #manual -->
-> NOTE: even though generated proxies are the main usage for Stunts, the API was designed so that you can also consume the behavior pipeline easily from hand-coded proxies too.
-<!-- #manual -->
-
 ## Usage
 
 ```csharp
@@ -57,8 +43,6 @@ calc.AddBehavior((invocation, next) => ...);
 ```
 
 `AddBehavior`/`InsertBehavior` overloads allow granular control of the stunt's behavior pipeline, which is basically a [chain of responsibility](https://en.wikipedia.org/wiki/Chain-of-responsibility_pattern) that invokes all configured behaviors that apply to the current invocation. Individual behaviors can determine whether to short-circuit the call or call the next behavior in the chain.
-
-![Stunts Overloads](https://github.com/devlooped/stunts/raw/main/docs/images/AddInsertBehavior.png)
 
 Behaviors can also dynamically determine whether they apply to a given invocation by providing the optional `appliesTo` argument. In addition to the delegate-based overloads (called *anonymous behaviors*), you can also create behaviors by implementing the `IStuntBehavior` interface:
 
@@ -107,7 +91,7 @@ public static T Of<T, T1>(params object[] constructorArgs) => Create<T>(construc
 
 As you can see, the Stunts API itself uses the same extensibility mechanism that your own custom factory methods can use.
 
-### Static vs Dynamic Stunts
+### Compiled vs Dynamic Stunts
 
 By default, Stunts generates proxies at compile-time (powered by Roslyn source generators). Whenever compile-time stunts are 
 not supported (or unwanted), install the `Stunts.DynamicProxy` package, which switches the project to run-time proxies based on Castle.Core:
@@ -120,15 +104,89 @@ not supported (or unwanted), install the `Stunts.DynamicProxy` package, which sw
 
 The package sets `EnableCompileTimeStunts=false` for you. Projects that can't use compile-time stunts and don't reference `Stunts.DynamicProxy` get a build warning (`ST011`).
 
-## Debugging Optimizations
+<!-- #manual -->
+> NOTE: even though generated proxies are the main usage for Stunts, the API was designed so that you can also consume the behavior pipeline easily from hand-coded proxies too.
+<!-- #manual -->
+
+## Features
+
+The examples below use `ICalculator` from [the samples](samples/Samples/Core/ICalculator.cs), which declares `Add(int x, int y)`. Each snippet starts with a fresh stunt.
+
+### Return a value for a specific call
+
+An anonymous behavior can short-circuit a call. The `appliesTo` predicate limits it to the two-argument `Add` overload:
+
+```csharp
+var calc = Stunt.Of<ICalculator>().AddBehavior(
+    (call, _) => call.CreateValueReturn(42),
+    call => call.MethodBase.Name == nameof(ICalculator.Add) && call.Arguments.Count == 2);
+
+calc.Add(2, 3); // 42
+```
+
+### Compute a result from the arguments
+
+Arguments are available by name (or index), so a behavior can use the values passed by the caller:
+
+```csharp
+var calc = Stunt.Of<ICalculator>().AddBehavior(
+    (call, _) => call.CreateValueReturn(call.Arguments.Get<int>("x") + call.Arguments.Get<int>("y")),
+    call => call.MethodBase.Name == nameof(ICalculator.Add) && call.Arguments.Count == 2);
+
+calc.Add(2, 3); // 5
+```
+
+### Compose behaviors
+
+Behaviors run in order. Put recording first to capture calls and results, and a default-value behavior last to handle calls not matched by the `Add` behavior:
+
+```csharp
+var recorder = new RecordingBehavior();
+var calc = Stunt.Of<ICalculator>()
+    .AddBehavior(recorder)
+    .AddBehavior((call, _) => call.CreateValueReturn(5),
+        call => call.MethodBase.Name == nameof(ICalculator.Add) && call.Arguments.Count == 2)
+    .AddBehavior(new DefaultValueBehavior());
+
+calc.Add(2, 3); // 5
+var calls = recorder.Invocations.Count; // 1
+```
+
+### Customize default values
+
+Register a factory when the built-in defaults are not suitable. Here, each call to a delegate stunt returns a greeting:
+
+```csharp
+var defaults = new DefaultValueProvider();
+defaults.Register(() => "Hello!");
+var greet = Stunt.Of<Func<string>>().AddBehavior(new DefaultValueBehavior(defaults));
+
+greet(); // "Hello!"
+```
+
+### Intercept a real implementation
+
+Pass a delegate implementation to `Stunt.Of` and call `next` to forward to it. Behaviors can change arguments before forwarding:
+
+```csharp
+var add = Stunt.Of<Func<int, int, int>>((x, y) => x + y).AddBehavior((call, next) =>
+{
+    call.Arguments.Set(0, 10);
+    return next(call, next);
+});
+
+add(1, 2); // 12
+```
+
+### Debugging Optimizations
 
 There is nothing more frustrating than a proxy/stunt you have carefully configured that doesn't behave the way you expect it to. In order to make this a less frustrating experience, Stunts is carefully optimized for debugger display and inspection, so that it's clear what behaviors are configured, and invocations and results are displayed clearly and concisely. Here's the debugging display of the `RecordingBehavior` that just keeps track of invocations and their return values for example:
 
-![debugging display](https://github.com/devlooped/stunts/raw/main/docs/images/DebuggerDisplay.png)
+![debugging display](docs/images/DebuggerDisplay.png)
 
 And here's the invocation debugger display from an anonymous behavior:
 
-![behavior debugging](https://github.com/devlooped/stunts/raw/main/docs/images/DebuggingBehavior.png)
+![behavior debugging](docs/images/DebuggingBehavior.png)
 
 <!-- #samples -->
 ## Samples
