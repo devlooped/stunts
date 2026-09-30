@@ -1,4 +1,5 @@
 using System;
+using Sample;
 using Stunts.Sample;
 using Xunit;
 

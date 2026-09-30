@@ -10,10 +10,11 @@ namespace Stunts.Scenarios.ClassBaseAbstractType
         public void Run()
         {
             var stunt = Stunt.Of<CalculatorBase>();
+            CalculatorBase calculator = stunt;
 
-            Assert.Throws<NotImplementedException>(() => stunt.Mode = CalculatorMode.Scientific);
-            Assert.Throws<NotImplementedException>(() => stunt.Mode);
-            Assert.Throws<NotImplementedException>(() => stunt.TurnOn());
+            Assert.Throws<NotImplementedException>(() => calculator.Mode = CalculatorMode.Scientific);
+            Assert.Throws<NotImplementedException>(() => calculator.Mode);
+            Assert.Throws<NotImplementedException>(() => calculator.TurnOn());
         }
     }
 }

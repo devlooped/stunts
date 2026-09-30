@@ -20,15 +20,15 @@ namespace Stunts.Scenarios.ClassBaseTypeCtors
     {
         public void Run()
         {
-            var stunt = Stunt.Of<BaseTypeCtor>("Foo");
+            BaseTypeCtor instance = Stunt.Of<BaseTypeCtor>("Foo");
 
-            Assert.Equal("Foo", stunt.Name);
-            Assert.True(stunt.Enabled);
+            Assert.Equal("Foo", instance.Name);
+            Assert.True(instance.Enabled);
 
-            stunt = Stunt.Of<BaseTypeCtor>("Foo", false);
+            instance = Stunt.Of<BaseTypeCtor>("Foo", false);
 
-            Assert.Equal("Foo", stunt.Name);
-            Assert.False(stunt.Enabled);
+            Assert.Equal("Foo", instance.Name);
+            Assert.False(instance.Enabled);
         }
     }
 }

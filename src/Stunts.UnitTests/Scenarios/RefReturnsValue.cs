@@ -16,12 +16,14 @@ namespace Scenarios.RefReturnsValue
     {
         public void Run()
         {
-            var stunt = Stunt.Of<IMemory>();
+            var stunt = Stunt.For<IMemory>();
             Ref<int> original = 12;
 
             stunt.AddBehavior((invocation, next) => invocation.CreateValueReturn(original));
 
-            ref int value = ref stunt.Get();
+            IMemory memory = stunt.ToObject();
+
+            ref int value = ref memory.Get();
             value = 42;
 
             // Original value changes too :)

@@ -16,10 +16,12 @@ namespace Scenarios.RefReturns
     {
         public void Run()
         {
-            var stunt = Stunt.Of<IMemory>();
+            var stunt = Stunt.For<IMemory>();
             stunt.AddBehavior(new DefaultValueBehavior());
 
-            ref int value = ref stunt.Get();
+            IMemory memory = stunt.ToObject();
+
+            ref int value = ref memory.Get();
             Assert.Equal(0, value);
         }
     }

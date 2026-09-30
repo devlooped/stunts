@@ -27,11 +27,11 @@ namespace Stunts.UnitTests.Castle
         public void BehaviorHandlesACallWithNoTarget()
         {
             var seen = false;
-            var action = Stunt.Of<Action>().AddBehavior((invocation, next) =>
+            Action action = Stunt.For<Action>().AddBehavior((invocation, next) =>
             {
                 seen = invocation.MethodBase.Name == "Invoke";
                 return invocation.CreateReturn();
-            });
+            }).ToObject();
 
             action();
 
@@ -42,11 +42,11 @@ namespace Stunts.UnitTests.Castle
         public void NoTargetLeavesTheTailEmpty()
         {
             bool? hasImplementation = null;
-            var action = Stunt.Of<Action>().AddBehavior((invocation, next) =>
+            Action action = Stunt.For<Action>().AddBehavior((invocation, next) =>
             {
                 hasImplementation = invocation.HasImplementation;
                 return next(invocation, next);
-            });
+            }).ToObject();
 
             Assert.Throws<NotImplementedException>(() => action());
             Assert.False(hasImplementation);
@@ -56,7 +56,7 @@ namespace Stunts.UnitTests.Castle
         {
             var called = false;
             Action implementation = () => called = true;
-            var action = Stunt.Of<Action>(implementation);
+            Action action = Stunt.Of<Action>(implementation);
 
             action();
 
@@ -68,13 +68,13 @@ namespace Stunts.UnitTests.Castle
         {
             var order = new List<string>();
             Action implementation = () => order.Add("impl");
-            var action = Stunt.Of<Action>(implementation).AddBehavior((invocation, next) =>
+            Action action = Stunt.For<Action>(implementation).AddBehavior((invocation, next) =>
             {
                 order.Add("before");
                 var result = next(invocation, next);
                 order.Add("after");
                 return result;
-            });
+            }).ToObject();
 
             action();
 
@@ -85,11 +85,11 @@ namespace Stunts.UnitTests.Castle
         {
             var seen = 0;
             Action<int> implementation = value => seen = value;
-            var action = Stunt.Of<Action<int>>(implementation).AddBehavior((invocation, next) =>
+            Action<int> action = Stunt.For<Action<int>>(implementation).AddBehavior((invocation, next) =>
             {
                 invocation.Arguments.SetValue("obj", 41);
                 return next(invocation, next);
-            });
+            }).ToObject();
 
             action(1);
 
@@ -104,11 +104,11 @@ namespace Stunts.UnitTests.Castle
                 value = result;
                 return result;
             };
-            var action = Stunt.Of<RefImpl>(implementation).AddBehavior((invocation, next) =>
+            RefImpl action = Stunt.For<RefImpl>(implementation).AddBehavior((invocation, next) =>
             {
                 invocation.Arguments.SetValue("value", 4);
                 return next(invocation, next);
-            });
+            }).ToObject();
 
             var value = 1;
             var returned = action(ref value);
@@ -130,7 +130,7 @@ namespace Stunts.UnitTests.Castle
         {
             var seen = 0;
             Named implementation = method => seen = method;
-            var action = Stunt.Of<Named>(implementation);
+            Named action = Stunt.Of<Named>(implementation);
 
             action(7);
 
@@ -141,7 +141,7 @@ namespace Stunts.UnitTests.Castle
         {
             var seen = "";
             HidesFields target = (left, right) => seen = left + ":" + right;
-            var action = Stunt.Of<HidesFields>(target);
+            HidesFields action = Stunt.Of<HidesFields>(target);
 
             action(2, 9);
 
@@ -160,7 +160,7 @@ namespace Stunts.UnitTests.Castle
             {
                 var called = false;
                 Hidden implementation = () => called = true;
-                var action = Stunt.Of<Hidden>(implementation);
+                Hidden action = Stunt.Of<Hidden>(implementation);
 
                 action();
 
