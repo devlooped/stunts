@@ -11,7 +11,7 @@ namespace Sample
         {
             var calculator = Stunt.Of<ICalculator, IDisposable>();
 
-            Assert.IsNotType<StaticStuntFactory>(StuntFactory.Default);
+            Assert.IsNotType<CompiledStuntFactory>(StuntFactory.Default);
 
             var recorder = new RecordingBehavior();
             calculator.AddBehavior(recorder);

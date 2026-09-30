@@ -10,7 +10,7 @@ Namespace Sample
         Public Sub CanConfigureDefaultValues()
             Dim calculator = Stunt.[Of](Of ICalculator, IDisposable)()
 
-            Assert.IsNotType(Of StaticStuntFactory)(StuntFactory.[Default])
+            Assert.IsNotType(Of CompiledStuntFactory)(StuntFactory.[Default])
 
             Dim recorder = New RecordingBehavior()
             calculator.AddBehavior(recorder)
