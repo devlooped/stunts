@@ -17,7 +17,7 @@ namespace Stunts.Scenario.InterfaceBase
     {
         public void Run()
         {
-            BehaviorPipelineFactory.LocalDefault = new RecordingBehaviorPipelineFactory();
+            using var ambient = BehaviorPipelineFactory.UseAmbient(new RecordingBehaviorPipelineFactory());
             var stunt = Stunt.Of<IBasicInterface>();
 
             Assert.NotNull(stunt);

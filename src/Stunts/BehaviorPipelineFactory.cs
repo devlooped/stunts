@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 
 namespace Stunts
@@ -24,8 +25,8 @@ namespace Stunts
         /// for creating the initial pipelines used during a stunt instantiation.
         /// </summary>
         /// <remarks>
-        /// A <see cref="LocalDefault"/> can override the value of this global 
-        /// default, if assigned to a non-null value.
+        /// An ambient <see cref="IBehaviorPipelineFactory"/> can override the value of this global 
+        /// default, via <see cref="UseAmbient(IBehaviorPipelineFactory)"/>. This is typically only needed for testing.
         /// </remarks>
         public static IBehaviorPipelineFactory Default
         {
@@ -34,14 +35,24 @@ namespace Stunts
         }
 
         /// <summary>
-        /// Gets or sets the <see cref="IBehaviorPipelineFactory"/> to use 
-        /// in the current (async) flow, so it does not affect other threads/flows.
-        /// This is typically used in tests to isolate the default pipeline configurations.
+        /// Sets an ambient <see cref="IBehaviorPipelineFactory"/> to use for <see cref="Default"/> for the current execution context.
         /// </summary>
-        public static IBehaviorPipelineFactory? LocalDefault
+        /// <param name="factory">The <see cref="IBehaviorPipelineFactory"/> to set as the ambient <see cref="Default"/>.</param>
+        /// <returns>An <see cref="IDisposable"/> that, when disposed, restores the original execution context default.</returns>
+        public static IDisposable UseAmbient(IBehaviorPipelineFactory factory) => new AmbientDisposable(localFactory, factory);
+
+        class AmbientDisposable : IDisposable
         {
-            get => localFactory.Value;
-            set => localFactory.Value = value;
+            readonly AsyncLocal<IBehaviorPipelineFactory?> storage;
+            readonly IBehaviorPipelineFactory? original;
+
+            public AmbientDisposable(AsyncLocal<IBehaviorPipelineFactory?> storage, IBehaviorPipelineFactory factory)
+            {
+                this.storage = storage;
+                original = storage.Value;
+                storage.Value = factory;
+            }
+            public void Dispose() => storage.Value = original;
         }
 
         class DefaultBehaviorPipelineFactory : IBehaviorPipelineFactory

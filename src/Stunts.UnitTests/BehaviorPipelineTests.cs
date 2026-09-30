@@ -389,13 +389,13 @@ namespace Stunts.UnitTests
             await Task.WhenAll(
                 Task.Run(() =>
                 {
-                    BehaviorPipelineFactory.LocalDefault = factory1;
+                    using var ambient = BehaviorPipelineFactory.UseAmbient(factory1);
                     Thread.Sleep(50);
                     Assert.Same(factory1, BehaviorPipelineFactory.Default);
                 }),
                 Task.Run(() =>
                 {
-                    BehaviorPipelineFactory.LocalDefault = factory2;
+                    using var ambient = BehaviorPipelineFactory.UseAmbient(factory2);
                     Thread.Sleep(50);
                     Assert.Same(factory2, BehaviorPipelineFactory.Default);
                 })
