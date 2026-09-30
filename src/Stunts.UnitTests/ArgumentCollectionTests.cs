@@ -101,8 +101,8 @@ namespace Stunts.UnitTests
         [Fact]
         public void GetTypedThrowsIfNull()
         {
-            Assert.Throws<ArgumentNullException>(() => new ArgumentCollection(new ObjectArgument(valueTypeMethod.GetParameters()[0], null)).Get<int>(0));
-            Assert.Throws<ArgumentNullException>(() => new ArgumentCollection(new ObjectArgument(valueTypeMethod.GetParameters()[0], null)).Get<int>("value"));
+            Assert.Throws<ArgumentNullException>(() => new ArgumentCollection(new NullArgument(valueTypeMethod.GetParameters()[0])).Get<int>(0));
+            Assert.Throws<ArgumentNullException>(() => new ArgumentCollection(new NullArgument(valueTypeMethod.GetParameters()[0])).Get<int>("value"));
 
             Assert.Throws<ArgumentNullException>(() => new ArgumentCollection(new ObjectArgument(referenceTypeMethod.GetParameters()[0], null)).Get<string>(0));
             Assert.Throws<ArgumentNullException>(() => new ArgumentCollection(new ObjectArgument(referenceTypeMethod.GetParameters()[0], null)).Get<string>("value"));
@@ -134,6 +134,13 @@ namespace Stunts.UnitTests
         public static void DoNullableValueType(int? value) { }
         public static void DoReferenceType(string value) { }
         public static void DoMultiple(string message, int count, bool enabled) { }
+
+        sealed record NullArgument(ParameterInfo Parameter) : Argument(Parameter)
+        {
+            public override object? RawValue => null;
+
+            public override Argument WithRawValue(object? rawValue) => this;
+        }
     }
 
     public class CustomType

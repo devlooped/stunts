@@ -94,7 +94,9 @@ namespace Stunts.Processors
                 {
                     statements.Add(ReturnStatement(CastExpression(
                         MemberScaffold.TypeName(invoke.ReturnType),
-                        Dot(IdentifierName(result), "ReturnValue"))));
+                        Call(
+                            Dot(IdentifierName(result), nameof(MethodReturnExtensions.GetReturnValue)),
+                            Argument(TypeOfExpression(MemberScaffold.TypeName(invoke.ReturnType)))))));
                 }
             }
 

@@ -87,7 +87,7 @@ namespace Stunts
                     type.GetGenericTypeDefinition() == typeof(Nullable<>))
                     return default!;
                 else if (type.IsValueType)
-                    throw new ArgumentNullException(argument.Parameter.Name, ThisAssembly.Strings.ValueTypeIsNull(argument.Parameter.Name, type));
+                    return (T)ValueConversion.Validate(value, argument.Parameter.Name, type)!;
 
                 throw new ArgumentNullException(argument.Parameter.Name, ThisAssembly.Strings.ValueIsNull(argument.Parameter.Name));
             }
@@ -112,7 +112,7 @@ namespace Stunts
                     type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
                     return default;
 
-                throw new ArgumentNullException(argument.Parameter.Name, ThisAssembly.Strings.ValueIsNull(argument.Parameter.Name));
+                return (T?)ValueConversion.Validate(value, argument.Parameter.Name, type);
             }
 
             if (type.IsAssignableFrom(value.GetType()))
