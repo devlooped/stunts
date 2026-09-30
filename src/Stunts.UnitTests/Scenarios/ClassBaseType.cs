@@ -40,28 +40,29 @@ namespace Stunts.Scenarios.ClassBaseType
         public void Run()
         {
             var stunt = Stunt.Of<BaseType>();
+            BaseType instance = stunt;
 
-            stunt.Platform = PlatformID.MacOSX;
+            instance.Platform = PlatformID.MacOSX;
 
-            Assert.Equal(PlatformID.MacOSX, stunt.Platform);
+            Assert.Equal(PlatformID.MacOSX, instance.Platform);
 
-            Assert.False(stunt.IsOn);
+            Assert.False(instance.IsOn);
 
             var on = false;
-            stunt.TurnedOn += (_, _) => on = true;
-            stunt.TurnOn();
-            Assert.True(stunt.IsOn);
+            instance.TurnedOn += (_, _) => on = true;
+            instance.TurnOn();
+            Assert.True(instance.IsOn);
             Assert.True(on);
 
             var x = 5;
             var y = 10;
             var mem = 42;
-            Assert.True(stunt.TryAdd(x, y, ref mem, out var z));
+            Assert.True(instance.TryAdd(x, y, ref mem, out var z));
             Assert.Equal(15, z);
 
-            stunt[0, "foo"] = "bar";
+            instance[0, "foo"] = "bar";
 
-            Assert.Equal("bar", stunt[0, "foo"]);
+            Assert.Equal("bar", instance[0, "foo"]);
         }
     }
 }

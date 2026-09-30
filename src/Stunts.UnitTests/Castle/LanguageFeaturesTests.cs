@@ -18,41 +18,43 @@ namespace Stunts.UnitTests.Castle
 
         public void CovariantReturnUsesTheDerivedSignature()
         {
-            var stunt = Stunt.Of<StringReturn>();
+            var stunt = Stunt.For<StringReturn>();
+            StringReturn value = stunt.ToObject();
 
-            Assert.Equal("derived", stunt.Value());
+            Assert.Equal("derived", value.Value());
 
             stunt.AddBehavior((invocation, next) => invocation.CreateValueReturn("proxy"));
 
-            Assert.Equal("proxy", stunt.Value());
+            Assert.Equal("proxy", value.Value());
         }
 
         public void PositionalRecordConstructorAndVirtualMethod()
         {
-            var stunt = Stunt.Of<Person>("Ada");
+            var stunt = Stunt.For<Person>("Ada");
+            Person person = stunt.ToObject();
 
-            Assert.Equal("Ada", stunt.Name);
-            Assert.Equal("Hello Ada", stunt.Greet());
+            Assert.Equal("Ada", person.Name);
+            Assert.Equal("Hello Ada", person.Greet());
 
             stunt.AddBehavior((invocation, next) =>
                 invocation.MethodBase.Name == nameof(Person.Greet)
                     ? invocation.CreateValueReturn("hi")
                     : next(invocation, next));
 
-            Assert.Equal("hi", stunt.Greet());
-            Assert.Equal("Ada", stunt.Name);
+            Assert.Equal("hi", person.Greet());
+            Assert.Equal("Ada", person.Name);
 
-            var copy = stunt with { Name = "Bea" };
+            var copy = person with { Name = "Bea" };
 
             Assert.Equal("Bea", copy.Name);
-            Assert.IsType(stunt.GetType(), copy);
+            Assert.IsType(person.GetType(), copy);
             // The synthesized record copy copies the pipeline field.
             Assert.Equal("hi", copy.Greet());
         }
 
         public void EmptyRecord()
         {
-            var stunt = Stunt.Of<Empty>();
+            Empty stunt = Stunt.Of<Empty>();
 
             Assert.IsAssignableFrom<Empty>(stunt);
             Assert.IsAssignableFrom<IStunt>(stunt);
@@ -60,7 +62,7 @@ namespace Stunts.UnitTests.Castle
 
         public void RecordCanTakeAnAdditionalInterface()
         {
-            var stunt = Stunt.Of<Person, IDisposable>("Ada");
+            Person stunt = Stunt.Of<Person, IDisposable>("Ada");
 
             Assert.IsAssignableFrom<Person>(stunt);
             Assert.IsAssignableFrom<IDisposable>(stunt);

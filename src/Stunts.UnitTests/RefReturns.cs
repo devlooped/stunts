@@ -9,15 +9,16 @@ namespace Stunts.UnitTests
         [Fact]
         public void CanReturnRef()
         {
-            INumbers stunt = new NumbersStunt();
-
+            var stunt = new NumbersStunt();
 
             Ref<int> value = 25;
 
             stunt.AddBehavior((invocation, next) => invocation.CreateValueReturn(value, invocation.Arguments));
 
+            INumbers numbers = stunt;
+
             var index = 0;
-            ref int v = ref stunt.NumberAt(ref index, out var count);
+            ref int v = ref numbers.NumberAt(ref index, out var count);
 
             v = 42;
 

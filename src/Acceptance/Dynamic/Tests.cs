@@ -9,13 +9,14 @@ namespace Sample
         [Fact]
         public void CanConfigureDefaultValues()
         {
-            var calculator = Stunt.Of<ICalculator, IDisposable>();
+            var stunt = Stunt.For<ICalculator, IDisposable>();
+            ICalculator calculator = stunt.ToObject();
 
             Assert.IsNotType<CompiledStuntFactory>(StuntFactory.Default);
 
             var recorder = new RecordingBehavior();
-            calculator.AddBehavior(recorder);
-            calculator.AddBehavior(new DefaultValueBehavior());
+            stunt.AddBehavior(recorder);
+            stunt.AddBehavior(new DefaultValueBehavior());
 
             Assert.IsAssignableFrom<IDisposable>(calculator);
 

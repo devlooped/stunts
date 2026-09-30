@@ -10,10 +10,12 @@ namespace Scenarios.NestedType
     {
         public void Run()
         {
-            var stunt = Stunt.Of<IFoo>()
-                .AddBehavior(new DefaultValueBehavior());
+            var stunt = Stunt.For<IFoo>()
+                .AddBehavior(new DefaultValueBehavior()).ToObject();
 
-            stunt.Do();
+            IFoo foo = stunt;
+
+            foo.Do();
         }
 
         public interface IFoo

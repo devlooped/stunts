@@ -18,21 +18,22 @@ namespace Stunts.Scenario.InterfaceBase
         public void Run()
         {
             using var ambient = BehaviorPipelineFactory.UseAmbient(new RecordingBehaviorPipelineFactory());
-            var stunt = Stunt.Of<IBasicInterface>();
+            var stunt = Stunt.For<IBasicInterface>();
+            IBasicInterface basic = stunt.ToObject();
 
-            Assert.NotNull(stunt);
-            Assert.IsAssignableFrom<IStunt>(stunt);
+            Assert.NotNull(basic);
+            Assert.IsAssignableFrom<IStunt>(basic);
 
             // Recorder tracks call to constructor.
-            Assert.Single(((IStunt)stunt).Behaviors);
-            Assert.Single(((RecordingBehavior)((IStunt)stunt).Behaviors[0]).Invocations);
+            Assert.Single(stunt.Behaviors);
+            Assert.Single(((RecordingBehavior)stunt.Behaviors[0]).Invocations);
 
             // If no returning behavior is configured, invoking it throws.
-            Assert.Throws<NotImplementedException>(() => stunt.Run());
+            Assert.Throws<NotImplementedException>(() => basic.Run());
 
             // When we add at least one matching behavior, invocations succeed.
             stunt.AddBehavior(new DefaultValueBehavior());
-            stunt.Run();
+            basic.Run();
         }
 
         class RecordingBehaviorPipelineFactory : IBehaviorPipelineFactory

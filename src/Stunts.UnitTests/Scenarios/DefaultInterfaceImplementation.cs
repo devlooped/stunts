@@ -46,7 +46,7 @@ namespace Stunts.Scenarios.DefaultInterfaceImplementation
 
         public void DefaultsRunWhenNotIntercepted()
         {
-            var stunt = Stunt.Of<IDefault>();
+            IDefault stunt = Stunt.Of<IDefault>();
 
             Assert.Equal(5, stunt.Value);
             Assert.Equal("Hello Ada", stunt.Greet("Ada"));
@@ -57,10 +57,10 @@ namespace Stunts.Scenarios.DefaultInterfaceImplementation
 
         public void DefaultsCanBeReplaced()
         {
-            var stunt = Stunt.Of<IDefault>().AddBehavior((invocation, next) =>
+            IDefault stunt = Stunt.For<IDefault>().AddBehavior((invocation, next) =>
                 invocation.MethodBase.Name == "get_Value"
                     ? invocation.CreateValueReturn(42)
-                    : next(invocation, next));
+                    : next(invocation, next)).ToObject();
 
             Assert.Equal(42, stunt.Value);
             Assert.Equal("Hello Ada", stunt.Greet("Ada"));
@@ -68,13 +68,13 @@ namespace Stunts.Scenarios.DefaultInterfaceImplementation
 
         public void DefaultsCanBeProceededTo()
         {
-            var stunt = Stunt.Of<IDefault>().AddBehavior((invocation, next) =>
+            IDefault stunt = Stunt.For<IDefault>().AddBehavior((invocation, next) =>
             {
                 var result = next(invocation, next);
                 return invocation.MethodBase.Name == nameof(IDefault.Greet)
                     ? invocation.CreateValueReturn(result.ReturnValue + "!")
                     : result;
-            });
+            }).ToObject();
 
             Assert.Equal("Hello Ada!", stunt.Greet("Ada"));
             Assert.Equal(5, stunt.Value);
@@ -83,12 +83,12 @@ namespace Stunts.Scenarios.DefaultInterfaceImplementation
         public void DefaultEventIsIntercepted()
         {
             var added = 0;
-            var stunt = Stunt.Of<IDefault>().AddBehavior((invocation, next) =>
+            IDefault stunt = Stunt.For<IDefault>().AddBehavior((invocation, next) =>
             {
                 if (invocation.MethodBase.Name == "add_Changed")
                     added++;
                 return next(invocation, next);
-            });
+            }).ToObject();
 
             stunt.Changed += (sender, args) => { };
 
@@ -97,7 +97,7 @@ namespace Stunts.Scenarios.DefaultInterfaceImplementation
 
         public void DerivedInterfaceDefaultIsMostSpecific()
         {
-            var stunt = Stunt.Of<IDerived>();
+            IDerived stunt = Stunt.Of<IDerived>();
 
             Assert.Equal(6, stunt.Value);
             Assert.Equal("Hello Ada", stunt.Greet("Ada"));
@@ -105,27 +105,29 @@ namespace Stunts.Scenarios.DefaultInterfaceImplementation
 
         public void GenericInterfaceDefault()
         {
-            var stunt = Stunt.Of<IEcho<string>>();
+            var stunt = Stunt.For<IEcho<string>>();
+            IEcho<string> echo = stunt.ToObject();
 
-            Assert.Equal("Ada", stunt.Echo("Ada"));
+            Assert.Equal("Ada", echo.Echo("Ada"));
 
             stunt.AddBehavior((invocation, next) => invocation.CreateValueReturn("Bea"));
 
-            Assert.Equal("Bea", stunt.Echo("Ada"));
+            Assert.Equal("Bea", echo.Echo("Ada"));
         }
 
         public void ClassWithAdditionalInterfaceDefault()
         {
-            var stunt = Stunt.Of<Impl, IDefault>();
+            var stunt = Stunt.For<Impl, IDefault>();
+            Impl impl = stunt.ToObject();
 
-            Assert.Equal(5, ((IDefault)stunt).Value);
+            Assert.Equal(5, ((IDefault)impl).Value);
 
             stunt.AddBehavior((invocation, next) =>
                 invocation.MethodBase.Name == "get_Value"
                     ? invocation.CreateValueReturn(42)
                     : next(invocation, next));
 
-            Assert.Equal(42, ((IDefault)stunt).Value);
+            Assert.Equal(42, ((IDefault)impl).Value);
         }
 
         public void DefaultImplementationClass()
