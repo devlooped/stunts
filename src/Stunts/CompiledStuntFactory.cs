@@ -31,7 +31,11 @@ namespace Stunts
 
             try
             {
-                return Activator.CreateInstance(type, constructorArguments);
+                var instance = Activator.CreateInstance(type, constructorArguments);
+                if (baseType.BaseType == typeof(MulticastDelegate))
+                    return Delegate.CreateDelegate(baseType, instance, instance.GetType().GetMethod("Invoke"));
+
+                return instance;
             }
             catch (TargetInvocationException tie)
             {

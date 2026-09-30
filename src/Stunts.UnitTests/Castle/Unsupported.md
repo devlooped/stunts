@@ -57,9 +57,9 @@ The scaffold copies signatures, names, and generic constraints. It does not copy
 
 Castle's proxy serialization (BinaryFormatter, `ISerializable`, restoring interceptors, mixins, selector, and generation options, including graphs with delegates back to the proxy) is a generator feature. Compile-time stunts are ordinary classes with none of that infrastructure. XML serialization of a proxy is the same kind of gap: the generated type does not replicate the attributes and constructor shape `XmlSerializer` expects.
 
-### Delegates
+### Delegates as additional type arguments
 
-`Stunt.Of<SomeDelegate>()` is a sealed base type (`ST003`). Castle can proxy delegate types and use delegates as mixins.
+`Stunt.Of<SomeDelegate>()` returns a delegate bound to a generated `Invoke`, and `Stunt.Of<SomeDelegate>(implementation)` forwards `next` to that delegate. A delegate combined with a class or another interface is `ST010`. Castle can also mix a delegate `Invoke` onto some other proxy (`AsDelegate` is the missing cast).
 
 ### Same signature on two interfaces
 

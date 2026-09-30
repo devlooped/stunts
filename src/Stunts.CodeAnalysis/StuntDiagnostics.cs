@@ -97,6 +97,19 @@ namespace Stunts.CodeAnalysis
         /// Diagnostic reported when a nested type can only be inherited from inside its 
         /// containing type, and that type is not partial in this compilation.
         /// </summary>
+        /// <summary>
+        /// Diagnostic reported when a delegate type argument is combined with any other type.
+        /// A delegate stunt is only <c>Stunt.Of&lt;SomeDelegate&gt;()</c>.
+        /// </summary>
+        public static DiagnosticDescriptor DelegateWithOtherTypes { get; } = new DiagnosticDescriptor(
+            "ST010",
+            "Delegate type combined with other types",
+            "Delegate type '{0}' must be the only type argument",
+            "Build",
+            DiagnosticSeverity.Error,
+            true,
+            "A delegate stunt is created with Stunt.Of<T>() where T is the delegate. It cannot be combined with a class or additional interfaces.");
+
         public static DiagnosticDescriptor ContainingTypeNotPartial { get; } = new DiagnosticDescriptor(
             "ST008",
             "Containing type is not partial",

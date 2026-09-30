@@ -83,7 +83,7 @@ namespace Stunts.CodeAnalysis
             => containingNamespace == null || containingNamespace.IsGlobalNamespace ? rootNamespace : rootNamespace + "." + containingNamespace.ToString();
 
         IEnumerable<INamedTypeSymbol> Sorted(IEnumerable<INamedTypeSymbol> symbols)
-            => symbols.Where(x => x.TypeKind == TypeKind.Class)
+            => symbols.Where(x => x.TypeKind == TypeKind.Class || x.TypeKind == TypeKind.Delegate)
                 .Concat(symbols.Where(x => x.TypeKind == TypeKind.Interface).OrderBy(x => x.Name));
     }
 }

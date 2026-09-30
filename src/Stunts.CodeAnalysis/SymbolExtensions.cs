@@ -66,6 +66,14 @@ namespace Stunts.CodeAnalysis
             if (symbols.Length == 0)
                 throw new ArgumentException(ThisAssembly.Strings.SymbolRequired);
 
+            if (symbols.Any(symbol => symbol.TypeKind == TypeKind.Delegate))
+            {
+                if (symbols.Length == 1)
+                    return (symbols[0], ImmutableArray<INamedTypeSymbol>.Empty);
+
+                throw new ArgumentException(ThisAssembly.Strings.InvalidStuntTypes(string.Join(",", symbols.Select(symbol => symbol.Name))));
+            }
+
             var baseType = default(INamedTypeSymbol);
             var additionalInterfaces = default(IEnumerable<INamedTypeSymbol>);
             if (symbols[0].TypeKind == TypeKind.Class)
@@ -108,6 +116,15 @@ namespace Stunts.CodeAnalysis
                 return false;
 
             Debug.Assert(!symbols.Any(x => x.TypeKind == TypeKind.Error), "Symbol(s) contain errors.");
+
+            if (symbols.Any(symbol => symbol.TypeKind == TypeKind.Delegate))
+            {
+                if (symbols.Length != 1)
+                    return false;
+
+                result = ((INamedTypeSymbol)symbols[0], ImmutableArray<INamedTypeSymbol>.Empty);
+                return true;
+            }
 
             var baseType = default(INamedTypeSymbol);
             var additionalInterfaces = default(IEnumerable<INamedTypeSymbol>);

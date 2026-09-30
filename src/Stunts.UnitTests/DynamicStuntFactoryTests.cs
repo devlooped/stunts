@@ -45,6 +45,37 @@ namespace Stunts.UnitTests
         }
 
         [Fact]
+        public void DelegateForwardsToTheImplementation()
+        {
+            var factory = new DynamicStuntFactory();
+            var called = false;
+            Action implementation = () => called = true;
+
+            var action = (Action)factory.CreateStunt(
+                Assembly.GetExecutingAssembly(),
+                typeof(Action),
+                Array.Empty<Type>(),
+                new object[] { implementation });
+
+            action();
+
+            Assert.True(called);
+        }
+
+        [Fact]
+        public void DelegateWithoutImplementationThrows()
+        {
+            var factory = new DynamicStuntFactory();
+            var action = (Action)factory.CreateStunt(
+                Assembly.GetExecutingAssembly(),
+                typeof(Action),
+                Array.Empty<Type>(),
+                Array.Empty<object>());
+
+            Assert.Throws<NotImplementedException>(() => action());
+        }
+
+        [Fact]
         public void ConstructorInterceptionNotSupported()
         {
             BehaviorPipelineFactory.LocalDefault = new RecordingBehaviorPipelineFactory();

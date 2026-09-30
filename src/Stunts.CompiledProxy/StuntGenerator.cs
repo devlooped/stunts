@@ -185,6 +185,10 @@ namespace Stunts
                 .OfType<IStuntCandidatesReceiver>()
                 .SelectMany(receiver => receiver.GetCandidates(context)).ToArray())
             {
+                if (candidate.Any(type => type.TypeKind == TypeKind.Delegate) &&
+                    !candidate.TryValidateGeneratorTypes(out _))
+                    continue;
+
                 var name = naming.GetName(candidate);
                 if (stunts.Contains(name))
                     continue;
