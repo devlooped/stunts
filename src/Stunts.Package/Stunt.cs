@@ -5,13 +5,251 @@
 //     the code is regenerated.
 // </auto-generated>
 
-#nullable disable // So we can keep a single file regardless of the nullability of the calling project.
+#nullable enable // So we can keep a single file regardless of the nullability of the calling project.
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 namespace Stunts
 {
+    /// <summary>
+    /// Holds a reference to a stunt of type <typeparamref name="T"/>, exposing its
+    /// <see cref="Behaviors"/> for configuration, and allowing conversion to
+    /// <typeparamref name="T"/> via <see cref="ToObject"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// When constructed from a <see cref="Lazy{T}"/>, the stunt is created on the first
+    /// <see cref="ToObject"/> call. Behaviors added before that call initialize the pipeline
+    /// used during construction, including virtual members invoked from a base constructor,
+    /// via <see cref="BehaviorPipelineFactory.UseAmbient"/>. If none were added, the factory
+    /// already current at that call is used.
+    /// </para>
+    /// <para>
+    /// The implicit conversion to <typeparamref name="T"/> only applies when
+    /// <typeparamref name="T"/> is a class or a delegate, since C# does not allow
+    /// user-defined conversions to interface types. Use <see cref="ToObject"/> otherwise.
+    /// The conversion calls <see cref="ToObject"/>.
+    /// </para>
+    /// </remarks>
+    [CompilerGenerated]
+    [ExcludeFromCodeCoverage]
+    partial class StuntReference<T> : IStunt
+    {
+        readonly IList<IStuntBehavior> behaviors = new List<IStuntBehavior>();
+        readonly Lazy<T> lazy;
+        IStunt? stunt = default;
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="StuntReference{T}"/> that constructs the stunt
+        /// on the first <see cref="ToObject"/> call.
+        /// </summary>
+        /// <param name="value">The deferred stunt of type <typeparamref name="T"/>.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
+        public StuntReference(Lazy<T> value)
+        {
+            if (value == null)
+                throw new ArgumentNullException(nameof(value));
+
+            lazy = value;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="StuntReference{T}"/> for an already constructed stunt.
+        /// </summary>
+        /// <param name="value">The stunt of type <typeparamref name="T"/> to reference.</param>
+        /// <exception cref="ArgumentException">Thrown when the value does not implement <see cref="IStunt"/>.</exception>
+        public StuntReference(T value)
+            : this(new Lazy<T>(() => value))
+        {
+            // Construction already happened, so behaviors apply to the live instance immediately.
+            stunt = Unwrap(value);
+        }
+
+        /// <summary>
+        /// Gets the behaviors associated with the referenced stunt.
+        /// </summary>
+        /// <remarks>
+        /// Before the stunt is constructed, this is the list that seeds its pipeline.
+        /// Afterwards it is the stunt's own behavior list.
+        /// </remarks>
+        public IList<IStuntBehavior> Behaviors => stunt?.Behaviors ?? behaviors;
+
+        /// <summary>
+        /// Gets the referenced stunt of type <typeparamref name="T"/>, constructing it on the first call.
+        /// </summary>
+        public T ToObject()
+        {
+            if (stunt == null)
+            {
+                // Capture the current factory first: the ambient scope below hides it,
+                // and an unconfigured reference should still construct with that factory.
+                var fallback = BehaviorPipelineFactory.Default;
+                using var _ = BehaviorPipelineFactory.UseAmbient(new ReferencePipelineFactory(behaviors, fallback));
+                var created = lazy.Value;
+                var resolved = Unwrap(created);
+                // Dynamic proxies create their pipeline on the first intercept, which includes this getter.
+                EnsurePipeline(resolved);
+                stunt = resolved;
+                return created;
+            }
+
+            return lazy.Value;
+        }
+
+        /// <summary>
+        /// Allows implicit conversion from <see cref="StuntReference{T}"/> to <typeparamref name="T"/>
+        /// whenever <typeparamref name="T"/> is not an interface.
+        /// </summary>
+        public static implicit operator T(StuntReference<T> stunt) => stunt.ToObject();
+
+        static IStunt Unwrap(T value) =>
+            // A delegate stunt is the bound delegate; its target is the generated instance.
+            value as IStunt ??
+            (value as Delegate)?.Target as IStunt ??
+            throw new ArgumentException($"Value of type {typeof(T)} does not implement IStunt.", nameof(value));
+
+        static void EnsurePipeline(IStunt instance) => _ = instance.Behaviors;
+
+        class ReferencePipelineFactory : IBehaviorPipelineFactory
+        {
+            readonly IList<IStuntBehavior> behaviors;
+            readonly IBehaviorPipelineFactory fallback;
+
+            public ReferencePipelineFactory(IList<IStuntBehavior> behaviors, IBehaviorPipelineFactory fallback)
+            {
+                this.behaviors = behaviors;
+                this.fallback = fallback;
+            }
+
+            public BehaviorPipeline CreatePipeline<TStunt>()
+                => behaviors.Count == 0 ? fallback.CreatePipeline<TStunt>() : new BehaviorPipeline(behaviors);
+        }
+    }
+
+    /// <summary>
+    /// Builds stunts that all share the same set of <see cref="Behaviors"/>, which are 
+    /// applied from the very beginning of the stunt instantiation, including any virtual 
+    /// members invoked from a base class constructor.
+    /// </summary>
+    /// <remarks>
+    /// Behaviors are configured with the same <c>AddBehavior</c>/<c>InsertBehavior</c> 
+    /// extension methods available for any <see cref="IStunt"/>, and each <c>Build</c> 
+    /// call creates the stunt with a pipeline initialized with a snapshot of the 
+    /// behaviors configured at that point, via <see cref="BehaviorPipelineFactory.UseAmbient"/>.
+    /// </remarks>
+    [CompilerGenerated]
+    [ExcludeFromCodeCoverage]
+    partial class StuntBuilder : IStunt
+    {
+        /// <summary>
+        /// Behaviors applied to every stunt created by this builder.
+        /// </summary>
+        public IList<IStuntBehavior> Behaviors { get; } = new List<IStuntBehavior>();
+
+        T Create<T>(object[] constructorArgs, params Type[] interfaces)
+        {
+            using (BehaviorPipelineFactory.UseAmbient(new BuilderPipelineFactory(Behaviors)))
+                return (T)StuntFactory.Default.CreateStunt(typeof(Stunt).Assembly, typeof(T), interfaces, constructorArgs);
+        }
+
+        /// <summary>
+        /// Creates a stunt that inherits or implements the type <typeparamref name="T"/>.
+        /// </summary>
+        [StuntGenerator]
+        public T Build<T>(params object[] constructorArgs) => Create<T>(constructorArgs);
+
+        /// <summary>
+        /// Creates a stunt for the delegate <typeparamref name="T"/> that forwards to
+        /// <paramref name="implementation"/>. The builder behaviors run first;
+        /// <c>next</c> invokes <paramref name="implementation"/>.
+        /// </summary>
+        [StuntGenerator]
+        public T Build<T>(T implementation) where T : Delegate
+        {
+            if (implementation == null)
+                throw new ArgumentNullException(nameof(implementation));
+
+            return Create<T>(new object[] { implementation });
+        }
+
+        /// <summary>
+        /// Creates a stunt that inherits or implements <typeparamref name="T"/> and 
+        /// additionally implements <typeparamref name="T1"/>.
+        /// </summary>
+        [StuntGenerator]
+        public T Build<T, T1>(params object[] constructorArgs) => Create<T>(constructorArgs, typeof(T1));
+
+        /// <summary>
+        /// Creates a stunt that inherits or implements <typeparamref name="T"/> and 
+        /// additionally implements <typeparamref name="T1"/> and <typeparamref name="T2"/>.
+        /// </summary>
+        [StuntGenerator]
+        public T Build<T, T1, T2>(params object[] constructorArgs) => Create<T>(constructorArgs, typeof(T1), typeof(T2));
+
+        /// <summary>
+        /// Creates a stunt that inherits or implements <typeparamref name="T"/> and 
+        /// additionally implements <typeparamref name="T1"/>, <typeparamref name="T2"/> and 
+        /// <typeparamref name="T3"/>.
+        /// </summary>
+        [StuntGenerator]
+        public T Build<T, T1, T2, T3>(params object[] constructorArgs) => Create<T>(constructorArgs, typeof(T1), typeof(T2), typeof(T3));
+
+        /// <summary>
+        /// Creates a stunt that inherits or implements <typeparamref name="T"/> and 
+        /// additionally implements <typeparamref name="T1"/>, <typeparamref name="T2"/>, 
+        /// <typeparamref name="T3"/> and <typeparamref name="T4"/>.
+        /// </summary>
+        [StuntGenerator]
+        public T Build<T, T1, T2, T3, T4>(params object[] constructorArgs) => Create<T>(constructorArgs, typeof(T1), typeof(T2), typeof(T3), typeof(T4));
+
+        /// <summary>
+        /// Creates a stunt that inherits or implements <typeparamref name="T"/> and 
+        /// additionally implements <typeparamref name="T1"/>, <typeparamref name="T2"/>, 
+        /// <typeparamref name="T3"/>, <typeparamref name="T4"/> and <typeparamref name="T5"/>.
+        /// </summary>
+        [StuntGenerator]
+        public T Build<T, T1, T2, T3, T4, T5>(params object[] constructorArgs) => Create<T>(constructorArgs, typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5));
+
+        /// <summary>
+        /// Creates a stunt that inherits or implements <typeparamref name="T"/> and 
+        /// additionally implements <typeparamref name="T1"/>, <typeparamref name="T2"/>, 
+        /// <typeparamref name="T3"/>, <typeparamref name="T4"/>, <typeparamref name="T5"/> 
+        /// and <typeparamref name="T6"/>.
+        /// </summary>
+        [StuntGenerator]
+        public T Build<T, T1, T2, T3, T4, T5, T6>(params object[] constructorArgs) => Create<T>(constructorArgs, typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5), typeof(T6));
+
+        /// <summary>
+        /// Creates a stunt that inherits or implements <typeparamref name="T"/> and 
+        /// additionally implements <typeparamref name="T1"/>, <typeparamref name="T2"/>, 
+        /// <typeparamref name="T3"/>, <typeparamref name="T4"/>, <typeparamref name="T5"/> 
+        /// <typeparamref name="T6"/> and <typeparamref name="T7"/>.
+        /// </summary>
+        [StuntGenerator]
+        public T Build<T, T1, T2, T3, T4, T5, T6, T7>(params object[] constructorArgs) => Create<T>(constructorArgs, typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5), typeof(T6), typeof(T7));
+
+        /// <summary>
+        /// Creates a stunt that inherits or implements <typeparamref name="T"/> and 
+        /// additionally implements <typeparamref name="T1"/>, <typeparamref name="T2"/>, 
+        /// <typeparamref name="T3"/>, <typeparamref name="T4"/>, <typeparamref name="T5"/> 
+        /// <typeparamref name="T6"/>, <typeparamref name="T7"/> and <typeparamref name="T8"/>.
+        /// </summary>
+        [StuntGenerator]
+        public T Build<T, T1, T2, T3, T4, T5, T6, T7, T8>(params object[] constructorArgs) => Create<T>(constructorArgs, typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5), typeof(T6), typeof(T7), typeof(T8));
+
+        class BuilderPipelineFactory : IBehaviorPipelineFactory
+        {
+            readonly IEnumerable<IStuntBehavior> behaviors;
+
+            public BuilderPipelineFactory(IEnumerable<IStuntBehavior> behaviors) => this.behaviors = behaviors;
+
+            // The pipeline copies the behaviors, so later builder changes don't affect created stunts.
+            public BehaviorPipeline CreatePipeline<TStunt>() => new BehaviorPipeline(behaviors);
+        }
+    }
+
     /// <summary>
     /// Instantiates stunts for the specified types.
     /// </summary>
@@ -21,6 +259,22 @@ namespace Stunts
     {
         static T Create<T>(object[] constructorArgs, params Type[] interfaces) =>
             (T)StuntFactory.Default.CreateStunt(typeof(Stunt).Assembly, typeof(T), interfaces, constructorArgs);
+
+        static StuntReference<TResult> Defer<TResult>(Func<TResult> factory) =>
+            new StuntReference<TResult>(new Lazy<TResult>(factory));
+
+        /// <summary>
+        /// Creates a <see cref="StuntBuilder"/> that applies the same behaviors to every 
+        /// stunt it builds, from the moment of their instantiation.
+        /// </summary>
+        public static StuntBuilder Builder() => new StuntBuilder();
+
+        /// <summary>
+        /// Gets a reference to an existing stunt, so behaviors can be added to it after the fact.
+        /// </summary>
+        /// <param name="stunt">An existing stunt, typically created via one of the <c>Of</c> overloads.</param>
+        /// <exception cref="ArgumentException">Thrown when the value does not implement <see cref="IStunt"/>.</exception>
+        public static StuntReference<T> Get<T>(T stunt) => new StuntReference<T>(stunt);
 
         /// <summary>
         /// Creates a stunt that inherits or implements the type <typeparamref name="T"/>.
@@ -38,6 +292,7 @@ namespace Stunts
         {
             if (implementation == null)
                 throw new ArgumentNullException(nameof(implementation));
+
             return Create<T>(new object[] { implementation });
         }
 
@@ -105,5 +360,99 @@ namespace Stunts
         /// </summary>
         [StuntGenerator]
         public static T Of<T, T1, T2, T3, T4, T5, T6, T7, T8>(params object[] constructorArgs) => Create<T>(constructorArgs, typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5), typeof(T6), typeof(T7), typeof(T8));
+
+        /// <summary>
+        /// Creates a stunt that inherits or implements the type <typeparamref name="T"/>, 
+        /// returning a reference to it that allows configuring its behaviors.
+        /// The instance is constructed on the first <see cref="StuntReference{T}.ToObject"/> call.
+        /// </summary>
+        [StuntGenerator]
+        public static StuntReference<T> For<T>(params object[] constructorArgs) => Defer(() => Create<T>(constructorArgs));
+
+        /// <summary>
+        /// Creates a stunt for the delegate <typeparamref name="T"/> that forwards to
+        /// <paramref name="implementation"/>, returning a reference to it that allows 
+        /// configuring its behaviors. Behaviors added afterwards run first; 
+        /// <c>next</c> invokes <paramref name="implementation"/>.
+        /// </summary>
+        [StuntGenerator]
+        public static StuntReference<T> For<T>(T implementation) where T : Delegate
+        {
+            if (implementation == null)
+                throw new ArgumentNullException(nameof(implementation));
+
+            return Defer(() => Create<T>(new object[] { implementation }));
+        }
+
+        /// <summary>
+        /// Creates a stunt that inherits or implements <typeparamref name="T"/> and 
+        /// additionally implements <typeparamref name="T1"/>, returning a reference 
+        /// to it that allows configuring its behaviors.
+        /// </summary>
+        [StuntGenerator]
+        public static StuntReference<T> For<T, T1>(params object[] constructorArgs) => Defer(() => Create<T>(constructorArgs, typeof(T1)));
+
+        /// <summary>
+        /// Creates a stunt that inherits or implements <typeparamref name="T"/> and 
+        /// additionally implements <typeparamref name="T1"/> and <typeparamref name="T2"/>, 
+        /// returning a reference to it that allows configuring its behaviors.
+        /// </summary>
+        [StuntGenerator]
+        public static StuntReference<T> For<T, T1, T2>(params object[] constructorArgs) => Defer(() => Create<T>(constructorArgs, typeof(T1), typeof(T2)));
+
+        /// <summary>
+        /// Creates a stunt that inherits or implements <typeparamref name="T"/> and 
+        /// additionally implements <typeparamref name="T1"/>, <typeparamref name="T2"/> and 
+        /// <typeparamref name="T3"/>, returning a reference to it that allows configuring its behaviors.
+        /// </summary>
+        [StuntGenerator]
+        public static StuntReference<T> For<T, T1, T2, T3>(params object[] constructorArgs) => Defer(() => Create<T>(constructorArgs, typeof(T1), typeof(T2), typeof(T3)));
+
+        /// <summary>
+        /// Creates a stunt that inherits or implements <typeparamref name="T"/> and 
+        /// additionally implements <typeparamref name="T1"/>, <typeparamref name="T2"/>, 
+        /// <typeparamref name="T3"/> and <typeparamref name="T4"/>, returning a reference 
+        /// to it that allows configuring its behaviors.
+        /// </summary>
+        [StuntGenerator]
+        public static StuntReference<T> For<T, T1, T2, T3, T4>(params object[] constructorArgs) => Defer(() => Create<T>(constructorArgs, typeof(T1), typeof(T2), typeof(T3), typeof(T4)));
+
+        /// <summary>
+        /// Creates a stunt that inherits or implements <typeparamref name="T"/> and 
+        /// additionally implements <typeparamref name="T1"/>, <typeparamref name="T2"/>, 
+        /// <typeparamref name="T3"/>, <typeparamref name="T4"/> and <typeparamref name="T5"/>, 
+        /// returning a reference to it that allows configuring its behaviors.
+        /// </summary>
+        [StuntGenerator]
+        public static StuntReference<T> For<T, T1, T2, T3, T4, T5>(params object[] constructorArgs) => Defer(() => Create<T>(constructorArgs, typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5)));
+
+        /// <summary>
+        /// Creates a stunt that inherits or implements <typeparamref name="T"/> and 
+        /// additionally implements <typeparamref name="T1"/>, <typeparamref name="T2"/>, 
+        /// <typeparamref name="T3"/>, <typeparamref name="T4"/>, <typeparamref name="T5"/> 
+        /// and <typeparamref name="T6"/>, returning a reference to it that allows configuring its behaviors.
+        /// </summary>
+        [StuntGenerator]
+        public static StuntReference<T> For<T, T1, T2, T3, T4, T5, T6>(params object[] constructorArgs) => Defer(() => Create<T>(constructorArgs, typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5), typeof(T6)));
+
+        /// <summary>
+        /// Creates a stunt that inherits or implements <typeparamref name="T"/> and 
+        /// additionally implements <typeparamref name="T1"/>, <typeparamref name="T2"/>, 
+        /// <typeparamref name="T3"/>, <typeparamref name="T4"/>, <typeparamref name="T5"/> 
+        /// <typeparamref name="T6"/> and <typeparamref name="T7"/>, returning a reference 
+        /// to it that allows configuring its behaviors.
+        /// </summary>
+        [StuntGenerator]
+        public static StuntReference<T> For<T, T1, T2, T3, T4, T5, T6, T7>(params object[] constructorArgs) => Defer(() => Create<T>(constructorArgs, typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5), typeof(T6), typeof(T7)));
+
+        /// <summary>
+        /// Creates a stunt that inherits or implements <typeparamref name="T"/> and 
+        /// additionally implements <typeparamref name="T1"/>, <typeparamref name="T2"/>, 
+        /// <typeparamref name="T3"/>, <typeparamref name="T4"/>, <typeparamref name="T5"/> 
+        /// <typeparamref name="T6"/>, <typeparamref name="T7"/> and <typeparamref name="T8"/>, 
+        /// returning a reference to it that allows configuring its behaviors.
+        /// </summary>
+        [StuntGenerator]
+        public static StuntReference<T> For<T, T1, T2, T3, T4, T5, T6, T7, T8>(params object[] constructorArgs) => Defer(() => Create<T>(constructorArgs, typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5), typeof(T6), typeof(T7), typeof(T8)));
     }
 }
