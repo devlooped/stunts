@@ -152,7 +152,7 @@ namespace Stunts.Processors
             {
                 var parameter = invoke.Parameters[index];
                 var local = prefix + "p" + index;
-                statements.Add(Typed(ValueType(parameter.Type), local, Read("m", "Arguments", parameter)));
+                statements.Add(Typed(ValueType(parameter.Type), local, Read("invocation", "Arguments", parameter)));
 
                 var argument = Argument(IdentifierName(local));
                 var keyword = RefKeyword(parameter.RefKind);
@@ -169,14 +169,14 @@ namespace Stunts.Processors
 
             if (invoke.ReturnsVoid && !writesBack)
             {
-                statements.Add(ReturnStatement(Call(Dot(IdentifierName("m"), "CreateReturn"))));
+                statements.Add(ReturnStatement(Call(Dot(IdentifierName("invocation"), "CreateReturn"))));
             }
             else if (!writesBack)
             {
                 statements.Add(ReturnStatement(Call(
-                    Dot(IdentifierName("m"), "CreateValueReturn"),
+                    Dot(IdentifierName("invocation"), "CreateValueReturn"),
                     Argument(call),
-                    Argument(Dot(IdentifierName("m"), "Arguments")))));
+                    Argument(Dot(IdentifierName("invocation"), "Arguments")))));
             }
             else
             {
@@ -184,7 +184,7 @@ namespace Stunts.Processors
                     ? (ExpressionSyntax)LiteralExpression(SyntaxKind.NullLiteralExpression)
                     : IdentifierName(prefix + "returned");
                 statements.Add(ReturnStatement(Call(
-                    Dot(IdentifierName("m"), "CreateValueReturn"),
+                    Dot(IdentifierName("invocation"), "CreateValueReturn"),
                     Argument(value),
                     Argument(UpdatedArguments(invoke, method, prefix)))));
             }
@@ -192,8 +192,8 @@ namespace Stunts.Processors
             return ParenthesizedLambdaExpression()
                 .WithParameterList(ParameterList(SeparatedList(new[]
                 {
-                    Parameter(Identifier("m")),
-                    Parameter(Identifier("n")),
+                    Parameter(Identifier("invocation")),
+                    Parameter(Identifier("next")),
                 })))
                 .WithBody(Block(statements));
         }

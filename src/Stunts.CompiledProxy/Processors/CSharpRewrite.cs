@@ -119,11 +119,11 @@ namespace Stunts.Processors
                     LambdaExpression(
                         new[]
                         {
-                            Parameter("m"),
-                            Parameter("n")
+                            Parameter("invocation"),
+                            Parameter("next")
                         },
                         InvocationExpression(
-                            "m",
+                            "invocation",
                             "CreateReturn")));
 
                 var body = InvocationExpression(
@@ -200,7 +200,7 @@ namespace Stunts.Processors
                                     prefix + parameter.Identifier,
                                     InvocationExpression(
                                         MemberAccessExpression(
-                                            MemberAccessExpression("m", nameof(IMethodInvocation.Arguments)),
+                                            MemberAccessExpression("invocation", nameof(IMethodInvocation.Arguments)),
                                             parameter.Type!.Kind() == SyntaxKind.NullableType ?
                                             GenericName(nameof(ArgumentCollectionExtensions.GetNullable), parameter.Type!) :
                                             GenericName(nameof(ArgumentCollectionExtensions.Get), parameter.Type!)),
@@ -232,14 +232,14 @@ namespace Stunts.Processors
                                     .Concat(new []
                                     {
                                         Argument(
-                                            // (m, n) => ...,
+                                            // (invocation, next) => ...,
                                             LambdaExpression(
                                                 new []
                                                 {
-                                                    Parameter(Identifier("m")),
-                                                    Parameter(Identifier("n")),
+                                                    Parameter(Identifier("invocation")),
+                                                    Parameter(Identifier("next")),
                                                 },
-                                                // var _NAME = m.Arguments.Get<int>("NAME");
+                                                // var _NAME = invocation.Arguments.Get<int>("NAME");
                                                 method.ParameterList.Parameters.Where(x => x.IsRefOut()).Select(InitLocal)
                                                 // If method was void, we must call base before returning
                                                 .Concat(method.ReturnType.IsVoid() ?
@@ -247,10 +247,10 @@ namespace Stunts.Processors
                                                     Array.Empty<StatementSyntax>())
                                                 .Concat(new StatementSyntax[]
                                                 {
-                                                    // return m.CreateValueReturn(base.METHOD(_NAME, ...))
+                                                    // return invocation.CreateValueReturn(base.METHOD(_NAME, ...))
                                                     ReturnStatement(
                                                         InvocationExpression(
-                                                            "m",
+                                                            "invocation",
                                                             // We could call CreateReturn for void methods, but 
                                                             // this works too and makes the argument passing simpler
                                                             "CreateValueReturn",
@@ -416,10 +416,10 @@ namespace Stunts.Processors
                     {
                         var baseCall = (AssignmentExpressionSyntax?)GetBaseCall(prop, setter.Kind());
                         // We must use the value in the invocation arguments received from the pipeline for the setter
-                        // => base.Prop = m.Arguments.Get<T>();
+                        // => base.Prop = invocation.Arguments.Get<T>();
                         baseCall = baseCall?.WithRight(InvocationExpression(
                             MemberAccessExpression(
-                                MemberAccessExpression("m", nameof(IMethodInvocation.Arguments)),
+                                MemberAccessExpression("invocation", nameof(IMethodInvocation.Arguments)),
                                 node.Type.Kind() == SyntaxKind.NullableType ?
                                 GenericName(nameof(ArgumentCollectionExtensions.GetNullable), node.Type) :
                                 GenericName(nameof(ArgumentCollectionExtensions.Get), node.Type)),
@@ -490,7 +490,7 @@ namespace Stunts.Processors
                             .WithLeft(FixBaseCall(prop, (ElementAccessExpressionSyntax)baseCall.Left)!)
                             .WithRight(InvocationExpression(
                                 MemberAccessExpression(
-                                    MemberAccessExpression("m", nameof(IMethodInvocation.Arguments)),
+                                    MemberAccessExpression("invocation", nameof(IMethodInvocation.Arguments)),
                                     node.Type.Kind() == SyntaxKind.NullableType ?
                                     GenericName(nameof(ArgumentCollectionExtensions.GetNullable), node.Type) :
                                     GenericName(nameof(ArgumentCollectionExtensions.Get), node.Type)),
@@ -587,7 +587,7 @@ namespace Stunts.Processors
                         Argument(
                             InvocationExpression(
                                 MemberAccessExpression(
-                                    MemberAccessExpression("m", nameof(IMethodInvocation.Arguments)),
+                                    MemberAccessExpression("invocation", nameof(IMethodInvocation.Arguments)),
                                     prm.Type!.Kind() == SyntaxKind.NullableType ?
                                     GenericName(nameof(ArgumentCollectionExtensions.GetNullable), prm.Type) :
                                     GenericName(nameof(ArgumentCollectionExtensions.Get), prm.Type!)),
@@ -643,11 +643,11 @@ namespace Stunts.Processors
                         LambdaExpression(
                             new[]
                             {
-                                Parameter("m"),
-                                Parameter("n")
+                                Parameter("invocation"),
+                                Parameter("next")
                             },
                             InvocationExpression(
-                                "m",
+                                "invocation",
                                 "CreateValueReturn",
                                 Argument(baseCall))),
                         typeParameters);
@@ -656,13 +656,13 @@ namespace Stunts.Processors
                         LambdaExpression(
                             new[]
                             {
-                                Parameter("m"),
-                                Parameter("n")
+                                Parameter("invocation"),
+                                Parameter("next")
                             },
                             ExpressionStatement(baseCall),
                             ReturnStatement(
                                 InvocationExpression(
-                                    "m",
+                                    "invocation",
                                     "CreateReturn"))),
                         typeParameters);
             }
@@ -845,7 +845,7 @@ namespace Stunts.Processors
                 if (baseCall == null)
                     return null;
 
-                var parameters = new[] { Parameter("m"), Parameter("n") };
+                var parameters = new[] { Parameter("invocation"), Parameter("next") };
                 if (returnIsStruct)
                 {
                     return LambdaExpression(
@@ -853,7 +853,7 @@ namespace Stunts.Processors
                         ExpressionStatement(AssignmentExpression(
                             MemberAccessExpression(IdentifierName(returnedRef), IdentifierName("Value")),
                             baseCall)),
-                        ReturnStatement(InvocationExpression("m", "CreateValueReturn", Argument(IdentifierName(returnedRef)))));
+                        ReturnStatement(InvocationExpression("invocation", "CreateValueReturn", Argument(IdentifierName(returnedRef)))));
                 }
 
                 if (returnIsPointer)
@@ -861,7 +861,7 @@ namespace Stunts.Processors
                     return LambdaExpression(
                         parameters,
                         ReturnStatement(InvocationExpression(
-                            "m",
+                            "invocation",
                             "CreateValueReturn",
                             Argument(ObjectCreationExpression(
                                 IdentifierName("PointerRef"),
@@ -875,10 +875,10 @@ namespace Stunts.Processors
                     return LambdaExpression(
                         parameters,
                         ExpressionStatement(baseCall),
-                        ReturnStatement(InvocationExpression("m", "CreateReturn")));
+                        ReturnStatement(InvocationExpression("invocation", "CreateReturn")));
                 }
 
-                return LambdaExpression(parameters, InvocationExpression("m", "CreateValueReturn", Argument(baseCall)));
+                return LambdaExpression(parameters, InvocationExpression("invocation", "CreateValueReturn", Argument(baseCall)));
             }
 
             static ExpressionSyntax CreateHeld(IEnumerable<ArgumentSyntax> values, LambdaExpressionSyntax? target, TypeParameterListSyntax? typeParameters)
