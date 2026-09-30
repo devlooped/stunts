@@ -10,8 +10,10 @@ and runs everywhere, even where run-time code generation (Reflection.Emit) is fo
 limitted, like physical iOS devices and game consoles, through compile-time code generation. 
 The proxy behavior is configured in code using what we call a behavior pipeline.
 
-      IMyService service = Stunt.Of&lt;IMyService&gt;();
-service.AddBehavior(...);
+      ICalculator calculator = Stunt
+        .For&lt;ICalculator&gt;()
+        .AddBehavior((invocation, next) => ..., appliesTo: invocation => ...)
+        .ToObject();
     </Description>
     <PackageTags>dotnet proxy runtime dynamic</PackageTags>
   </PropertyGroup>
