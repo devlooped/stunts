@@ -117,12 +117,6 @@ namespace Stunts.UnitTests
             Assert.NotEqual(first, second.WithRawValue(24));
         }
 
-
-
-
-
-
-
         [Fact]
         public void WhenTypedValueIsCompatible_ThenRawValueEqualsValue()
         {

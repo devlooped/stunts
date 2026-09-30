@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -47,6 +48,14 @@ namespace Stunts.Processors
             if (model.GetDeclaredSymbol(declaration, context.CancellationToken) is not INamedTypeSymbol symbol)
                 return syntax;
 
+            var original = declaration;
+            if (ProxiedType(declaration, model) is INamedTypeSymbol proxied)
+            {
+                var copied = AttributeReplication.Replicate(proxied, AttributeTargets.Class, symbol.ContainingAssembly, includeInherited: false);
+                if (copied.Count > 0)
+                    declaration = declaration.WithAttributeLists(declaration.AttributeLists.AddRange(copied));
+            }
+
             var members = new List<MemberDeclarationSyntax>();
             members.AddRange(Constructors(symbol));
 
@@ -56,7 +65,7 @@ namespace Stunts.Processors
                 if (generated.ContainsKey(ParameterSignature(member)))
                     continue;
                 generated.Add(ParameterSignature(member), member);
-                members.Add(Stub(member, isOverride: true, explicitInterface: null, stunt: symbol));
+                members.Add(Stub(member, isOverride: true, explicitInterface: null, stunt: symbol, assembly: symbol.ContainingAssembly));
             }
 
             members.AddRange(InterfaceStubs(symbol, generated, context.CancellationToken));
@@ -65,10 +74,19 @@ namespace Stunts.Processors
             {
                 context.DefaultImplementations.Add(provider);
                 var instance = DefaultInstance(context.NamingConvention, provider, member.ContainingType);
-                members.Add(Stub(member, isOverride: false, explicitInterface: Collides(member, generated), instance, symbol));
+                members.Add(Stub(member, false, Collides(member, generated), instance, symbol, symbol.ContainingAssembly));
             }
 
-            return syntax.ReplaceNode(declaration, declaration.AddMembers(members.ToArray()));
+            return syntax.ReplaceNode(original, declaration.AddMembers(members.ToArray()));
+        }
+
+        // The first base is the class, or the primary interface when the stunt has no class base.
+        static INamedTypeSymbol? ProxiedType(TypeDeclarationSyntax declaration, SemanticModel model)
+        {
+            var first = declaration.BaseList?.Types.FirstOrDefault();
+            if (first == null)
+                return null;
+            return model.GetTypeInfo(first.Type).Type as INamedTypeSymbol;
         }
 
         /// <summary>
@@ -77,8 +95,9 @@ namespace Stunts.Processors
         /// </summary>
         internal static IEnumerable<MemberDeclarationSyntax> InterfaceStubs(INamedTypeSymbol symbol, Dictionary<string, ISymbol> generated, CancellationToken cancellationToken)
         {
+            var assembly = symbol.ContainingAssembly;
             foreach (var member in symbol.GetUnimplementedInterfaceMembers(cancellationToken))
-                yield return Stub(member, isOverride: false, explicitInterface: Collides(member, generated));
+                yield return Stub(member, isOverride: false, explicitInterface: Collides(member, generated), assembly: assembly);
         }
 
         // Same parameters, different return type: IEnumerable.GetEnumerator vs IEnumerable<T>.GetEnumerator.
@@ -121,12 +140,13 @@ namespace Stunts.Processors
                 if (!Accessible(constructor, symbol))
                     continue;
 
-                var parameters = constructor.Parameters.Select(Parameter).ToArray();
+                var parameters = constructor.Parameters.Select(parameter => Parameter(parameter, symbol.ContainingAssembly)).ToArray();
                 var initializer = ConstructorInitializer(
                     SyntaxKind.BaseConstructorInitializer,
                     ArgumentList(SeparatedList(constructor.Parameters.Select(ArgumentFor))));
 
                 yield return ConstructorDeclaration(symbol.Name)
+                    .WithAttributeLists(AttributeReplication.Replicate(constructor, AttributeTargets.Constructor, symbol.ContainingAssembly, includeInherited: true))
                     .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
                     .WithParameterList(ParameterList(SeparatedList(parameters)))
                     .WithInitializer(initializer)
@@ -153,21 +173,24 @@ namespace Stunts.Processors
 
         // A null receiver throws NotImplementedException. Otherwise, the member proceeds to 
         // base (overrides) or to the default instance (default interface implementations).
-        static MemberDeclarationSyntax Stub(ISymbol member, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? defaultInstance = null, INamedTypeSymbol? stunt = null)
+        static MemberDeclarationSyntax Stub(ISymbol member, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? defaultInstance = null, INamedTypeSymbol? stunt = null, IAssemblySymbol? assembly = null)
         {
+            assembly ??= stunt?.ContainingAssembly ?? member.ContainingAssembly;
             var receiver = defaultInstance ?? (isOverride && !member.IsAbstract ? BaseExpression() : null);
             if (member is IMethodSymbol method)
-                return Method(method, isOverride, explicitInterface, receiver);
+                return Method(method, isOverride, explicitInterface, receiver, assembly);
             if (member is IPropertySymbol property)
-                return property.IsIndexer ? Indexer(property, isOverride, explicitInterface, receiver, stunt) : Property(property, isOverride, explicitInterface, receiver, stunt);
-            return Event((IEventSymbol)member, isOverride, explicitInterface, defaultInstance);
+                return property.IsIndexer ? Indexer(property, isOverride, explicitInterface, receiver, stunt, assembly) : Property(property, isOverride, explicitInterface, receiver, stunt, assembly);
+            return Event((IEventSymbol)member, isOverride, explicitInterface, defaultInstance, assembly);
         }
 
-        static MethodDeclarationSyntax Method(IMethodSymbol method, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? receiver)
+        static MethodDeclarationSyntax Method(IMethodSymbol method, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? receiver, IAssemblySymbol assembly)
         {
             var declaration = MethodDeclaration(ReturnType(method.ReturnType, method), method.Name)
+                .WithAttributeLists(AttributeReplication.Replicate(method, AttributeTargets.Method, assembly, includeInherited: false)
+                    .AddRange(AttributeReplication.ReplicateReturn(method, assembly)))
                 .WithModifiers(Modifiers(method, isOverride, explicitInterface != null))
-                .WithParameterList(ParameterList(SeparatedList(method.Parameters.Select(Parameter))))
+                .WithParameterList(ParameterList(SeparatedList(method.Parameters.Select(parameter => Parameter(parameter, assembly)))))
                 .WithExpressionBody(ArrowExpressionClause(Body(method, receiver)))
                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
             if (explicitInterface != null)
@@ -184,32 +207,37 @@ namespace Stunts.Processors
             return Annotate(declaration, method.ReturnType);
         }
 
-        static PropertyDeclarationSyntax Property(IPropertySymbol property, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? receiver, INamedTypeSymbol? stunt)
+        static PropertyDeclarationSyntax Property(IPropertySymbol property, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? receiver, INamedTypeSymbol? stunt, IAssemblySymbol assembly)
         {
             var declaration = PropertyDeclaration(ReturnType(property.Type, property.GetMethod), property.Name)
+                .WithAttributeLists(MemberAttributes(property, property.GetMethod, stunt, assembly))
                 .WithModifiers(Modifiers(property, isOverride, explicitInterface != null))
-                .WithAccessorList(AccessorList(List(Accessors(property, receiver, stunt))));
+                .WithAccessorList(AccessorList(List(Accessors(property, receiver, stunt, assembly))));
             if (explicitInterface != null)
                 declaration = declaration.WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(ParseName(explicitInterface.ToDisplayString(TypeFormat))));
             return Annotate(declaration, property.Type);
         }
 
-        static IndexerDeclarationSyntax Indexer(IPropertySymbol property, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? receiver, INamedTypeSymbol? stunt)
+        static IndexerDeclarationSyntax Indexer(IPropertySymbol property, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? receiver, INamedTypeSymbol? stunt, IAssemblySymbol assembly)
         {
             var declaration = IndexerDeclaration(ReturnType(property.Type, property.GetMethod))
+                .WithAttributeLists(MemberAttributes(property, property.GetMethod, stunt, assembly))
                 .WithModifiers(Modifiers(property, isOverride, explicitInterface != null))
-                .WithParameterList(BracketedParameterList(SeparatedList(property.Parameters.Select(Parameter))))
-                .WithAccessorList(AccessorList(List(Accessors(property, receiver, stunt))));
+                .WithParameterList(BracketedParameterList(SeparatedList(property.Parameters.Select(parameter => Parameter(parameter, assembly)))))
+                .WithAccessorList(AccessorList(List(Accessors(property, receiver, stunt, assembly))));
             if (explicitInterface != null)
                 declaration = declaration.WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(ParseName(explicitInterface.ToDisplayString(TypeFormat))));
             return Annotate(declaration, property.Type);
         }
 
-        static EventDeclarationSyntax Event(IEventSymbol ev, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? defaultInstance)
+        static EventDeclarationSyntax Event(IEventSymbol ev, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? defaultInstance, IAssemblySymbol assembly)
         {
-            AccessorDeclarationSyntax Accessor(SyntaxKind kind, SyntaxKind assignment)
+            AccessorDeclarationSyntax Accessor(SyntaxKind kind, SyntaxKind assignment, IMethodSymbol? method)
             {
-                var accessor = AccessorDeclaration(kind);
+                var accessor = AccessorDeclaration(kind)
+                    .WithAttributeLists(method == null
+                        ? default
+                        : AttributeReplication.Replicate(method, AttributeTargets.Method, assembly, includeInherited: false));
                 if (defaultInstance == null)
                     return accessor.WithBody(Block());
 
@@ -222,18 +250,28 @@ namespace Stunts.Processors
             }
 
             var declaration = EventDeclaration(TypeName(ev.Type), ev.Name)
+                .WithAttributeLists(AttributeReplication.Replicate(ev, AttributeTargets.Event, assembly, includeInherited: true))
                 .WithModifiers(Modifiers(ev, isOverride, explicitInterface != null))
                 .WithAccessorList(AccessorList(List(new[]
                 {
-                    Accessor(SyntaxKind.AddAccessorDeclaration, SyntaxKind.AddAssignmentExpression),
-                    Accessor(SyntaxKind.RemoveAccessorDeclaration, SyntaxKind.SubtractAssignmentExpression),
+                    Accessor(SyntaxKind.AddAccessorDeclaration, SyntaxKind.AddAssignmentExpression, ev.AddMethod),
+                    Accessor(SyntaxKind.RemoveAccessorDeclaration, SyntaxKind.SubtractAssignmentExpression, ev.RemoveMethod),
                 })));
             return explicitInterface == null
                 ? declaration
                 : declaration.WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(ParseName(explicitInterface.ToDisplayString(TypeFormat))));
         }
 
-        static IEnumerable<AccessorDeclarationSyntax> Accessors(IPropertySymbol property, ExpressionSyntax? receiver, INamedTypeSymbol? stunt)
+        // Property and event attributes are not visible on an override. Accessor methods are.
+        static SyntaxList<AttributeListSyntax> MemberAttributes(IPropertySymbol property, IMethodSymbol? getter, INamedTypeSymbol? stunt, IAssemblySymbol assembly)
+        {
+            var lists = AttributeReplication.Replicate(property, AttributeTargets.Property, assembly, includeInherited: true);
+            if (getter != null && OverridableAccessor(getter, stunt))
+                lists = lists.AddRange(AttributeReplication.ReplicateReturn(getter, assembly));
+            return lists;
+        }
+
+        static IEnumerable<AccessorDeclarationSyntax> Accessors(IPropertySymbol property, ExpressionSyntax? receiver, INamedTypeSymbol? stunt, IAssemblySymbol assembly)
         {
             if (property.GetMethod != null && OverridableAccessor(property.GetMethod, stunt))
             {
@@ -245,6 +283,7 @@ namespace Stunts.Processors
                 if (property.GetMethod.ReturnsByRef || property.GetMethod.ReturnsByRefReadonly)
                     value = RefExpression(value);
                 yield return AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                    .WithAttributeLists(AttributeReplication.Replicate(property.GetMethod, AttributeTargets.Method, assembly, includeInherited: false))
                     .WithModifiers(NarrowedModifiers(property, property.GetMethod))
                     .WithExpressionBody(ArrowExpressionClause(value))
                     .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
@@ -260,6 +299,7 @@ namespace Stunts.Processors
                             IdentifierName("value")))
                     : ThrowNotImplemented();
                 yield return AccessorDeclaration(SetterKind(property.SetMethod))
+                    .WithAttributeLists(AttributeReplication.Replicate(property.SetMethod, AttributeTargets.Method, assembly, includeInherited: false))
                     .WithModifiers(NarrowedModifiers(property, property.SetMethod))
                     .WithExpressionBody(ArrowExpressionClause(value))
                     .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
@@ -389,9 +429,12 @@ namespace Stunts.Processors
             return node;
         }
 
-        static ParameterSyntax Parameter(IParameterSymbol parameter)
+        static ParameterSyntax Parameter(IParameterSymbol parameter, IAssemblySymbol assembly)
         {
-            var syntax = SyntaxFactory.Parameter(Identifier(parameter.Name)).WithType(TypeName(parameter.Type));
+            var syntax = SyntaxFactory.Parameter(Identifier(parameter.Name))
+                .WithAttributeLists(AttributeReplication.Replicate(parameter, AttributeTargets.Parameter, assembly, includeInherited: true)
+                    .AddRange(AttributeReplication.Defaults(parameter)))
+                .WithType(TypeName(parameter.Type));
             var modifiers = new List<SyntaxToken>();
             switch (parameter.RefKind)
             {

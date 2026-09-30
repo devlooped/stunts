@@ -395,7 +395,8 @@ namespace Stunts.Processors
 
                 node = node.WithAccessorList(null);
 
-                if (canRead && setter == null)
+                // A get-only property becomes an expression body, which cannot carry accessor attributes.
+                if (canRead && setter == null && getter?.AttributeLists.Count is not > 0)
                 {
                     var baseCall = GetBaseCall(prop, SyntaxKind.GetAccessorDeclaration);
                     node = node
@@ -455,7 +456,7 @@ namespace Stunts.Processors
 
                 node = node.WithAccessorList(null);
 
-                if (canRead && setter == null)
+                if (canRead && setter == null && getter?.AttributeLists.Count is not > 0)
                 {
                     return node.WithExpressionBody(
                         ArrowExpressionClause(
@@ -520,12 +521,8 @@ namespace Stunts.Processors
                 {
                     node = node.WithAccessorList(AccessorList(List(new AccessorDeclarationSyntax[]
                     {
-                        AccessorDeclaration(SyntaxKind.AddAccessorDeclaration)
-                            .WithExpressionBody(ArrowExpressionClause(Execute(null, parameters, defaultAdd)))
-                            .WithSemicolon(),
-                        AccessorDeclaration(SyntaxKind.RemoveAccessorDeclaration)
-                            .WithExpressionBody(ArrowExpressionClause(Execute(null, parameters, defaultRemove)))
-                            .WithSemicolon()
+                        EventAccessor(node.AccessorList, SyntaxKind.AddAccessorDeclaration, ArrowExpressionClause(Execute(null, parameters, defaultAdd))),
+                        EventAccessor(node.AccessorList, SyntaxKind.RemoveAccessorDeclaration, ArrowExpressionClause(Execute(null, parameters, defaultRemove))),
                     })));
                 }
                 else if (virtualEvents.Contains(node.Identifier.ValueText))
@@ -545,26 +542,16 @@ namespace Stunts.Processors
 
                     node = node.WithAccessorList(AccessorList(List(new AccessorDeclarationSyntax[]
                     {
-                        AccessorDeclaration(SyntaxKind.AddAccessorDeclaration)
-                            .WithExpressionBody(add)
-                            .WithSemicolon(),
-                        AccessorDeclaration(SyntaxKind.RemoveAccessorDeclaration)
-                            .WithExpressionBody(remove)
-                            .WithSemicolon()
+                        EventAccessor(node.AccessorList, SyntaxKind.AddAccessorDeclaration, add),
+                        EventAccessor(node.AccessorList, SyntaxKind.RemoveAccessorDeclaration, remove),
                     })));
                 }
                 else
                 {
                     node = node.WithAccessorList(AccessorList(List(new AccessorDeclarationSyntax[]
                     {
-                        AccessorDeclaration(SyntaxKind.AddAccessorDeclaration)
-                            .WithExpressionBody(
-                                ArrowExpressionClause(CreatePipelineInvocation(null, parameters)))
-                            .WithSemicolon(),
-                        AccessorDeclaration(SyntaxKind.RemoveAccessorDeclaration)
-                            .WithExpressionBody(
-                                ArrowExpressionClause(CreatePipelineInvocation(null, parameters)))
-                            .WithSemicolon()
+                        EventAccessor(node.AccessorList, SyntaxKind.AddAccessorDeclaration, ArrowExpressionClause(CreatePipelineInvocation(null, parameters))),
+                        EventAccessor(node.AccessorList, SyntaxKind.RemoveAccessorDeclaration, ArrowExpressionClause(CreatePipelineInvocation(null, parameters))),
                     })));
                 }
 
@@ -574,12 +561,24 @@ namespace Stunts.Processors
             static AccessorDeclarationSyntax? Accessor(BasePropertyDeclarationSyntax node, params SyntaxKind[] kinds)
                 => node.AccessorList?.Accessors.FirstOrDefault(accessor => kinds.Contains(accessor.Kind()));
 
-            // Keeps a narrowed accessor (protected set, internal get) on the override.
+            // Keeps a narrowed accessor (protected set, internal get) and its attributes on the override.
             static AccessorDeclarationSyntax WithBody(AccessorDeclarationSyntax accessor, ExpressionSyntax body)
                 => AccessorDeclaration(accessor.Kind())
+                    .WithAttributeLists(accessor.AttributeLists)
                     .WithModifiers(accessor.Modifiers)
                     .WithExpressionBody(ArrowExpressionClause(body))
                     .WithSemicolon();
+
+            static AccessorDeclarationSyntax EventAccessor(AccessorListSyntax? list, SyntaxKind kind, ArrowExpressionClauseSyntax body)
+            {
+                var accessor = AccessorDeclaration(kind)
+                    .WithExpressionBody(body)
+                    .WithSemicolon();
+                var source = list?.Accessors.FirstOrDefault(candidate => candidate.IsKind(kind));
+                return source == null || source.AttributeLists.Count == 0
+                    ? accessor
+                    : accessor.WithAttributeLists(source.AttributeLists);
+            }
 
             static ElementAccessExpressionSyntax? FixBaseCall(IndexerDeclarationSyntax indexer, ElementAccessExpressionSyntax? baseCall)
                 // Replace base indexer call args with references to pipeline invocation args
