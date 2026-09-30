@@ -108,8 +108,8 @@ namespace Stunts
         {
             context.AnalyzerConfigOptions.CheckDebugger(nameof(StuntGenerator));
 
-            if (context.AnalyzerConfigOptions.GlobalOptions.TryGetValue("build_property.StuntsAnalyzerDir", out var analyerDir))
-                DependencyResolver.AddSearchPath(analyerDir);
+            if (BuildProperties.StuntsAnalyzerDir(context.AnalyzerConfigOptions.GlobalOptions) is string analyzerDir)
+                DependencyResolver.AddSearchPath(analyzerDir);
 
             var generatorAttr = context.Compilation.GetTypeByMetadataName(GeneratorAttribute.FullName);
             if (generatorAttr == null)
@@ -227,15 +227,10 @@ namespace Stunts
         static void AddSource(ProcessorContext context, string name, SyntaxNode updated)
         {
             var code = updated.NormalizeWhitespace().ToFullString();
-            var shouldEmit = false;
-
-            // Additional pretty-printing when emitting generated files, improves whitespace handling for C#
-            if (context.AnalyzerConfigOptions.GlobalOptions.TryGetValue("build_property.EmitCompilerGeneratedFiles", out var emitSources) &&
-                bool.TryParse(emitSources, out shouldEmit) &&
-                shouldEmit &&
-                // NOTE: checking for C# last, since the Debugger.Attached section below would depend on 
-                // the proper initialization of shouldEmit too, regardless of language
-                context.Language == LanguageNames.CSharp)
+            var options = context.AnalyzerConfigOptions.GlobalOptions;
+            // Pretty-printing is C# only. The debugger dump below still uses the flag for every language.
+            var shouldEmit = BuildProperties.EmitCompilerGeneratedFiles(options);
+            if (shouldEmit && context.Language == LanguageNames.CSharp)
             {
                 updated = CSharpSyntaxTree.ParseText(code, (CSharpParseOptions)context.ParseOptions).GetRoot();
                 updated = new CSharpFormatter().Visit(updated);
@@ -248,8 +243,8 @@ namespace Stunts
             if (Debugger.IsAttached)
             {
                 if (shouldEmit &&
-                    context.AnalyzerConfigOptions.GlobalOptions.TryGetValue("build_property.IntermediateOutputPath", out var intermediateDir) &&
-                    context.AnalyzerConfigOptions.GlobalOptions.TryGetValue("build_property.MSBuildProjectDirectory", out var projectDir))
+                    BuildProperties.IntermediateOutputPath(options) is string intermediateDir &&
+                    BuildProperties.MSBuildProjectDirectory(options) is string projectDir)
                 {
                     var targetDir = Path.Combine(projectDir, intermediateDir, "generated", nameof(StuntGenerator));
                     Directory.CreateDirectory(targetDir);

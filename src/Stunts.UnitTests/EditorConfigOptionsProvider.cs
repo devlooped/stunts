@@ -32,7 +32,7 @@ namespace Stunts
                 .ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
 
             if (Debugger.IsAttached)
-                global["build_property.DebugSourceGenerators"] = "true";
+                global[BuildProperties.Name.DebugSourceGenerators] = "true";
 
             var options = new ConcurrentDictionary<string, Dictionary<string, string>>();
             foreach (var lines in fileNames.Select(file => File

@@ -70,8 +70,8 @@ namespace Stunts.UnitTests
 
         static GeneratedSourceResult[] Generate(Compilation compilation, bool compileTimeStunts = true, bool allowUnsafe = true)
             => Run(compilation, new ConfigOptions(
-                ("build_property.EnableCompileTimeStunts", compileTimeStunts ? "true" : "false"),
-                ("build_property.AllowUnsafeBlocks", allowUnsafe ? "true" : "false")));
+                (BuildProperties.Name.EnableCompileTimeStunts, compileTimeStunts ? "true" : "false"),
+                (BuildProperties.Name.AllowUnsafeBlocks, allowUnsafe ? "true" : "false")));
 
         static GeneratedSourceResult[] Run(Compilation compilation, AnalyzerConfigOptionsProvider? options)
         {
