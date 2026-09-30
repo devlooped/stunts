@@ -77,6 +77,29 @@ namespace Stunts.UnitTests
         }
 
         [Fact]
+        public void AddBehaviorFollowsDelegateTarget()
+        {
+            var stunt = new TestStunt();
+            var action = (Action)Delegate.CreateDelegate(typeof(Action), stunt, typeof(TestStunt).GetMethod(nameof(TestStunt.Do))!);
+
+            var actual = action.AddBehavior(new TestBehavior());
+
+            Assert.Same(action, actual);
+            Assert.Single(stunt.Behaviors);
+        }
+
+        [Fact]
+        public void AddBehaviorOnCombinedDelegateThrows()
+        {
+            var stunt = new TestStunt();
+            var action = (Action)Delegate.CreateDelegate(typeof(Action), stunt, typeof(TestStunt).GetMethod(nameof(TestStunt.Do))!);
+            Action other = () => { };
+            var combined = (Action)Delegate.Combine(action, other);
+
+            Assert.Throws<ArgumentException>(() => combined.AddBehavior(new TestBehavior()));
+        }
+
+        [Fact]
         public void AddBehaviorToObject()
         {
             object stunt = new TestStunt();
@@ -183,6 +206,8 @@ namespace Stunts.UnitTests
         class TestStunt : IStunt
         {
             public IList<IStuntBehavior> Behaviors { get; } = new BehaviorsCollection();
+
+            public void Do() { }
         }
     }
 }

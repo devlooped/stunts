@@ -29,6 +29,19 @@ namespace Stunts
         public static T Of<T>(params object[] constructorArgs) => Create<T>(constructorArgs);
 
         /// <summary>
+        /// Creates a stunt for the delegate <typeparamref name="T"/> that forwards to
+        /// <paramref name="implementation"/>. Behaviors added afterwards run first;
+        /// <c>next</c> invokes <paramref name="implementation"/>.
+        /// </summary>
+        [StuntGenerator]
+        public static T Of<T>(T implementation) where T : Delegate
+        {
+            if (implementation == null)
+                throw new ArgumentNullException(nameof(implementation));
+            return Create<T>(new object[] { implementation });
+        }
+
+        /// <summary>
         /// Creates a stunt that inherits or implements <typeparamref name="T"/> and 
         /// additionally implements <typeparamref name="T1"/>.
         /// </summary>

@@ -58,8 +58,12 @@ namespace Stunts
             if (baseType.BaseType == typeof(MulticastDelegate))
             {
                 var mixinOptions = new ProxyGenerationOptions();
-                mixinOptions.AddDelegateTypeMixin(baseType);
-                var proxy = CreateProxy(typeof(object), implementedInterfaces, Array.Empty<object>(), mixinOptions, () => new DynamicStuntInterceptor(notImplemented));
+                var implementation = constructorArguments.Length == 1 ? constructorArguments[0] as Delegate : null;
+                if (implementation != null)
+                    mixinOptions.AddDelegateMixin(implementation);
+                else
+                    mixinOptions.AddDelegateTypeMixin(baseType);
+                var proxy = CreateProxy(typeof(object), implementedInterfaces, Array.Empty<object>(), mixinOptions, () => new DynamicStuntInterceptor(implementation == null));
                 return Delegate.CreateDelegate(baseType, proxy, proxy.GetType().GetMethod("Invoke"));
             }
             else

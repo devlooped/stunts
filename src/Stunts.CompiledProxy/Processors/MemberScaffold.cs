@@ -77,6 +77,8 @@ namespace Stunts.Processors
                 members.Add(Stub(member, false, Collides(member, generated), instance, symbol, symbol.ContainingAssembly));
             }
 
+            members.AddRange(DelegateScaffold.Members(declaration, model));
+
             return syntax.ReplaceNode(original, declaration.AddMembers(members.ToArray()));
         }
 
@@ -429,7 +431,7 @@ namespace Stunts.Processors
             return node;
         }
 
-        static ParameterSyntax Parameter(IParameterSymbol parameter, IAssemblySymbol assembly)
+        internal static ParameterSyntax Parameter(IParameterSymbol parameter, IAssemblySymbol assembly)
         {
             var syntax = SyntaxFactory.Parameter(Identifier(parameter.Name))
                 .WithAttributeLists(AttributeReplication.Replicate(parameter, AttributeTargets.Parameter, assembly, includeInherited: true)

@@ -35,12 +35,24 @@ namespace Stunts
                 foreach (var iface in implementedInterfaces)
                     AddImports(imports, iface);
 
-                var stunt = TypeDeclaration(name, baseType)
+                // A delegate cannot be a base class. The stunt is an ordinary class with an
+                // Invoke method, and the factory binds a delegate to that method.
+                var delegateStunt = baseType?.TypeKind == TypeKind.Delegate;
+                var stunt = TypeDeclaration(name, delegateStunt ? null : baseType)
                     .WithModifiers(StuntModifiers(baseType))
-                    .WithBaseList(
-                        BaseList(
-                            SeparatedList<BaseTypeSyntax>(
-                                symbols.Select(AsTypeSyntax).Select(t => SimpleBaseType(t)))));
+                    .WithBaseList(delegateStunt
+                        ? BaseList(SingletonSeparatedList<BaseTypeSyntax>(SimpleBaseType(ParseTypeName("object"))))
+                        : BaseList(SeparatedList<BaseTypeSyntax>(
+                            symbols.Select(AsTypeSyntax).Select(type => SimpleBaseType(type)))));
+
+                if (delegateStunt)
+                {
+                    stunt = stunt.AddMembers(FieldDeclaration(
+                        VariableDeclaration(
+                            AsTypeSyntax(baseType!),
+                            SingletonSeparatedList(VariableDeclarator(Identifier("implementation")))))
+                        .WithModifiers(TokenList(Token(SyntaxKind.ReadOnlyKeyword))));
+                }
 
                 // A private, protected, or private protected nested type can only be
                 // inherited from inside its containing type. The stunt is nested in

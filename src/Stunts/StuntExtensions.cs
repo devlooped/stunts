@@ -43,8 +43,9 @@ namespace Stunts
         public static TStunt AddBehavior<TStunt>(this TStunt stunt, ExecuteHandler behavior, AppliesToHandler? appliesTo = null, string? name = null)
         {
             // We can't just add a constraint to the method signature, because 
-            // proxies are typically generated and don't expose the IProxy interface directly.
-            if (stunt is IStunt target)
+            // proxies are typically generated and don't expose the IStunt interface directly.
+            // A delegate stunt is the bound delegate; its target is the generated instance.
+            if (AsStunt(stunt) is IStunt target)
                 target.Behaviors.Add(new AnonymousBehavior(behavior, appliesTo, name));
             else
                 throw new ArgumentException(nameof(stunt));
@@ -60,7 +61,7 @@ namespace Stunts
         //[EditorBrowsable(EditorBrowsableState.Advanced)]
         public static TStunt AddBehavior<TStunt>(this TStunt stunt, IStuntBehavior behavior)
         {
-            if (stunt is IStunt target)
+            if (AsStunt(stunt) is IStunt target)
                 target.Behaviors.Add(behavior);
             else
                 throw new ArgumentException(nameof(stunt));
@@ -108,7 +109,7 @@ namespace Stunts
         //[EditorBrowsable(EditorBrowsableState.Advanced)]
         public static TStunt InsertBehavior<TStunt>(this TStunt stunt, int index, ExecuteHandler behavior, AppliesToHandler? appliesTo = null, string? name = null)
         {
-            if (stunt is IStunt target)
+            if (AsStunt(stunt) is IStunt target)
                 target.Behaviors.Insert(index, new AnonymousBehavior(behavior, appliesTo, name));
             else
                 throw new ArgumentException(nameof(stunt));
@@ -126,12 +127,21 @@ namespace Stunts
         //[EditorBrowsable(EditorBrowsableState.Advanced)]
         public static TStunt InsertBehavior<TStunt>(this TStunt stunt, int index, IStuntBehavior behavior)
         {
-            if (stunt is IStunt target)
+            if (AsStunt(stunt) is IStunt target)
                 target.Behaviors.Insert(index, behavior);
             else
                 throw new ArgumentException(nameof(stunt));
 
             return stunt;
+        }
+
+        static IStunt? AsStunt<TStunt>(TStunt stunt)
+        {
+            if (stunt is IStunt target)
+                return target;
+            if (stunt is Delegate delegateStunt && delegateStunt.Target is IStunt delegateTarget)
+                return delegateTarget;
+            return null;
         }
     }
 }

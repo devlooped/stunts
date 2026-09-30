@@ -40,7 +40,8 @@ namespace Stunts.CodeAnalysis
                 StuntDiagnostics.DuplicateBaseType,
                 StuntDiagnostics.SealedBaseType,
                 StuntDiagnostics.EnumType,
-                StuntDiagnostics.ContainingTypeNotPartial);
+                StuntDiagnostics.ContainingTypeNotPartial,
+                StuntDiagnostics.DelegateWithOtherTypes);
 
         /// <summary>
         /// Registers the analyzer to take action on method invocation expressions.
@@ -69,6 +70,25 @@ namespace Stunts.CodeAnalysis
                         StuntDiagnostics.EnumType,
                         invocation.Syntax.GetLocation(),
                         enumType.Name));
+                }
+
+                var delegateTypes = invocation.TargetMethod.TypeArguments.Where(x => x.TypeKind == TypeKind.Delegate).ToArray();
+                if (delegateTypes.Length > 0 && invocation.TargetMethod.TypeArguments.Length != 1)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        StuntDiagnostics.DelegateWithOtherTypes,
+                        invocation.Syntax.GetLocation(),
+                        delegateTypes[0].Name));
+                }
+                else if (delegateTypes.Length == 1 &&
+                    delegateTypes[0] is INamedTypeSymbol delegateType &&
+                    NestedTypeStunt.NonPartialContainer(delegateType) is INamedTypeSymbol delegateContainer)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        StuntDiagnostics.ContainingTypeNotPartial,
+                        invocation.Syntax.GetLocation(),
+                        delegateType.Name,
+                        delegateContainer.Name));
                 }
 
                 var classes = invocation.TargetMethod.TypeArguments.Where(x => x.TypeKind == TypeKind.Class).ToArray();
