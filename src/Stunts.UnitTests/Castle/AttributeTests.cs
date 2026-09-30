@@ -22,7 +22,7 @@ namespace Stunts.UnitTests.Castle
 
         public void ClassAttributesAndMembers()
         {
-            var stunt = Stunt.Of<Marked>(4);
+            Marked stunt = Stunt.Of<Marked>(4);
             var type = stunt.GetType();
 
             Assert.NotNull(type.GetCustomAttribute<SerializableAttribute>());
@@ -82,7 +82,7 @@ namespace Stunts.UnitTests.Castle
             int number = 0;
             decimal amount = 0;
             string label = null;
-            var marked = Stunt.Of<Marked>(0).AddBehavior((invocation, next) =>
+            Marked marked = Stunt.For<Marked>(0).AddBehavior((invocation, next) =>
             {
                 switch (invocation.MethodBase.Name)
                 {
@@ -98,7 +98,7 @@ namespace Stunts.UnitTests.Castle
                 }
 
                 return next(invocation, next);
-            });
+            }).ToObject();
 
             Assert.Equal(5, marked.Defaulted());
             Assert.Equal(5, number);
@@ -112,12 +112,12 @@ namespace Stunts.UnitTests.Castle
 
             int echo = 0;
             string text = null;
-            var optional = Stunt.Of<IOptional>().AddBehavior((invocation, next) =>
+            IOptional optional = Stunt.For<IOptional>().AddBehavior((invocation, next) =>
             {
                 echo = invocation.Arguments.Get<int>("value");
                 text = invocation.Arguments.Get<string>("text");
                 return invocation.CreateValueReturn(echo + text);
-            });
+            }, invocation => !invocation.MethodBase.IsConstructor).ToObject();
 
             Assert.Equal("7hi", optional.Echo());
             Assert.Equal(7, echo);
@@ -129,15 +129,16 @@ namespace Stunts.UnitTests.Castle
 
         public void ReflectionInvokeUsesTheCopiedDefault()
         {
-            var marked = Stunt.Of<Marked>(0);
+            Marked marked = Stunt.Of<Marked>(0);
             var markedType = marked.GetType();
 
             Assert.Equal(5, InvokeOptional(markedType.GetMethod(nameof(Marked.Defaulted)), marked, Type.Missing));
             Assert.Equal(1.5m, InvokeOptional(markedType.GetMethod(nameof(Marked.Price)), marked, Type.Missing));
             Assert.Equal("none", InvokeOptional(markedType.GetMethod(nameof(Marked.OptionalName)), marked, Type.Missing));
 
-            var optional = Stunt.Of<IOptional>().AddBehavior((invocation, next) =>
-                invocation.CreateValueReturn(invocation.Arguments.Get<int>("value") + invocation.Arguments.Get<string>("text")));
+            IOptional optional = Stunt.For<IOptional>().AddBehavior((invocation, next) =>
+                invocation.CreateValueReturn(invocation.Arguments.Get<int>("value") + invocation.Arguments.Get<string>("text")),
+                invocation => !invocation.MethodBase.IsConstructor).ToObject();
             var echo = optional.GetType().GetMethod(nameof(IOptional.Echo));
 
             Assert.Equal("7hi", InvokeOptional(echo, optional, Type.Missing, Type.Missing));
@@ -154,7 +155,7 @@ namespace Stunts.UnitTests.Castle
 
         public void InterfaceGuidAndParameterAttribute()
         {
-            var stunt = Stunt.Of<IMarked>();
+            IMarked stunt = Stunt.Of<IMarked>();
             var type = stunt.GetType();
 
             Assert.Equal(new Guid("11111111-1111-1111-1111-111111111111"), type.GUID);

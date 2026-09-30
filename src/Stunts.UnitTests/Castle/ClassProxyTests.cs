@@ -24,6 +24,7 @@ namespace Stunts.UnitTests.Castle
             InternalConstructorInTheSameAssemblyIsReachable();
             ParamsConstructorAcceptsAnArray();
             VirtualCallDuringConstructionUsesThePipelineFactory();
+            BehaviorsConfiguredBeforeToObjectApplyDuringConstruction();
             NestedClassAndCharReturn();
             InternalClassInTheSameAssembly();
             ParameterNamesAreReplicated();
@@ -33,21 +34,22 @@ namespace Stunts.UnitTests.Castle
 
         public void VirtualCallProceedsToBase()
         {
-            var stunt = Stunt.Of<Counter>();
+            var stunt = Stunt.For<Counter>();
+            Counter counter = stunt.ToObject();
 
-            Assert.Equal(1, stunt.Next());
+            Assert.Equal(1, counter.Next());
 
             stunt.AddBehavior((invocation, next) =>
                 invocation.MethodBase.Name == nameof(Counter.Next)
                     ? invocation.CreateValueReturn(40)
                     : next(invocation, next));
 
-            Assert.Equal(40, stunt.Next());
+            Assert.Equal(40, counter.Next());
         }
 
         public void MostDerivedOverrideIsTheImplementation()
         {
-            var stunt = Stunt.Of<DerivedCounter>();
+            DerivedCounter stunt = Stunt.Of<DerivedCounter>();
 
             Assert.Equal(2, stunt.Next());
         }
@@ -55,11 +57,11 @@ namespace Stunts.UnitTests.Castle
         public void NonVirtualMembersAreNotIntercepted()
         {
             var calls = 0;
-            var stunt = Stunt.Of<Counter>().AddBehavior((invocation, next) =>
+            Counter stunt = Stunt.For<Counter>().AddBehavior((invocation, next) =>
             {
                 calls++;
                 return next(invocation, next);
-            });
+            }, invocation => !invocation.MethodBase.IsConstructor).ToObject();
 
             Assert.Equal(7, stunt.Fixed());
             Assert.Equal(0, calls);
@@ -67,74 +69,75 @@ namespace Stunts.UnitTests.Castle
 
         public void SelfCallHitsTheOverride()
         {
-            var stunt = Stunt.Of<Counter>().AddBehavior((invocation, next) =>
+            Counter stunt = Stunt.For<Counter>().AddBehavior((invocation, next) =>
                 invocation.MethodBase.Name == nameof(Counter.Next)
                     ? invocation.CreateValueReturn(9)
-                    : next(invocation, next));
+                    : next(invocation, next)).ToObject();
 
             Assert.Equal(9, stunt.ThroughSelf());
         }
 
         public void AbstractMemberThrowsUntilABehaviorReturns()
         {
-            var stunt = Stunt.Of<AbstractCounter>();
+            var stunt = Stunt.For<AbstractCounter>();
+            AbstractCounter counter = stunt.ToObject();
 
-            Assert.Throws<NotImplementedException>(() => stunt.Next());
+            Assert.Throws<NotImplementedException>(() => counter.Next());
 
             stunt.AddBehavior((invocation, next) => invocation.CreateValueReturn(4));
 
-            Assert.Equal(4, stunt.Next());
+            Assert.Equal(4, counter.Next());
         }
 
         public void ProceedOnAbstractMemberThrows()
         {
-            var stunt = Stunt.Of<AbstractCounter>().AddBehavior((invocation, next) => next(invocation, next));
+            AbstractCounter stunt = Stunt.For<AbstractCounter>().AddBehavior((invocation, next) => next(invocation, next)).ToObject();
 
             Assert.Throws<NotImplementedException>(() => stunt.Next());
         }
 
         public void ProtectedVirtualIsIntercepted()
         {
-            var stunt = Stunt.Of<Counter>().AddBehavior((invocation, next) =>
+            Counter stunt = Stunt.For<Counter>().AddBehavior((invocation, next) =>
                 invocation.MethodBase.Name == "Secret"
                     ? invocation.CreateValueReturn(11)
-                    : next(invocation, next));
+                    : next(invocation, next)).ToObject();
 
             Assert.Equal(11, stunt.CallSecret());
         }
 
         public void ConstructorArgumentsReachTheBase()
         {
-            var named = Stunt.Of<Named>("Ada");
+            Named named = Stunt.Of<Named>("Ada");
             Assert.Equal("Ada", named.Name);
 
-            var disabled = Stunt.Of<Named>("Ada", false);
+            Named disabled = Stunt.Of<Named>("Ada", false);
             Assert.Equal("Ada", disabled.Name);
             Assert.False(disabled.Enabled);
 
-            var missing = Stunt.Of<Named>(new object[] { null });
+            Named missing = Stunt.Of<Named>(new object[] { null });
             Assert.Null(missing.Name);
         }
 
         public void ProtectedConstructorIsReachable()
         {
-            var stunt = Stunt.Of<ProtectedCtor>(5);
+            ProtectedCtor stunt = Stunt.Of<ProtectedCtor>(5);
 
             Assert.Equal(5, stunt.Value);
         }
 
         public void InternalConstructorInTheSameAssemblyIsReachable()
         {
-            var stunt = Stunt.Of<InternalCtor>();
+            InternalCtor stunt = Stunt.Of<InternalCtor>();
 
             Assert.True(stunt.Created);
         }
 
         public void ParamsConstructorAcceptsAnArray()
         {
-            var empty = Stunt.Of<ParamsCtor>();
-            var filled = Stunt.Of<ParamsCtor>(new int[] { 1, 2, 3 });
-            var head = Stunt.Of<IntAndParams>(5);
+            ParamsCtor empty = Stunt.Of<ParamsCtor>();
+            ParamsCtor filled = Stunt.Of<ParamsCtor>(new int[] { 1, 2, 3 });
+            IntAndParams head = Stunt.Of<IntAndParams>(5);
 
             Assert.Equal(0, empty.Count);
             Assert.Equal(3, filled.Count);
@@ -145,40 +148,54 @@ namespace Stunts.UnitTests.Castle
         public void VirtualCallDuringConstructionUsesThePipelineFactory()
         {
             using var ambient = BehaviorPipelineFactory.UseAmbient(new CtorBehaviorFactory());
-            var stunt = Stunt.Of<CtorCaller>();
+            CtorCaller stunt = Stunt.Of<CtorCaller>();
 
             Assert.Equal("proxy", stunt.Seen);
         }
 
+        public void BehaviorsConfiguredBeforeToObjectApplyDuringConstruction()
+        {
+            var stunt = Stunt.For<CtorCaller>().AddBehavior((invocation, next) =>
+                invocation.MethodBase.Name == nameof(CtorCaller.Name)
+                    ? invocation.CreateValueReturn("proxy")
+                    : next(invocation, next));
+
+            CtorCaller created = stunt.ToObject();
+
+            Assert.Equal("proxy", created.Seen);
+            Assert.Equal("proxy", created.Name());
+        }
+
         public void NestedClassAndCharReturn()
         {
-            var stunt = Stunt.Of<Outer.Inner>();
+            Outer.Inner stunt = Stunt.Of<Outer.Inner>();
 
             Assert.Equal('a', stunt.Letter());
         }
 
         public void InternalClassInTheSameAssembly()
         {
-            var stunt = Stunt.Of<InternalCounter>();
+            InternalCounter stunt = Stunt.Of<InternalCounter>();
 
             Assert.Equal(1, stunt.Next());
         }
 
         public void InternalAndPrivateProtectedMembersAreIntercepted()
         {
-            var stunt = Stunt.Of<Gate>();
+            var stunt = Stunt.For<Gate>();
+            Gate gate = stunt.ToObject();
 
-            Assert.True(stunt.Opened);
-            Assert.Equal(1, stunt.Next());
-            Assert.Equal(2, stunt.CallSecret());
+            Assert.True(gate.Opened);
+            Assert.Equal(1, gate.Next());
+            Assert.Equal(2, gate.CallSecret());
 
             stunt.AddBehavior((invocation, next) =>
                 invocation.MethodBase.Name == "Secret"
                     ? invocation.CreateValueReturn(9)
                     : next(invocation, next));
 
-            Assert.Equal(9, stunt.CallSecret());
-            Assert.Equal(1, stunt.Next());
+            Assert.Equal(9, gate.CallSecret());
+            Assert.Equal(1, gate.Next());
         }
 
         public void PrivateNestedTypeIsProxiedFromInsideItsContainer()
@@ -188,7 +205,8 @@ namespace Stunts.UnitTests.Castle
 
         public void ParameterNamesAreReplicated()
         {
-            var method = Stunt.Of<Counter>().GetType().GetMethod(nameof(Counter.Add));
+            Counter stunt = Stunt.Of<Counter>();
+            var method = stunt.GetType().GetMethod(nameof(Counter.Add));
             var parameters = method.GetParameters();
 
             Assert.Equal("left", parameters[0].Name);
@@ -316,17 +334,18 @@ namespace Stunts.UnitTests.Castle
     {
         public static void Run()
         {
-            var stunt = Stunt.Of<Hidden>();
+            var stunt = Stunt.For<Hidden>();
+            Hidden hidden = stunt.ToObject();
 
-            Assert.Equal(1, stunt.Next());
-            Assert.Equal(3, stunt.CallSecret());
+            Assert.Equal(1, hidden.Next());
+            Assert.Equal(3, hidden.CallSecret());
 
             stunt.AddBehavior((invocation, next) =>
                 invocation.MethodBase.Name == "Secret"
                     ? invocation.CreateValueReturn(9)
                     : next(invocation, next));
 
-            Assert.Equal(9, stunt.CallSecret());
+            Assert.Equal(9, hidden.CallSecret());
         }
 
         class Hidden

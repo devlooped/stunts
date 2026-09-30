@@ -15,23 +15,25 @@ namespace Stunts.UnitTests
             var factory = new DynamicStuntFactory();
 
 
-            var calculator = (ICalculator)factory.CreateStunt(Assembly.GetExecutingAssembly(),
-                typeof(ICalculator), Array.Empty<Type>(), Array.Empty<object>());
+            var stunt = new StuntReference<ICalculator>((ICalculator)factory.CreateStunt(Assembly.GetExecutingAssembly(),
+                typeof(ICalculator), Array.Empty<Type>(), Array.Empty<object>()));
+
+            ICalculator calculator = stunt.ToObject();
 
             var recorder = new RecordingBehavior();
-            calculator.AddBehavior(recorder);
+            stunt.AddBehavior(recorder);
 
-            calculator.AddBehavior(
+            stunt.AddBehavior(
                 (m, n) => new MethodReturn(m, "foo", m.Arguments),
                 m => m.MethodBase.Name == "ToString",
                 "ToString");
 
-            calculator.AddBehavior(
+            stunt.AddBehavior(
                 (m, n) => new MethodReturn(m, 42, m.Arguments),
                 m => m.MethodBase.Name == "GetHashCode",
                 "GetHashCode");
 
-            calculator.AddBehavior(
+            stunt.AddBehavior(
                 (m, n) => new MethodReturn(m, true, m.Arguments),
                 m => m.MethodBase.Name == "Equals",
                 "Equals");
@@ -81,10 +83,9 @@ namespace Stunts.UnitTests
             using var ambient = BehaviorPipelineFactory.UseAmbient(new RecordingBehaviorPipelineFactory());
             StuntFactory.LocalDefault = new DynamicStuntFactory();
 
-            var calculator = Stunt.Of<ICalculator>();
-            var stunt = calculator as IStunt;
+            var stunt = Stunt.For<ICalculator>();
+            _ = stunt.ToObject();
 
-            Assert.NotNull(stunt);
             Assert.Single(stunt.Behaviors);
             // Cannot record ctor call
             Assert.Empty(((RecordingBehavior)stunt.Behaviors[0]).Invocations);
