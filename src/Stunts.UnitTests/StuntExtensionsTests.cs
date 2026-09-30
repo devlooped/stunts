@@ -40,75 +40,49 @@ namespace Stunts.UnitTests
         }
 
         [Fact]
-        public void AddAnonymousBehaviorToObject()
+        public void AddBehaviorPreservesTheStuntType()
         {
-            object stunt = new TestStunt();
-            Func<string?> method = ToString;
+            var stunt = new StuntReference<ITestStunt>(new TestStunt());
 
-            var actual = stunt.AddBehavior(
-                (m, n) => new MethodReturn(m, "foo", null!),
-                m => true,
-                nameof(AddBehavior)) as IStunt;
+            // The concrete reference type flows through, so behaviors can keep being configured.
+            StuntReference<ITestStunt> actual = stunt.AddBehavior(new TestBehavior());
+            ITestStunt value = actual.ToObject();
 
-            Assert.NotNull(actual);
             Assert.Same(stunt, actual);
-            Assert.Single(actual!.Behaviors);
+            Assert.Same(stunt.ToObject(), value);
+            Assert.Single(stunt.Behaviors);
         }
 
         [Fact]
-        public void AddAnonymousBehaviorToNonStuntThrows()
+        public void AddBehaviorToNullStuntThrows()
         {
-            var stunt = new object();
-            Func<string?> method = ToString;
+            IStunt stunt = null!;
 
-            Assert.Throws<ArgumentException>(() => stunt.AddBehavior(
-                (m, n) => new MethodReturn(m, "foo", null!),
-                m => true,
-                nameof(AddBehavior)));
-        }
-
-        [Fact]
-        public void AddBehaviorToNonStuntThrows()
-        {
-            var stunt = new object();
-            Func<string?> method = ToString;
-
-            Assert.Throws<ArgumentException>(() => stunt.AddBehavior(new TestBehavior()));
+            Assert.Throws<ArgumentNullException>(() => stunt.AddBehavior(new TestBehavior()));
         }
 
         [Fact]
         public void AddBehaviorFollowsDelegateTarget()
         {
-            var stunt = new TestStunt();
-            var action = (Action)Delegate.CreateDelegate(typeof(Action), stunt, typeof(TestStunt).GetMethod(nameof(TestStunt.Do))!);
+            var target = new TestStunt();
+            var action = (Action)Delegate.CreateDelegate(typeof(Action), target, typeof(TestStunt).GetMethod(nameof(TestStunt.Do))!);
+            var stunt = new StuntReference<Action>(action);
 
-            var actual = action.AddBehavior(new TestBehavior());
+            var actual = stunt.AddBehavior(new TestBehavior());
 
-            Assert.Same(action, actual);
-            Assert.Single(stunt.Behaviors);
+            Assert.Same(stunt, actual);
+            Assert.Single(target.Behaviors);
         }
 
         [Fact]
         public void AddBehaviorOnCombinedDelegateThrows()
         {
-            var stunt = new TestStunt();
-            var action = (Action)Delegate.CreateDelegate(typeof(Action), stunt, typeof(TestStunt).GetMethod(nameof(TestStunt.Do))!);
+            var target = new TestStunt();
+            var action = (Action)Delegate.CreateDelegate(typeof(Action), target, typeof(TestStunt).GetMethod(nameof(TestStunt.Do))!);
             Action other = () => { };
             var combined = (Action)Delegate.Combine(action, other);
 
-            Assert.Throws<ArgumentException>(() => combined.AddBehavior(new TestBehavior()));
-        }
-
-        [Fact]
-        public void AddBehaviorToObject()
-        {
-            object stunt = new TestStunt();
-
-            var actual = stunt.AddBehavior(new TestBehavior()) as IStunt;
-
-            Assert.NotNull(actual);
-            Assert.Same(stunt, actual);
-            Assert.Single(actual!.Behaviors);
+            Assert.Throws<ArgumentException>(() => new StuntReference<Action>(combined));
         }
 
         [Fact]
@@ -145,53 +119,27 @@ namespace Stunts.UnitTests
         }
 
         [Fact]
-        public void InsertAnonymousBehaviorToObject()
+        public void InsertBehaviorPreservesTheStuntType()
         {
-            object stunt = new TestStunt();
-            Func<string?> method = ToString;
+            var stunt = new StuntReference<ITestStunt>(new TestStunt());
 
-            var actual = stunt.InsertBehavior(0,
-                (m, n) => new MethodReturn(m, "foo", null!),
-                m => true,
-                nameof(InsertAnonymousBehaviorToObject)) as IStunt;
+            StuntReference<ITestStunt> actual = stunt.InsertBehavior(0, new TestBehavior());
 
-            Assert.NotNull(actual);
             Assert.Same(stunt, actual);
-            Assert.Single(actual!.Behaviors);
+            Assert.Single(stunt.Behaviors);
         }
 
         [Fact]
-        public void InsertAnonymousBehaviorToNonStuntThrows()
+        public void InsertBehaviorToNullStuntThrows()
         {
-            var stunt = new object();
-            Func<string?> method = ToString;
+            IStunt stunt = null!;
 
-            Assert.Throws<ArgumentException>(() => stunt.InsertBehavior(0,
-                (m, n) => new MethodReturn(m, "foo", null!),
-                m => true,
-                nameof(InsertAnonymousBehaviorToNonStuntThrows)));
+            Assert.Throws<ArgumentNullException>(() => stunt.InsertBehavior(0, new TestBehavior()));
         }
 
         [Fact]
-        public void InsertBehaviorToNonStuntThrows()
-        {
-            var stunt = new object();
-            Func<string?> method = ToString;
-
-            Assert.Throws<ArgumentException>(() => stunt.InsertBehavior(0, new TestBehavior()));
-        }
-
-        [Fact]
-        public void InsertBehaviorToObject()
-        {
-            object stunt = new TestStunt();
-
-            var actual = stunt.InsertBehavior(0, new TestBehavior()) as IStunt;
-
-            Assert.NotNull(actual);
-            Assert.Same(stunt, actual);
-            Assert.Single(actual!.Behaviors);
-        }
+        public void StuntOfNonStuntThrows()
+            => Assert.Throws<ArgumentException>(() => new StuntReference<object>(new object()));
 
         class TestBehavior : IStuntBehavior
         {
@@ -203,7 +151,12 @@ namespace Stunts.UnitTests
             public override string ToString() => nameof(TestBehavior);
         }
 
-        class TestStunt : IStunt
+        public interface ITestStunt
+        {
+            void Do();
+        }
+
+        class TestStunt : ITestStunt, IStunt
         {
             public IList<IStuntBehavior> Behaviors { get; } = new BehaviorsCollection();
 
