@@ -4,15 +4,16 @@ using System.Threading;
 namespace Stunts
 {
     /// <summary>
-    /// Provides the global <see cref="Default"/> and <see cref="LocalDefault"/> 
-    /// behavior pipeline factory used when creating new stunts.
+    /// Provides the global <see cref="Default"/> behavior pipeline factory used when creating new stunts.
     /// </summary>
     /// <remarks>
     /// Stunts will use <see cref="Default"/>.<see cref="IBehaviorPipelineFactory.CreatePipeline{TStunt}"/> 
     /// whenever a new stunt is instantiated, to initialize a behavior pipeline that is invoked in the 
     /// constructor itself, even before further configuration can be performed on the created instance. 
     /// <para>
-    /// This is typically only needed for advanced scenarios.
+    /// This is typically only needed for advanced scenarios. For testing, an ambient <see cref="IBehaviorPipelineFactory"/> 
+    /// can be set via <see cref="UseAmbient(IBehaviorPipelineFactory)"/> to override the global default for the 
+    /// current execution context.
     /// </para>
     /// </remarks>
     public static class BehaviorPipelineFactory
