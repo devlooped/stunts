@@ -34,7 +34,7 @@ namespace Stunts
         /// behavior returns before reaching the target.
         /// </summary>
         public static T? Execute<T>(this BehaviorPipeline pipeline, IMethodInvocation invocation)
-            => (T?)pipeline.Invoke(invocation, true).ReturnValue;
+            => pipeline.Invoke(invocation, true).GetReturnValue<T>();
 
         /// <summary>
         /// Executes the pipeline and returns a <see cref="Ref{T}"/> to it. If the returned 

@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel;
 
 namespace Stunts
@@ -8,6 +9,27 @@ namespace Stunts
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static class MethodReturnExtensions
     {
+        /// <summary>
+        /// Returns the <see cref="IMethodReturn.ReturnValue"/> after validating that
+        /// <see langword="null"/> is valid for the expected type.
+        /// </summary>
+        /// <exception cref="ArgumentNullException">
+        /// The return value is <see langword="null"/> and <paramref name="expectedType"/> is a non-nullable value type.
+        /// </exception>
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static object? GetReturnValue(this IMethodReturn @return, Type expectedType)
+            => ValueConversion.Validate(@return.ReturnValue, nameof(IMethodReturn.ReturnValue), expectedType);
+
+        /// <summary>
+        /// Returns the <see cref="IMethodReturn.ReturnValue"/> converted to the expected type.
+        /// </summary>
+        /// <exception cref="ArgumentNullException">
+        /// The return value is <see langword="null"/> and <typeparamref name="T"/> is a non-nullable value type.
+        /// </exception>
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static T? GetReturnValue<T>(this IMethodReturn @return)
+            => (T?)@return.GetReturnValue(typeof(T));
+
         /// <summary>
         /// Returns the <see cref="IMethodReturn.ReturnValue"/> as a 
         /// <see cref="Ref{T}"/>.
@@ -23,7 +45,7 @@ namespace Stunts
             if (@return.ReturnValue is Ref<T> wrapped)
                 return wrapped;
 
-            return new Ref<T>((T)@return.ReturnValue!);
+            return new Ref<T>((T)@return.GetReturnValue(typeof(T))!);
         }
     }
 }

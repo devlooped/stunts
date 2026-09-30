@@ -66,6 +66,7 @@ namespace Stunts
             if (Parameter.ParameterType.IsByRef && Parameter.ParameterType.HasElementType)
                 type = Parameter.ParameterType.GetElementType();
 
+            value = ValueConversion.Validate(value, Parameter.Name, type);
             if (value != null)
             {
                 if (type.IsAssignableFrom(value.GetType()) || AcceptsSignatureRef(type, value.GetType()))
@@ -74,12 +75,7 @@ namespace Stunts
                     throw new ArgumentException(ThisAssembly.Strings.ValueNotCompatible(Parameter.Name, value.GetType().GetFormattedName(), type.GetFormattedName()));
             }
 
-            // non-value type and Nullable<T> can handle a null return.
-            if (!type.IsValueType ||
-                (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>)))
-                return value;
-
-            throw new ArgumentNullException(nameof(value), ThisAssembly.Strings.ValueTypeIsNull(Parameter.Name, type.GetFormattedName()));
+            return value;
         }
 
         /// <summary>
@@ -166,6 +162,7 @@ namespace Stunts
                 if (Parameter.ParameterType.IsByRef && Parameter.ParameterType.HasElementType)
                     type = Parameter.ParameterType.GetElementType();
 
+                ValueConversion.Validate(value, Parameter.Name, type);
                 if (!type.IsAssignableFrom(typeof(T)) && !AcceptsSignatureRef(type, typeof(T)))
                     throw new ArgumentException(ThisAssembly.Strings.TypeNotCompatible(
                         typeof(T).GetFormattedName(), type.GetFormattedName(), Parameter.Name));

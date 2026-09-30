@@ -69,10 +69,6 @@ One public method implements both. Both calls are intercepted, and a behavior ca
 
 `Stunt.Of` accepts at most eight additional interfaces. Castle takes a `Type[]`.
 
-### Value-type null returns
-
-Castle throws a dedicated exception when an interceptor returns null for a non-nullable value type. Stunts unboxes the null return at the call site (`NullReferenceException` / `InvalidCastException`). A behavior can check and throw its own exception; the generator does not.
-
 ## Not a Stunts feature
 
 Castle tests that cover the Reflection.Emit generator rather than proxy behavior. Compile-time generation replaces them; there is nothing to port unless Stunts grows a runtime emitter of its own.

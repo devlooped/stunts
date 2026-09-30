@@ -342,15 +342,14 @@ namespace Stunts.Processors
                             .WithExpressionBody(null)
                             .WithSemicolonToken(default)
                             .WithBody(body.AddStatements(
-                                // return (T)_result.ReturnValue;
+                                // return (T)_result.GetReturnValue(typeof(T));
                                 ReturnStatement(
                                     CastExpression(
                                         method.ReturnType,
-                                        PostfixUnaryExpression(
-                                            SyntaxKind.SuppressNullableWarningExpression,
-                                            MemberAccessExpression(
-                                                prefix + "result",
-                                                nameof(IMethodReturn.ReturnValue)))))));
+                                        InvocationExpression(
+                                            prefix + "result",
+                                            nameof(MethodReturnExtensions.GetReturnValue),
+                                            Argument(TypeOfExpression(method.ReturnType)))))));
                     }
                     else
                     {
@@ -804,7 +803,10 @@ namespace Stunts.Processors
                                 HolderType(innerReturn),
                                 PostfixUnaryExpression(
                                     SyntaxKind.SuppressNullableWarningExpression,
-                                    MemberAccessExpression(prefix + "result", nameof(IMethodReturn.ReturnValue))))),
+                                    InvocationExpression(
+                                        prefix + "result",
+                                        nameof(MethodReturnExtensions.GetReturnValue),
+                                        Argument(TypeOfExpression(innerReturn)))))),
                             "Value"))));
                     attempt.Add(ReturnStatement(IdentifierName(returned)));
                 }
@@ -818,7 +820,10 @@ namespace Stunts.Processors
                                 IdentifierName("PointerRef"),
                                 PostfixUnaryExpression(
                                     SyntaxKind.SuppressNullableWarningExpression,
-                                    MemberAccessExpression(prefix + "result", nameof(IMethodReturn.ReturnValue))))),
+                                    InvocationExpression(
+                                        prefix + "result",
+                                        nameof(MethodReturnExtensions.GetReturnValue),
+                                        Argument(TypeOfExpression(innerReturn)))))),
                             "Value"))));
                 }
                 else if (returnType is RefTypeSyntax)

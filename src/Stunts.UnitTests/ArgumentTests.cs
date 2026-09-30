@@ -70,7 +70,23 @@ namespace Stunts.UnitTests
         {
             var parameter = typeof(ArgumentTests).GetMethod(nameof(Arguments)).GetParameters()[0];
 
-            Assert.Throws<ArgumentNullException>(() => new ObjectArgument(parameter, null));
+            var exception = Assert.Throws<ArgumentNullException>(() => new ObjectArgument(parameter, null));
+
+            Assert.Equal(parameter.Name, exception.ParamName);
+            Assert.Contains(parameter.Name, exception.Message);
+            Assert.Contains("int", exception.Message);
+        }
+
+        [Fact]
+        public void WhenTypedValueIsNullForValueType_ThenThrowsArgumentNullException()
+        {
+            var parameter = typeof(ArgumentTests).GetMethod(nameof(Arguments)).GetParameters()[0];
+
+            var exception = Assert.Throws<ArgumentNullException>(() => new Argument<object?>(parameter, null));
+
+            Assert.Equal(parameter.Name, exception.ParamName);
+            Assert.Contains(parameter.Name, exception.Message);
+            Assert.Contains("int", exception.Message);
         }
 
         [Fact]
