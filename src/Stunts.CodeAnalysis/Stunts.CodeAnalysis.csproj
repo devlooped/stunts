@@ -29,6 +29,7 @@
     <None Remove="readme.md" Condition="'$(IsPackable)' != 'true'" />
     <None Update="@(None)" PackFolder="build" FrameworkSpecific="true" Condition="'$(IsPackable)' != 'true'" />
     <InternalsVisibleTo Include="Stunts.UnitTests" />
+    <InternalsVisibleTo Include="Stunts.CompiledProxy" />
   </ItemGroup>
 
   <ItemGroup>

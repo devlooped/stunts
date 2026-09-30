@@ -32,8 +32,8 @@ namespace Stunts
     /// <code>
     /// public void Execute(GeneratorExecutionContext context)
     /// {
-    /// 	if (context.AnalyzerConfigOptions.GlobalOptions.TryGetValue("build_property.StuntsAnalyzerDir", out var analyerDir))
-    /// 		DependencyResolver.AddSearchPath(analyerDir);
+    /// 	if (BuildProperties.StuntsAnalyzerDir(context.AnalyzerConfigOptions.GlobalOptions) is string analyzerDir)
+    /// 		DependencyResolver.AddSearchPath(analyzerDir);
     /// 		
     /// 	...
     /// }

@@ -106,6 +106,19 @@ namespace Stunts.CodeAnalysis
             true,
             "Private, protected, and private protected nested types are proxied by a stunt nested in the containing type. That type has to be declared partial.");
 
+        /// <summary>
+        /// Diagnostic reported when a stunt signature uses a ref struct or pointer
+        /// and compile-time stunts or unsafe blocks are not enabled.
+        /// </summary>
+        public static DiagnosticDescriptor UnsafeSignature { get; } = new DiagnosticDescriptor(
+            "ST009",
+            "Ref structs and pointers require compile-time stunts",
+            "'{0}.{1}' uses a ref struct or pointer and requires compile-time stunts and AllowUnsafeBlocks",
+            "Build",
+            DiagnosticSeverity.Error,
+            true,
+            "Proxying ref structs and pointers generates unsafe code. EnableCompileTimeStunts and AllowUnsafeBlocks must both be true, or that code does not compile.");
+
         public static DiagnosticDescriptor GeneratorAttributeNotFound { get; } = new DiagnosticDescriptor(
             "ST007",
             Strings.GeneratorAttributeNotFound.Title,

@@ -7,18 +7,9 @@ namespace Stunts
     {
         public static void CheckDebugger(this AnalyzerConfigOptionsProvider analyzerOptions, string debugableName)
         {
-            if (analyzerOptions.GlobalOptions.TryGetValue("build_property.DebugSourceGenerators", out var debugValue) &&
-                bool.TryParse(debugValue, out var shouldDebug) &&
-                shouldDebug)
-            {
+            var options = analyzerOptions.GlobalOptions;
+            if (BuildProperties.DebugSourceGenerators(options) || BuildProperties.Debug(options, debugableName))
                 Debugger.Launch();
-            }
-            else if (analyzerOptions.GlobalOptions.TryGetValue("build_property.Debug" + debugableName, out debugValue) &&
-                bool.TryParse(debugValue, out shouldDebug) &&
-                shouldDebug)
-            {
-                Debugger.Launch();
-            }
         }
     }
 }

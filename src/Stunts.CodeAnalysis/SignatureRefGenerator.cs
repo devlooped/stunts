@@ -1,4 +1,3 @@
-using System;
 using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -38,16 +37,11 @@ namespace Stunts
         }
 
         static bool ShouldEmit(Compilation compilation, AnalyzerConfigOptionsProvider options)
-            => IsTrue(options.GlobalOptions, "build_property.EnableCompileTimeStunts") &&
-               IsTrue(options.GlobalOptions, "build_property.AllowUnsafeBlocks") &&
+            => BuildProperties.CompileTimeStuntsAndUnsafe(options.GlobalOptions) &&
                compilation.GetTypeByMetadataName("System.Span`1") is not null &&
                compilation.GetTypeByMetadataName("System.ReadOnlySpan`1") is not null &&
                compilation.GetTypeByMetadataName("Stunts.StructRef`1") is null &&
                compilation.GetTypeByMetadataName("Stunts.SpanRef`1") is null &&
                compilation.GetTypeByMetadataName("Stunts.ReadOnlySpanRef`1") is null;
-
-        static bool IsTrue(AnalyzerConfigOptions options, string name)
-            => options.TryGetValue(name, out var value) &&
-               string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
     }
 }
