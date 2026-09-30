@@ -37,12 +37,23 @@ Stunts essentially implements the [proxy pattern](https://en.wikipedia.org/wiki/
 ## Usage
 
 ```csharp
-ICalculator calc = Stunt.Of<ICalculator>();
+var stunt = Stunt.For<ICalculator>();
+ICalculator calc = stunt.ToObject();
 
-calc.AddBehavior((invocation, next) => ...);
+stunt.AddBehavior((invocation, next) => ...);
 ```
 
-`AddBehavior`/`InsertBehavior` overloads allow granular control of the stunt's behavior pipeline, which is basically a [chain of responsibility](https://en.wikipedia.org/wiki/Chain-of-responsibility_pattern) that invokes all configured behaviors that apply to the current invocation. Individual behaviors can determine whether to short-circuit the call or call the next behavior in the chain.
+`Stunt.Of<T>` returns the stunt directly, and `Stunt.Get(stunt)` gets a `StuntReference<T>` for an existing one, so behaviors can be added after the fact:
+
+```csharp
+ICalculator calc = Stunt.Of<ICalculator>();
+
+Stunt.Get(calc).AddBehavior((invocation, next) => ...);
+```
+
+> NOTE: `StuntReference<T>` converts implicitly to `T` for classes and delegates. C# does not allow user-defined conversions to interfaces, so `ToObject()` is always available.
+
+`AddBehavior`/`InsertBehavior` are extension methods on `IStunt` (which `StuntReference<T>` implements) and allow granular control of the stunt's behavior pipeline, which is basically a [chain of responsibility](https://en.wikipedia.org/wiki/Chain-of-responsibility_pattern) that invokes all configured behaviors that apply to the current invocation. Individual behaviors can determine whether to short-circuit the call or call the next behavior in the chain.
 
 Behaviors can also dynamically determine whether they apply to a given invocation by providing the optional `appliesTo` argument. In addition to the delegate-based overloads (called *anonymous behaviors*), you can also create behaviors by implementing the `IStuntBehavior` interface:
 
@@ -64,6 +75,46 @@ Some commonly used behaviors that are generally useful are provided in the libra
 
 * `RecordingBehavior`: simple behavior that keeps track of all invocations, for troubleshooting or reporting.
 
+## Building Stunts
+
+When you need the same behaviors on multiple stunts, `Stunt.Builder()` returns a `StuntBuilder` 
+that collects behaviors (with the very same `AddBehavior`/`InsertBehavior` extension methods) and 
+applies them to every stunt it builds, with the same `Build<T>` overloads as `Stunt.Of<T>`:
+
+```csharp
+var builder = Stunt.Builder()
+    .AddBehavior(new RecordingBehavior())
+    .AddBehavior(new DefaultValueBehavior());
+
+ICalculator calculator = builder.Build<ICalculator>();
+IStore store = builder.Build<IStore>();
+```
+
+Since the behaviors are in place *before* the stunt is instantiated (via an ambient 
+`BehaviorPipelineFactory`), they also intercept virtual members invoked from base class 
+constructors, which isn't possible when behaviors are added to an already created stunt:
+
+```csharp
+public class Greeter
+{
+    public Greeter() => Seen = Name();
+    public string Seen { get; }
+    public virtual string Name() => "base";
+}
+
+Greeter greeter = Stunt.Builder()
+    .AddBehavior((invocation, next) => invocation.MethodBase.Name == nameof(Greeter.Name)
+        ? invocation.CreateValueReturn("proxy")
+        : next(invocation, next))
+    .Build<Greeter>();
+
+// greeter.Seen == "proxy"
+```
+
+Each `Build` call takes a snapshot of the behaviors configured at that point, so behaviors added 
+to the builder afterwards don't affect the stunts already built. Behavior instances themselves are 
+shared, so a single `RecordingBehavior` records the invocations of all stunts from that builder.
+
 ## Customizing Stunt Creation
 
 If you want to centrally configure all your stunts, the easiest way is to simply provide your own factory method (i.e. `Stub.Of<T>`), which in turn calls the `Stunt.Of<T>` provided. For example:
@@ -72,10 +123,11 @@ If you want to centrally configure all your stunts, the easiest way is to simply
     public static class Stub
     {
         [StuntGenerator]
-        public static T Of<T>() => Stunt.Of<T>()
+        public static T Of<T>() => Stunt.For<T>()
             .AddBehavior(new RecordingBehavior())
             .AddBehavior(new DefaultEqualityBehavior())
-            .AddBehavior(new DefaultValueBehavior());
+            .AddBehavior(new DefaultValueBehavior())
+            .ToObject();
     }
 ```
 
@@ -117,9 +169,10 @@ The examples below use `ICalculator` from [the samples](samples/Samples/Core/ICa
 An anonymous behavior can short-circuit a call. The `appliesTo` predicate limits it to the two-argument `Add` overload:
 
 ```csharp
-var calc = Stunt.Of<ICalculator>().AddBehavior(
+var calc = Stunt.For<ICalculator>().AddBehavior(
     (call, _) => call.CreateValueReturn(42),
-    call => call.MethodBase.Name == nameof(ICalculator.Add) && call.Arguments.Count == 2);
+    call => call.MethodBase.Name == nameof(ICalculator.Add) && call.Arguments.Count == 2)
+    .ToObject();
 
 calc.Add(2, 3); // 42
 ```
@@ -129,9 +182,10 @@ calc.Add(2, 3); // 42
 Arguments are available by name (or index), so a behavior can use the values passed by the caller:
 
 ```csharp
-var calc = Stunt.Of<ICalculator>().AddBehavior(
+var calc = Stunt.For<ICalculator>().AddBehavior(
     (call, _) => call.CreateValueReturn(call.Arguments.Get<int>("x") + call.Arguments.Get<int>("y")),
-    call => call.MethodBase.Name == nameof(ICalculator.Add) && call.Arguments.Count == 2);
+    call => call.MethodBase.Name == nameof(ICalculator.Add) && call.Arguments.Count == 2)
+    .ToObject();
 
 calc.Add(2, 3); // 5
 ```
@@ -142,11 +196,12 @@ Behaviors run in order. Put recording first to capture calls and results, and a 
 
 ```csharp
 var recorder = new RecordingBehavior();
-var calc = Stunt.Of<ICalculator>()
+var calc = Stunt.For<ICalculator>()
     .AddBehavior(recorder)
     .AddBehavior((call, _) => call.CreateValueReturn(5),
         call => call.MethodBase.Name == nameof(ICalculator.Add) && call.Arguments.Count == 2)
-    .AddBehavior(new DefaultValueBehavior());
+    .AddBehavior(new DefaultValueBehavior())
+    .ToObject();
 
 calc.Add(2, 3); // 5
 var calls = recorder.Invocations.Count; // 1
@@ -159,21 +214,21 @@ Register a factory when the built-in defaults are not suitable. Here, each call 
 ```csharp
 var defaults = new DefaultValueProvider();
 defaults.Register(() => "Hello!");
-var greet = Stunt.Of<Func<string>>().AddBehavior(new DefaultValueBehavior(defaults));
+var greet = Stunt.For<Func<string>>().AddBehavior(new DefaultValueBehavior(defaults)).ToObject();
 
 greet(); // "Hello!"
 ```
 
 ### Intercept a real implementation
 
-Pass a delegate implementation to `Stunt.Of` and call `next` to forward to it. Behaviors can change arguments before forwarding:
+Pass a delegate implementation to `Stunt.For` and call `next` to forward to it. Behaviors can change arguments before forwarding:
 
 ```csharp
-var add = Stunt.Of<Func<int, int, int>>((x, y) => x + y).AddBehavior((call, next) =>
+var add = Stunt.For<Func<int, int, int>>((x, y) => x + y).AddBehavior((call, next) =>
 {
     call.Arguments.Set(0, 10);
     return next(call, next);
-});
+}).ToObject();
 
 add(1, 2); // 12
 ```
