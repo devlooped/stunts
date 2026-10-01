@@ -8,13 +8,14 @@ Namespace Sample
 
         <Fact>
         Public Sub CanConfigureDefaultValues()
-            Dim calculator = Stunt.[Of](Of ICalculator, IDisposable)()
+            Dim reference = Stunt.[For](Of ICalculator, IDisposable)()
+            Dim calculator As ICalculator = reference.ToObject()
 
             Assert.IsNotType(Of CompiledStuntFactory)(StuntFactory.[Default])
 
             Dim recorder = New RecordingBehavior()
-            calculator.AddBehavior(recorder)
-            calculator.AddBehavior(New DefaultValueBehavior())
+            reference.AddBehavior(recorder)
+            reference.AddBehavior(New DefaultValueBehavior())
 
             Assert.IsAssignableFrom(Of IDisposable)(calculator)
 
