@@ -140,5 +140,31 @@ namespace Stunts.CodeAnalysis
             DiagnosticSeverity.Error,
             true,
             Strings.GeneratorAttributeNotFound.Description);
+
+        /// <summary>
+        /// Diagnostic reported when an abstract interface member cannot be implemented
+        /// from the assembly containing the stunt.
+        /// </summary>
+        public static DiagnosticDescriptor InaccessibleInterfaceMember { get; } = new DiagnosticDescriptor(
+            "ST012",
+            "Interface member is inaccessible",
+            "'{0}' cannot be proxied because abstract interface member '{1}' is inaccessible to this assembly",
+            "Build",
+            DiagnosticSeverity.Error,
+            true,
+            "All abstract interface members, including property and event accessors, must be accessible to the generated implementation.");
+
+        /// <summary>
+        /// Diagnostic reported when a signature uses a special CLR type that cannot
+        /// be stored in invocation arguments or ref-struct holders.
+        /// </summary>
+        public static DiagnosticDescriptor UnsupportedRuntimeSignature { get; } = new DiagnosticDescriptor(
+            "ST013",
+            "Unsupported CLR signature",
+            "'{0}' cannot be proxied because '{1}' uses TypedReference, ArgIterator, or RuntimeArgumentHandle",
+            "Build",
+            DiagnosticSeverity.Error,
+            true,
+            "These special CLR types cannot be boxed or used as generic arguments, so the behavior pipeline cannot intercept them.");
     }
 }

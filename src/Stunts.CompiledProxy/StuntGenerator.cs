@@ -180,16 +180,45 @@ namespace Stunts
             var factory = StuntSyntaxFactory.CreateFactory(context.Language);
             var stunts = new HashSet<string>();
             var defaults = new HashSet<string>();
+            var hintNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var (source, candidate) in context.SyntaxReceivers
                 .OfType<IStuntCandidatesReceiver>()
                 .SelectMany(receiver => receiver.GetCandidates(context)).ToArray())
             {
+                var inaccessible = candidate.Select(type => (Type: type, Member: InterfaceImplementation.InaccessibleMember(type, context.Compilation)))
+                    .FirstOrDefault(pair => pair.Member != null);
+                if (inaccessible.Member != null)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        StuntDiagnostics.InaccessibleInterfaceMember, source.GetLocation(),
+                        inaccessible.Type.Name, inaccessible.Member.ToDisplayString()));
+                    continue;
+                }
+
+                var unsupported = candidate.Select(type => (Type: type, Member: RuntimeSignature.UnsupportedMember(type, context.Compilation)))
+                    .FirstOrDefault(pair => pair.Member != null);
+                if (unsupported.Member != null)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        StuntDiagnostics.UnsupportedRuntimeSignature, source.GetLocation(),
+                        unsupported.Type.Name, unsupported.Member.ToDisplayString()));
+                    continue;
+                }
+
+                if (candidate.FirstOrDefault(type => type.TypeKind == TypeKind.Class && type.IsSealed) is INamedTypeSymbol sealedType)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        StuntDiagnostics.SealedBaseType, source.GetLocation(), sealedType.Name));
+                    continue;
+                }
+
                 if (candidate.Any(type => type.TypeKind == TypeKind.Delegate) &&
                     !candidate.TryValidateGeneratorTypes(out _))
                     continue;
 
-                var name = naming.GetName(candidate);
+                var name = naming.GetNamespace(candidate) + "." +
+                    (GenericStuntTemplate.Create(candidate)?.GetName(naming) ?? naming.GetName(candidate));
                 if (stunts.Contains(name))
                     continue;
 
@@ -215,21 +244,28 @@ namespace Stunts
                 }
 
                 stunts.Add(name);
-                AddSource(context, name, updated);
+                AddSource(context, name, updated, hintNames);
 
                 foreach (var iface in stuntContext.DefaultImplementations)
                 {
-                    if (!defaults.Add(naming.GetDefaultImplementationFullName(iface)))
+                    var defaultName = naming.GetNamespace(new[] { iface }) + "." +
+                        (GenericStuntTemplate.Create(iface)?.GetName(naming, "DefaultGeneric") ?? naming.GetDefaultImplementationName(iface));
+                    if (!defaults.Add(defaultName))
                         continue;
 
-                    AddSource(context, naming.GetDefaultImplementationName(iface),
-                        DefaultImplementation.Driver.Process(DefaultImplementation.CreateSyntax(naming, iface), context));
+                    AddSource(context, defaultName,
+                        DefaultImplementation.Driver.Process(DefaultImplementation.CreateSyntax(naming, iface), context), hintNames);
                 }
             }
         }
 
-        static void AddSource(ProcessorContext context, string name, SyntaxNode updated)
+        static void AddSource(ProcessorContext context, string name, SyntaxNode updated, HashSet<string> hintNames)
         {
+            var hintName = name;
+            var suffix = 1;
+            while (!hintNames.Add(hintName))
+                hintName = name + "." + suffix++;
+
             var code = updated.NormalizeWhitespace().ToFullString();
             var options = context.AnalyzerConfigOptions.GlobalOptions;
             // Pretty-printing is C# only. The debugger dump below still uses the flag for every language.
@@ -241,7 +277,7 @@ namespace Stunts
                 code = updated.GetText().ToString();
             }
 
-            context.AddSource(name, SourceText.From(code, Encoding.UTF8));
+            context.AddSource(hintName, SourceText.From(code, Encoding.UTF8));
 
 #if DEBUG
             if (Debugger.IsAttached)
@@ -253,7 +289,7 @@ namespace Stunts
                     var targetDir = Path.Combine(projectDir, intermediateDir, "generated", nameof(StuntGenerator));
                     Directory.CreateDirectory(targetDir);
 
-                    var filePath = Path.Combine(targetDir, name + (context.Language == LanguageNames.CSharp ? ".cs" : ".vb"));
+                    var filePath = Path.Combine(targetDir, hintName + (context.Language == LanguageNames.CSharp ? ".cs" : ".vb"));
                     File.WriteAllText(filePath, code);
                     Debugger.Log(0, "", "Stunt Generated: " + filePath + Environment.NewLine);
                 }
@@ -329,7 +365,7 @@ namespace Stunts
             }
         }
 
-        static bool CanGenerateFor(INamedTypeSymbol? symbol) => symbol != null;
+        static bool CanGenerateFor(INamedTypeSymbol? symbol) => symbol != null && symbol.TypeKind != TypeKind.Error;
 
         class AggregateSyntaxReceiver : ISyntaxReceiver, IEnumerable
         {
@@ -364,14 +400,30 @@ namespace Stunts
                 if (generatorAttr == null)
                     yield break;
 
+                var models = new Dictionary<SyntaxTree, SemanticModel>();
+                var templates = new Dictionary<IMethodSymbol, bool>(SymbolEqualityComparer.Default);
                 foreach (var (invocation, genericName) in invocations)
                 {
-                    var semantic = context.Compilation.GetSemanticModel(invocation.SyntaxTree);
+                    context.CancellationToken.ThrowIfCancellationRequested();
+                    if (!models.TryGetValue(invocation.SyntaxTree, out var semantic))
+                    {
+                        semantic = context.Compilation.GetSemanticModel(invocation.SyntaxTree);
+                        models.Add(invocation.SyntaxTree, semantic);
+                    }
                     var symbol = semantic.GetSymbolInfo(invocation, context.CancellationToken);
                     if (symbol.Symbol is not IMethodSymbol method)
                         continue;
 
                     if (!method.GetAttributes().Any(attr => SymbolEqualityComparer.Default.Equals(attr.AttributeClass, generatorAttr)))
+                        continue;
+
+                    var definition = method.OriginalDefinition;
+                    if (!templates.TryGetValue(definition, out var usesTemplate))
+                    {
+                        usesTemplate = GenericFactory.UsesTemplate(definition, context.Compilation, generatorAttr, context.CancellationToken);
+                        templates.Add(definition, usesTemplate);
+                    }
+                    if (usesTemplate)
                         continue;
 
                     var typeArgs = genericName.TypeArgumentList.Arguments

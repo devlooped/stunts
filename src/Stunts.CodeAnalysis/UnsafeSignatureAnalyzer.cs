@@ -51,6 +51,9 @@ namespace Stunts
             if (!invocation.TargetMethod.GetAttributes().Any(attribute => SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, generator)))
                 return;
 
+            if (GenericFactory.UsesTemplate(invocation.TargetMethod, context.Compilation, generator, context.CancellationToken))
+                return;
+
             if (BuildProperties.CompileTimeStuntsAndUnsafe(context.Options.AnalyzerConfigOptionsProvider.GlobalOptions))
                 return;
 
