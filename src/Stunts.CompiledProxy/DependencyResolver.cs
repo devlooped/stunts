@@ -1,6 +1,5 @@
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+using System.Collections.Immutable;
 using System.IO;
 using System.Reflection;
 
@@ -42,15 +41,12 @@ namespace Stunts
     /// </remarks>
     public static class DependencyResolver
     {
-        static HashSet<string> searchPaths = new();
+        static ImmutableHashSet<string> searchPaths = ImmutableHashSet<string>.Empty;
 
         static DependencyResolver() => AppDomain.CurrentDomain.AssemblyResolve += OnAssemblyResolve;
 
         static Assembly? OnAssemblyResolve(object? sender, ResolveEventArgs args)
         {
-            if (searchPaths.Count == 0)
-                return null;
-
             var requested = new AssemblyName(args.Name);
             if (requested.Name == null)
                 return null;
@@ -60,19 +56,14 @@ namespace Stunts
                 var file = Path.GetFullPath(Path.Combine(dir, requested.Name + ".dll"));
                 if (File.Exists(file))
                 {
-                    try
-                    {
-                        var actual = AssemblyName.GetAssemblyName(file);
-                        // Only load compatible versions, allowing only minor version 
-                        // mismatch.
-                        if (actual.Version.Major == requested.Version.Major &&
-                            actual.Version.Minor >= requested.Version.Minor)
-                            return Assembly.LoadFrom(file);
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.Fail($"Failed to load an assembly from '{file}'.", e.ToString());
-                    }
+                    var actual = AssemblyName.GetAssemblyName(file);
+                    // A simple-name probe has no version. Otherwise, only allow
+                    // compatible major/minor versions.
+                    if (requested.Version == null ||
+                        actual.Version != null &&
+                        actual.Version.Major == requested.Version.Major &&
+                        actual.Version.Minor >= requested.Version.Minor)
+                        return Assembly.LoadFrom(file);
                 }
             }
 
@@ -84,6 +75,7 @@ namespace Stunts
         /// loading the generator.
         /// </summary>
         /// <returns>Whether the directory was added or it was already registered.</returns>
-        public static bool AddSearchPath(string path) => searchPaths.Add(path);
+        public static bool AddSearchPath(string path)
+            => ImmutableInterlocked.Update(ref searchPaths, paths => paths.Add(path));
     }
 }
