@@ -143,6 +143,21 @@ public static T Of<T, T1>(params object[] constructorArgs) => Create<T>(construc
 
 As you can see, the Stunts API itself uses the same extensibility mechanism that your own custom factory methods can use.
 
+The attribute normally treats the generic arguments at the call site as the stunt's base type and
+additional interfaces. Factories that construct generic types inside their bodies also work:
+
+```csharp
+static IDictionary<TKey, TValue> Create<TKey, TValue>()
+    => Stunt.Of<IDictionary<TKey, TValue>>();
+
+IDictionary<string, int> dictionary = Create<string, int>();
+```
+
+This wrapper needs no `[StuntGenerator]`: the call in its body generates a generic proxy template.
+At runtime, the compiled factory closes that template with the requested types, without tracing
+callers. Templates preserve constraints and support nested type arguments, classes, delegates, and
+additional interfaces. An existing closed proxy takes precedence over a matching template.
+
 ### Compiled vs Dynamic Stunts
 
 By default, Stunts generates proxies at compile-time (powered by Roslyn source generators). Whenever compile-time stunts are 
@@ -155,6 +170,16 @@ not supported (or unwanted), install the `Stunts.DynamicProxy` package, which sw
 ```
 
 The package sets `EnableCompileTimeStunts=false` for you. Projects that can't use compile-time stunts and don't reference `Stunts.DynamicProxy` get a build warning (`ST011`).
+
+Compile-time stunts support optional parameters, inherited generic constraints, long signatures,
+and `ref`/`out` arguments alongside spans and other ref structs. Ref-struct and pointer signatures
+require unsafe blocks to be enabled.
+
+Unsupported targets produce diagnostics at the factory call: `ST012` identifies inaccessible
+abstract interface members (such as an internal setter from another assembly, which C# cannot
+implement), while `ST013` identifies signatures using `TypedReference`, `ArgIterator`, or
+`RuntimeArgumentHandle`, which the behavior pipeline cannot represent. Internal interface
+members remain supported when accessible through the same assembly or `InternalsVisibleTo`.
 
 <!-- #manual -->
 > NOTE: even though generated proxies are the main usage for Stunts, the API was designed so that you can also consume the behavior pipeline easily from hand-coded proxies too.

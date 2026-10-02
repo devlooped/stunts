@@ -28,6 +28,7 @@ public static class INamedTypeSymbolExtensions
             cancellationToken.ThrowIfCancellationRequested();
             var type = bases[i];
             RemoveOverridden(ordered, seen, type);
+            RemoveCollisions(ordered, seen, type);
             foreach (var member in type.GetMembers())
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -59,7 +60,8 @@ public static class INamedTypeSymbolExtensions
             foreach (var member in iface.GetMembers())
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (member.IsStatic || member.IsImplicitlyDeclared || IsExplicitImplementation(member))
+                if (member is not (IMethodSymbol or IPropertySymbol or IEventSymbol) ||
+                    member.IsStatic || member.IsImplicitlyDeclared || IsExplicitImplementation(member))
                     continue;
                 if (member is IMethodSymbol method && method.MethodKind != MethodKind.Ordinary)
                     continue;
@@ -183,8 +185,10 @@ public static class INamedTypeSymbolExtensions
 
     static bool SameSignature(ISymbol left, ISymbol right)
     {
-        if (left.Name != right.Name || left.Kind != right.Kind)
+        if (left.Name != right.Name)
             return false;
+        if (left.Kind != right.Kind)
+            return true;
         if (left is not IMethodSymbol leftMethod || right is not IMethodSymbol rightMethod)
             return true;
         if (leftMethod.Parameters.Length != rightMethod.Parameters.Length || leftMethod.TypeParameters.Length != rightMethod.TypeParameters.Length)

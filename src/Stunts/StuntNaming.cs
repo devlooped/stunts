@@ -97,15 +97,10 @@ namespace Stunts
         {
             if (type.IsGenericType)
             {
-                builder.Append(type.Name.Substring(0, type.Name.IndexOf('`')));
-                if (type.IsConstructedGenericType)
-                {
-                    return builder.Append("Of").AddNames(type.GenericTypeArguments);
-                }
-                else
-                {
-                    return builder.Append("Of").AddNames(type.GetGenericArguments());
-                }
+                var arity = type.Name.IndexOf('`');
+                builder.Append(arity < 0 ? type.Name : type.Name.Substring(0, arity));
+                var outerArity = type.DeclaringType?.GetGenericArguments().Length ?? 0;
+                return builder.Append("Of").AddNames(type.GetGenericArguments().Skip(outerArity));
             }
             else
             {

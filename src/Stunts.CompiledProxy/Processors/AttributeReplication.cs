@@ -47,6 +47,7 @@ namespace Stunts.Processors
             "System.Runtime.CompilerServices.IsByRefLikeAttribute",
             "System.Runtime.CompilerServices.IsReadOnlyAttribute",
             "System.Runtime.CompilerServices.IsUnmanagedAttribute",
+            "System.Runtime.CompilerServices.IndexerNameAttribute",
             "System.Runtime.CompilerServices.IteratorStateMachineAttribute",
             "System.Runtime.CompilerServices.NativeIntegerAttribute",
             "System.Runtime.CompilerServices.NullableAttribute",
@@ -81,11 +82,12 @@ namespace Stunts.Processors
         /// <see cref="System.Runtime.InteropServices.DefaultParameterValueAttribute"/>
         /// (or <see cref="System.Runtime.CompilerServices.DecimalConstantAttribute"/> /
         /// <see cref="System.Runtime.CompilerServices.DateTimeConstantAttribute"/>).
-        /// Spelling <c>= value</c> on an override is CS1066, so the attributes are emitted directly.
+        /// Explicit implementations use attributes to avoid CS1066.
         /// </summary>
         public static SyntaxList<AttributeListSyntax> Defaults(IParameterSymbol parameter)
         {
-            if (!parameter.HasExplicitDefaultValue || parameter.IsParams || HasDefaultAttribute(parameter))
+            if (!parameter.HasExplicitDefaultValue || parameter.IsParams || HasDefaultAttribute(parameter) ||
+                parameter.ExplicitDefaultValue == null && parameter.Type.IsValueType)
                 return default;
 
             var lists = new List<AttributeListSyntax>
@@ -95,6 +97,18 @@ namespace Stunts.Processors
             if (ValueAttribute(parameter) is AttributeListSyntax value)
                 lists.Add(value);
             return List(lists);
+        }
+
+        public static EqualsValueClauseSyntax? DefaultValue(IParameterSymbol parameter)
+        {
+            if (!parameter.HasExplicitDefaultValue || parameter.IsParams || HasDefaultAttribute(parameter))
+                return null;
+            if (parameter.Type.SpecialType == SpecialType.System_DateTime && parameter.ExplicitDefaultValue is DateTime)
+                return null;
+            var value = parameter.ExplicitDefaultValue == null && (parameter.Type.IsValueType || parameter.Type.TypeKind == TypeKind.TypeParameter)
+                ? LiteralExpression(SyntaxKind.DefaultLiteralExpression, Token(SyntaxKind.DefaultKeyword))
+                : Constant(parameter.ExplicitDefaultValue, parameter.Type);
+            return value == null ? null : EqualsValueClause(value);
         }
 
         static bool HasDefaultAttribute(IParameterSymbol parameter)
@@ -158,13 +172,13 @@ namespace Stunts.Processors
         static ExpressionSyntax? Constant(object? value, ITypeSymbol type)
         {
             if (value == null)
-                return CastExpression(TypeName(type), LiteralExpression(SyntaxKind.NullLiteralExpression));
+                return LiteralExpression(SyntaxKind.NullLiteralExpression);
             if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType && enumType.EnumUnderlyingType != null)
             {
                 var literal = Primitive(value, enumType.EnumUnderlyingType);
                 if (literal == null)
                     return null;
-                return CastExpression(TypeName(enumType), literal is LiteralExpressionSyntax ? literal : ParenthesizedExpression(literal));
+                return CastExpression(TypeName(enumType), ParenthesizedExpression(literal));
             }
 
             if (type is INamedTypeSymbol named && named.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T && named.TypeArguments.Length == 1)
@@ -196,6 +210,9 @@ namespace Stunts.Processors
                 return null;
             if (Skip.Contains(MetadataName(attributeClass)) || IsSecurityAttribute(attributeClass))
                 return null;
+            if (MetadataName(attributeClass) == "System.Diagnostics.CodeAnalysis.UnscopedRefAttribute" &&
+                owner.ContainingType?.TypeKind == TypeKind.Interface)
+                return null;
             if (owner is IParameterSymbol parameter && ImpliedBySignature(parameter, MetadataName(attributeClass)))
                 return null;
             if (!Accessible(attributeClass, assembly) || !Accessible(attribute.AttributeConstructor, assembly))
@@ -204,7 +221,7 @@ namespace Stunts.Processors
             var arguments = new List<AttributeArgumentSyntax>();
             foreach (var constant in attribute.ConstructorArguments)
             {
-                if (Expression(constant) is not ExpressionSyntax value)
+                if (Expression(constant, assembly) is not ExpressionSyntax value)
                     return null;
                 arguments.Add(AttributeArgument(value));
             }
@@ -213,7 +230,7 @@ namespace Stunts.Processors
             {
                 if (!NamedAccessible(attributeClass, named.Key, assembly))
                     return null;
-                if (Expression(named.Value) is not ExpressionSyntax value)
+                if (Expression(named.Value, assembly) is not ExpressionSyntax value)
                     return null;
                 arguments.Add(AttributeArgument(NameEquals(IdentifierName(named.Key)), null, value));
             }
@@ -333,12 +350,12 @@ namespace Stunts.Processors
             return ns.ToDisplayString() + "." + name;
         }
 
-        static ExpressionSyntax? Expression(TypedConstant constant)
+        static ExpressionSyntax? Expression(TypedConstant constant, IAssemblySymbol assembly)
         {
             if (constant.Type == null || constant.Type.TypeKind == TypeKind.Error || constant.Kind == TypedConstantKind.Error)
                 return null;
             if (constant.IsNull)
-                return CastExpression(TypeName(constant.Type), LiteralExpression(SyntaxKind.NullLiteralExpression));
+                return LiteralExpression(SyntaxKind.NullLiteralExpression);
 
             switch (constant.Kind)
             {
@@ -350,24 +367,24 @@ namespace Stunts.Processors
                     var literal = Primitive(constant.Value, enumType.EnumUnderlyingType);
                     if (literal == null)
                         return null;
-                    return CastExpression(TypeName(enumType), literal is LiteralExpressionSyntax ? literal : ParenthesizedExpression(literal));
+                    return CastExpression(TypeName(enumType), ParenthesizedExpression(literal));
                 case TypedConstantKind.Type:
-                    return constant.Value is ITypeSymbol type && type.TypeKind != TypeKind.Error
+                    return constant.Value is ITypeSymbol type && type.TypeKind != TypeKind.Error && Accessible(type, assembly)
                         ? TypeOfExpression(TypeName(type))
                         : null;
                 case TypedConstantKind.Array:
-                    return constant.Type is IArrayTypeSymbol array ? Array(array, constant.Values) : null;
+                    return constant.Type is IArrayTypeSymbol array ? Array(array, constant.Values, assembly) : null;
                 default:
                     return null;
             }
         }
 
-        static ExpressionSyntax? Array(IArrayTypeSymbol array, ImmutableArray<TypedConstant> values)
+        static ExpressionSyntax? Array(IArrayTypeSymbol array, ImmutableArray<TypedConstant> values, IAssemblySymbol assembly)
         {
             var elements = new List<ExpressionSyntax>();
             foreach (var value in values)
             {
-                if (Expression(value) is not ExpressionSyntax element)
+                if (Expression(value, assembly) is not ExpressionSyntax element)
                     return null;
                 elements.Add(element);
             }
@@ -392,11 +409,11 @@ namespace Stunts.Processors
                 case SpecialType.System_Char:
                     return LiteralExpression(SyntaxKind.CharacterLiteralExpression, Literal(Convert.ToChar(value)));
                 case SpecialType.System_SByte:
-                    return CastExpression(PredefinedType(Token(SyntaxKind.SByteKeyword)), Number(Convert.ToInt32(value)));
+                    return CastExpression(PredefinedType(Token(SyntaxKind.SByteKeyword)), ParenthesizedExpression(Number(Convert.ToInt32(value))));
                 case SpecialType.System_Byte:
                     return CastExpression(PredefinedType(Token(SyntaxKind.ByteKeyword)), Number(Convert.ToInt32(value)));
                 case SpecialType.System_Int16:
-                    return CastExpression(PredefinedType(Token(SyntaxKind.ShortKeyword)), Number(Convert.ToInt32(value)));
+                    return CastExpression(PredefinedType(Token(SyntaxKind.ShortKeyword)), ParenthesizedExpression(Number(Convert.ToInt32(value))));
                 case SpecialType.System_UInt16:
                     return CastExpression(PredefinedType(Token(SyntaxKind.UShortKeyword)), Number(Convert.ToInt32(value)));
                 case SpecialType.System_Int32:

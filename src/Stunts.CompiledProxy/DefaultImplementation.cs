@@ -39,18 +39,24 @@ namespace Stunts
             new CSharpPragmas());
 
         public static SyntaxNode CreateSyntax(NamingConvention naming, INamedTypeSymbol iface)
-            => CompilationUnit()
+        {
+            var template = GenericStuntTemplate.Create(iface);
+            TypeDeclarationSyntax declaration = ClassDeclaration(template?.GetName(naming, "DefaultGeneric") ?? naming.GetDefaultImplementationName(iface))
+                .WithModifiers(TokenList(Token(IsPublic(iface) &&
+                    (template == null || template.Parameters.All(parameter => parameter.ConstraintTypes.All(IsPublic)))
+                        ? SyntaxKind.PublicKeyword : SyntaxKind.InternalKeyword)))
+                .WithBaseList(BaseList(SingletonSeparatedList<BaseTypeSyntax>(
+                    SimpleBaseType(template == null ? MemberScaffold.TypeName(iface) : ParseTypeName(template.Display(iface))))));
+            if (template != null)
+                declaration = template.Declaration(declaration);
+
+            return CompilationUnit()
                 .WithMembers(
                     SingletonList<MemberDeclarationSyntax>(
                         NamespaceDeclaration(ParseName(naming.GetNamespace(new[] { iface })))
                         .WithMembers(
-                            SingletonList<MemberDeclarationSyntax>(
-                                ClassDeclaration(naming.GetDefaultImplementationName(iface))
-                                .WithModifiers(TokenList(Token(IsPublic(iface) ? SyntaxKind.PublicKeyword : SyntaxKind.InternalKeyword)))
-                                .WithBaseList(
-                                    BaseList(
-                                        SingletonSeparatedList<BaseTypeSyntax>(
-                                            SimpleBaseType(MemberScaffold.TypeName(iface)))))))));
+                            SingletonList<MemberDeclarationSyntax>(declaration))));
+        }
 
         // A public class implementing a less accessible interface does not compile (CS0060).
         static bool IsPublic(ITypeSymbol type) => type switch
@@ -83,7 +89,7 @@ namespace Stunts
                     .WithAccessorList(AccessorList(SingletonList(
                         AccessorDeclaration(SyntaxKind.GetAccessorDeclaration).WithSemicolonToken(Token(SyntaxKind.SemicolonToken)))))
                     .WithInitializer(EqualsValueClause(
-                        ObjectCreationExpression(IdentifierName(symbol.Name)).WithArgumentList(ArgumentList())))
+                        ObjectCreationExpression(MemberScaffold.TypeName(symbol)).WithArgumentList(ArgumentList())))
                     .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
 
                 var members = new List<MemberDeclarationSyntax> { instance };

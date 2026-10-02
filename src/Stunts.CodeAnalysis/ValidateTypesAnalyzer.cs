@@ -41,7 +41,9 @@ namespace Stunts.CodeAnalysis
                 StuntDiagnostics.SealedBaseType,
                 StuntDiagnostics.EnumType,
                 StuntDiagnostics.ContainingTypeNotPartial,
-                StuntDiagnostics.DelegateWithOtherTypes);
+                StuntDiagnostics.DelegateWithOtherTypes,
+                StuntDiagnostics.InaccessibleInterfaceMember,
+                StuntDiagnostics.UnsupportedRuntimeSignature);
 
         /// <summary>
         /// Registers the analyzer to take action on method invocation expressions.
@@ -64,6 +66,23 @@ namespace Stunts.CodeAnalysis
 
             if (invocation.TargetMethod.GetAttributes().Any(x => SymbolEqualityComparer.Default.Equals(x.AttributeClass, generator)))
             {
+                if (GenericFactory.UsesTemplate(invocation.TargetMethod, context.Compilation, generator, context.CancellationToken))
+                    return;
+
+                foreach (var type in invocation.TargetMethod.TypeArguments.OfType<INamedTypeSymbol>())
+                {
+                    if (InterfaceImplementation.InaccessibleMember(type, context.Compilation) is ISymbol member)
+                        context.ReportDiagnostic(Diagnostic.Create(
+                            StuntDiagnostics.InaccessibleInterfaceMember,
+                            invocation.Syntax.GetLocation(),
+                            type.Name,
+                            member.ToDisplayString()));
+                    if (RuntimeSignature.UnsupportedMember(type, context.Compilation) is ISymbol unsupported)
+                        context.ReportDiagnostic(Diagnostic.Create(
+                            StuntDiagnostics.UnsupportedRuntimeSignature,
+                            invocation.Syntax.GetLocation(), type.Name, unsupported.ToDisplayString()));
+                }
+
                 foreach (var enumType in invocation.TargetMethod.TypeArguments.Where(x => x.TypeKind == TypeKind.Enum))
                 {
                     context.ReportDiagnostic(Diagnostic.Create(

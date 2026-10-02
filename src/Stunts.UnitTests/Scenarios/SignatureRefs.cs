@@ -25,6 +25,16 @@ namespace Stunts.Scenarios.SignatureRefs
         }
 
         public virtual Span<int> First(Span<int> data) => data[..1];
+
+        public virtual bool TrySum(ReadOnlySpan<int> data, out int sum)
+        {
+            sum = 0;
+            foreach (var value in data)
+                sum += value;
+            return true;
+        }
+
+        public virtual ReadOnlySpan<int> Values => new[] { 1, 2 };
     }
 
     public ref struct Token
@@ -41,6 +51,15 @@ namespace Stunts.Scenarios.SignatureRefs
     public unsafe class Reader
     {
         public virtual int Read(int* value) => *value;
+
+        public virtual int ReadAndAdvance(ref int* value)
+        {
+            var result = *value;
+            value++;
+            return result;
+        }
+
+        public virtual void Reset(out int* value) => value = null;
     }
 
     public unsafe class Test : IRunnable
@@ -52,6 +71,9 @@ namespace Stunts.Scenarios.SignatureRefs
             SpanReturnProceedsThroughStructRef();
             CustomRefStructRoundTrips();
             PointerIsVisibleToTheBehavior();
+            SpanAndOutArgumentsRoundTrip();
+            RefStructPropertyReturnsThroughHolder();
+            PointerOutputsRoundTrip();
         }
 
         static void RefReadonlyKeepsTheModifierAndTheValue()
@@ -139,6 +161,45 @@ namespace Stunts.Scenarios.SignatureRefs
             }
 
             Assert.Equal(9, value);
+        }
+
+        static void SpanAndOutArgumentsRoundTrip()
+        {
+            var stunt = Stunt.For<Buffer>();
+            Buffer buffer = stunt.ToObject();
+            Assert.True(buffer.TrySum(new[] { 2, 3 }, out var sum));
+            Assert.Equal(5, sum);
+
+            stunt.AddBehavior((invocation, next) => invocation.CreateValueReturn(false,
+                invocation.Arguments.SetValue("sum", 42)), invocation => invocation.MethodBase.Name == nameof(Buffer.TrySum));
+            Assert.False(buffer.TrySum(new[] { 1 }, out sum));
+            Assert.Equal(42, sum);
+        }
+
+        static void RefStructPropertyReturnsThroughHolder()
+        {
+            Buffer buffer = Stunt.Of<Buffer>();
+            Assert.Equal(2, buffer.Values.Length);
+            Assert.Equal(1, buffer.Values[0]);
+        }
+
+        static void PointerOutputsRoundTrip()
+        {
+            int* values = stackalloc int[] { 3, 5 };
+            var current = values;
+            var stunt = Stunt.For<Reader>();
+            Reader reader = stunt.ToObject();
+            Assert.Equal(3, reader.ReadAndAdvance(ref current));
+            Assert.Equal(5, *current);
+            reader.Reset(out current);
+            Assert.Equal((nint)0, (nint)current);
+
+            var address = (nint)values;
+            stunt.AddBehavior((invocation, next) => invocation.CreateValueReturn(null,
+                invocation.Arguments.SetValue("value", new PointerRef((void*)address))),
+                invocation => invocation.MethodBase.Name == nameof(Reader.Reset));
+            reader.Reset(out current);
+            Assert.Equal(address, (nint)current);
         }
     }
 }

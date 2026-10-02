@@ -75,6 +75,10 @@ namespace Stunts.UnitTests
         }
 
         [Fact]
+        public void GenericContainingTypeWithoutOwnParameters()
+            => Assert.Equal("InnerOfStunt", StuntNaming.GetName(typeof(Outer<string>.Inner)));
+
+        [Fact]
         public void GenericOfGenericName()
         {
             var name = StuntNaming.GetName(typeof(ICollection<HashSet<ICalculator>>));
@@ -98,5 +102,10 @@ namespace Stunts.UnitTests
         }
 
         class Hidden { }
+
+        class Outer<T>
+        {
+            public class Inner { }
+        }
     }
 }
