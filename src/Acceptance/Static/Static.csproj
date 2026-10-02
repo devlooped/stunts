@@ -3,6 +3,9 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <NoWarn>$(NoWarn);CS0618;ASP5001;ASPDEPR004;ASPDEPR005;ASPDEPR006;ASPDEPR008;BL0006;CS0108;CS0612;CS0809;CS1066;CS3021;CS8424;CS8714;CS8763;CS8766;CS8767;CS8774;NBMsgPack031;NU1510;SYSLIB0003;SYSLIB0017;SYSLIB0022;SYSLIB0036;SYSLIB0047;SYSLIB0050</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,5 +16,7 @@
     <PackageReference Include="Stunts" />
     <PackageReference Include="ManualStunts" />
   </ItemGroup>
+
+  <Import Project="Stunts.props" />
 
 </Project>
