@@ -189,7 +189,9 @@ package snapshot used by the `Static` acceptance project (prerelease references 
 `efcore` and `iotedge` repositories are intentionally excluded). Run
 `dotnet run --file GenerateReferenceStunts.cs` from `src/Acceptance` to regenerate
 `src/Acceptance/Static/Stunts.cs`. The generator always resolves that output relative to its own
-source file, loads the runtime assemblies from the comparison packages plus
+source file. The file app disables `DeterministicSourcePaths` so CI path mapping does not
+rewrite its `CallerFilePath` to `/_`; other projects retain deterministic source paths.
+It loads the runtime assemblies from the comparison packages plus
 `Microsoft.AspNetCore.App`, and writes a `Stunt.Of<T>()` call for every public interface and
 non-sealed class that is compiler-visible and proxyable, is not marked as a preview feature,
 and has no public preview members. Inaccessible abstract members, unavailable constructors,

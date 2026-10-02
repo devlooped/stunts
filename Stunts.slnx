@@ -47,6 +47,10 @@
     <File Path="docs/template/partials/head.tmpl.partial" />
     <File Path="docs/template/partials/scripts.tmpl.partial" />
   </Folder>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Acceptance/">
+    <File Path="src/Acceptance/Static/Static.csproj" />
+  </Folder>
   <Project Path="src/ManualStunts/ManualStunts.csproj" />
   <Project Path="src/Pack/Pack.msbuildproj" Type="13b669be-bb05-4ddf-9536-439f39a36129" />
   <Project Path="src/Stunts.CodeAnalysis/Stunts.CodeAnalysis.csproj" />

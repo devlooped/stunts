@@ -9,10 +9,6 @@
     <Nullable>annotations</Nullable>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-    <RestoreSources>
-      $(MSBuildThisFileDirectory)../../bin;
-      https://api.nuget.org/v3/index.json
-    </RestoreSources>
     <IncludeGlobalPackages>false</IncludeGlobalPackages>
   </PropertyGroup>
 

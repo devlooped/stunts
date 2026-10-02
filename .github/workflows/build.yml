@@ -95,6 +95,10 @@ jobs:
           name: bin-ubuntu-latest
           path: bin
 
+      - name: 🏗 generate comparison stunts
+        run: dotnet run --file GenerateReferenceStunts.cs
+        working-directory: src/Acceptance
+
       - name: 🧪 test
         run: dotnet test Acceptance.slnx -f net10.0 -p:VersionLabel="$GITHUB_REF.$GITHUB_RUN_NUMBER"
         working-directory: src/Acceptance
