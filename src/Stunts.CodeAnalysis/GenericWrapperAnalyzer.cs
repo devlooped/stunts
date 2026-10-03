@@ -112,7 +112,7 @@ namespace Stunts.CodeAnalysis
             if (method.DeclaringSyntaxReferences.IsEmpty || !closure.IsGenerator(method))
                 return;
 
-            var result = closure.GetShapes(method, context.CancellationToken);
+            var result = closure.GetDefinitions(method, context.CancellationToken);
             var diagnostic = result.Error switch
             {
                 StuntClosureError.VirtualWrapper => Diagnostic.Create(
