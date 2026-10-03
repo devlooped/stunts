@@ -270,3 +270,17 @@ source mapping still restores the local packages.
 The root solution lists `Static.csproj` as a solution item rather than a project:
 acceptance consumes the produced packages, whose NuGet cache entries are cleared by
 the package build, so including it in that build creates a bootstrap/cache-order cycle.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live as GitHub issues in devlooped/stunts. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Five canonical roles, each label string equal to its name: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
