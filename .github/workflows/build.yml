@@ -38,7 +38,7 @@ jobs:
           dotnet format style --verify-no-changes -v:diag --exclude ~/.nuget
 
   build:
-    name: build
+    name: build-ubuntu-latest
     needs: dotnet-format
     runs-on: ubuntu-latest
     steps:
