@@ -58,7 +58,6 @@ namespace Stunts.Processors
             "System.Runtime.CompilerServices.RequiredMemberAttribute",
             "System.Runtime.CompilerServices.RequiresLocationAttribute",
             "System.Runtime.CompilerServices.ScopedRefAttribute",
-            "System.Runtime.CompilerServices.SetsRequiredMembersAttribute",
             "System.Runtime.CompilerServices.TupleElementNamesAttribute",
             "System.Runtime.InteropServices.ComImportAttribute",
             "System.Runtime.InteropServices.TypeIdentifierAttribute",

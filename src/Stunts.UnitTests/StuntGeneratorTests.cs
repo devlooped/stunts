@@ -95,6 +95,56 @@ public static class Test { public static IDisposable Create() => Stunt.Of<IDispo
         }
 
         [Fact]
+        public void SkipsUncallableConstructorsInRegistration()
+        {
+            var (diagnostics, compilation) = GetGeneratedOutput("""
+                using System;
+                using System.Diagnostics.CodeAnalysis;
+                using Stunts;
+
+                public class ObsoleteCtor
+                {
+                    [Obsolete("retired", true)]
+                    public ObsoleteCtor(object request) { }
+                    public ObsoleteCtor() { }
+                    public virtual int Value() => 1;
+                }
+
+                public class NeedsInitializer
+                {
+                    public NeedsInitializer() { }
+                    public required string Name { get; set; }
+                    public virtual int Value() => 1;
+                }
+
+                public class SetsRequired
+                {
+                    [SetsRequiredMembers]
+                    public SetsRequired() { }
+                    public required int Count { get; set; }
+                    public virtual int Value() => 1;
+                }
+
+                public static class Test
+                {
+                    public static ObsoleteCtor CreateObsolete() => Stunt.Of<ObsoleteCtor>();
+                    public static NeedsInitializer CreateNeeds() => Stunt.Of<NeedsInitializer>();
+                    public static SetsRequired CreateSets() => Stunt.Of<SetsRequired>();
+                }
+                """);
+
+            Assert.Empty(diagnostics);
+            Assert.Empty(compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
+
+            var registration = string.Join("\n", compilation.SyntaxTrees.Select(tree => tree.ToString()).Where(text => text.Contains("class StuntRegistrations")));
+            Assert.Contains("ObsoleteCtorStunt()", registration);
+            Assert.DoesNotContain("ObsoleteCtorStunt((object)args[0])", registration);
+            Assert.DoesNotContain("NeedsInitializerStunt", registration);
+            Assert.Contains("SetsRequiredStunt()", registration);
+            Assert.Contains("SetsRequiredMembersAttribute", string.Join("\n", compilation.SyntaxTrees.Select(tree => tree.ToString())));
+        }
+
+        [Fact]
         public void UnregisteredStuntReportsAttributeToAdd()
         {
             var (diagnostics, compilation) = GetGeneratedOutput(@"
