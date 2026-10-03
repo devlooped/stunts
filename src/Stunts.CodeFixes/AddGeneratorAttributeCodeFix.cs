@@ -9,6 +9,7 @@ using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Simplification;
+using Microsoft.CodeAnalysis.Text;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Stunts.CodeAnalysis
@@ -62,14 +63,17 @@ namespace Stunts.CodeAnalysis
             if (root == null)
                 return document.Project.Solution;
 
+            // Match the document newline. A fixed CRLF fails LF checkouts.
+            var text = await document.GetTextAsync(cancellationToken).ConfigureAwait(false);
+            var endOfLine = DocumentEndOfLine(text);
             var leading = method.GetLeadingTrivia();
             var indentation = leading.LastOrDefault(trivia => trivia.IsKind(SyntaxKind.WhitespaceTrivia));
             var list = AttributeList(SingletonSeparatedList(
                 Attribute(ParseName("global::" + name).WithAdditionalAnnotations(Simplifier.Annotation))))
                 .WithLeadingTrivia(leading)
                 .WithTrailingTrivia(indentation == default
-                    ? TriviaList(ElasticCarriageReturnLineFeed)
-                    : TriviaList(ElasticCarriageReturnLineFeed, indentation));
+                    ? TriviaList(endOfLine)
+                    : TriviaList(endOfLine, indentation));
 
             SyntaxNode updated = method switch
             {
@@ -81,6 +85,18 @@ namespace Stunts.CodeAnalysis
             };
 
             return document.WithSyntaxRoot(root.ReplaceNode(method, updated)).Project.Solution;
+        }
+
+        static SyntaxTrivia DocumentEndOfLine(SourceText text)
+        {
+            foreach (var line in text.Lines)
+            {
+                var length = line.EndIncludingLineBreak - line.End;
+                if (length > 0)
+                    return EndOfLine(text.ToString(new TextSpan(line.End, length)));
+            }
+
+            return LineFeed;
         }
     }
 }
