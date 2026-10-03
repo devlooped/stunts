@@ -322,8 +322,8 @@ namespace Stunts
                 context.AddSource(UniqueHintName("Stunts.Generated.StuntRegistrations", hintNames), SourceText.From(registrations, Encoding.UTF8));
 
             if (generatorReceiver != null &&
-                StuntRegistrations.Shapes(context, closure, generatorReceiver.GetGeneratorMethods(context, closure)) is string shapes)
-                context.AddSource(UniqueHintName("Stunts.Generated.StuntDefinitions", hintNames), SourceText.From(shapes, Encoding.UTF8));
+                StuntRegistrations.Definitions(context, closure, generatorReceiver.GetGeneratorMethods(context, closure)) is string definitions)
+                context.AddSource(UniqueHintName("Stunts.Generated.StuntDefinitions", hintNames), SourceText.From(definitions, Encoding.UTF8));
         }
 
         static INamedTypeSymbol? GenericContainer(INamedTypeSymbol type)
@@ -509,10 +509,10 @@ namespace Stunts
                     _ => "",
                 }));
                 foreach (var assembly in compilation.SourceModule.ReferencedAssemblySymbols)
-                    foreach (var id in StuntClosure.ShapeMethods(assembly).Select(group => group.Key))
+                    foreach (var id in StuntClosure.DefinitionMethods(assembly).Select(group => group.Key))
                         names.Add(MethodName(id));
 
-                // Identity forwards are omitted from the shape methods, so their names come from the attribute.
+                // Identity forwards are omitted from the definition methods, so their names come from the attribute.
                 closure.AddReferencedGeneratorNames(names);
 
                 foreach (var (invocation, name) in invocations)

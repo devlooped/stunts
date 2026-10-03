@@ -54,7 +54,7 @@ namespace Stunts
             if (BuildProperties.CompileTimeStuntsAndUnsafe(context.Options.AnalyzerConfigOptionsProvider.GlobalOptions))
                 return;
 
-            foreach (var argument in closure.Close(invocation.TargetMethod, context.CancellationToken).SelectMany(shape => shape.Types).Distinct(SymbolEqualityComparer.Default).OfType<ITypeSymbol>())
+            foreach (var argument in closure.Close(invocation.TargetMethod, context.CancellationToken).SelectMany(stuntDefinition => stuntDefinition.Types).Distinct(SymbolEqualityComparer.Default).OfType<ITypeSymbol>())
             {
                 if (argument is not INamedTypeSymbol type || type.TypeKind == TypeKind.Error)
                     continue;

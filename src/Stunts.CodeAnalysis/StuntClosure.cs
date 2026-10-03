@@ -15,7 +15,7 @@ namespace Stunts.CodeAnalysis
     /// </summary>
     public sealed class StuntDefinition
     {
-        /// <summary>Initializes the shape.</summary>
+        /// <summary>Initializes the stunt definition.</summary>
         public StuntDefinition(ImmutableArray<ITypeSymbol> types, string assembly)
             => (Types, Assembly) = (types, assembly);
 
@@ -26,14 +26,14 @@ namespace Stunts.CodeAnalysis
         public string Assembly { get; }
     }
 
-    /// <summary>Why the shapes of a generator method cannot be determined.</summary>
+    /// <summary>Why the stunt definitions of a generator method cannot be determined.</summary>
     public enum StuntClosureError
     {
-        /// <summary>The shapes were determined.</summary>
+        /// <summary>The stunt definitions were determined.</summary>
         None,
         /// <summary>A generator invocation uses type parameters of a containing type.</summary>
         ContainingTypeParameter,
-        /// <summary>A wrapper can be overridden, so callers cannot know the actual shapes.</summary>
+        /// <summary>A wrapper can be overridden, so callers cannot know the actual stunt definitions.</summary>
         VirtualWrapper,
         /// <summary>Wrappers invoke each other recursively with different type arguments.</summary>
         Recursive,
@@ -41,14 +41,14 @@ namespace Stunts.CodeAnalysis
         TooDeep,
     }
 
-    /// <summary>The shapes of a generator method definition.</summary>
+    /// <summary>The stunt definitions of a generator method.</summary>
     public sealed class StuntClosureResult
     {
-        internal StuntClosureResult(ImmutableArray<StuntDefinition> shapes, int depth, bool isLeaf, StuntClosureError error = StuntClosureError.None)
-            => (Shapes, Depth, IsLeaf, Error) = (shapes, depth, isLeaf, error);
+        internal StuntClosureResult(ImmutableArray<StuntDefinition> definitions, int depth, bool isLeaf, StuntClosureError error = StuntClosureError.None)
+            => (Definitions, Depth, IsLeaf, Error) = (definitions, depth, isLeaf, error);
 
-        /// <summary>The stunt shapes, empty if <see cref="Error"/> is not <see cref="StuntClosureError.None"/>.</summary>
-        public ImmutableArray<StuntDefinition> Shapes { get; }
+        /// <summary>The stunt definitions, empty if <see cref="Error"/> is not <see cref="StuntClosureError.None"/>.</summary>
+        public ImmutableArray<StuntDefinition> Definitions { get; }
 
         /// <summary>The length of the wrapper chain, where leaf generator methods have a depth of 1.</summary>
         public int Depth { get; }
@@ -56,7 +56,7 @@ namespace Stunts.CodeAnalysis
         /// <summary>Whether the method creates stunts for its own type arguments.</summary>
         public bool IsLeaf { get; }
 
-        /// <summary>The reason the shapes could not be determined, if any.</summary>
+        /// <summary>The reason the stunt definitions could not be determined, if any.</summary>
         public StuntClosureError Error { get; }
     }
 
@@ -71,10 +71,10 @@ namespace Stunts.CodeAnalysis
         public const int MaxDepth = 8;
 
         /// <summary>Metadata name of the type that describes the externally visible generator methods of an assembly.</summary>
-        public const string ShapesTypeName = "Stunts.Generated.StuntDefinitions";
+        public const string DefinitionsTypeName = "Stunts.Generated.StuntDefinitions";
 
-        /// <summary>Metadata name of the attribute that describes a shape.</summary>
-        public const string ShapeAttributeName = "Stunts.StuntDefinitionAttribute";
+        /// <summary>Metadata name of the attribute that describes a stunt definition.</summary>
+        public const string DefinitionAttributeName = "Stunts.StuntDefinitionAttribute";
 
         readonly object sync = new();
         readonly Dictionary<IMethodSymbol, StuntClosureResult> results = new(SymbolEqualityComparer.Default);
@@ -120,16 +120,16 @@ namespace Stunts.CodeAnalysis
             for (var i = 0; i < definition.TypeParameters.Length; i++)
                 map[definition.TypeParameters[i]] = method.TypeArguments[i];
 
-            foreach (var shape in GetShapes(definition, cancellation).Shapes)
+            foreach (var stuntDefinition in GetDefinitions(definition, cancellation).Definitions)
             {
-                var types = shape.Types.Select(type => Substitute(type, map)).ToImmutableArray();
+                var types = stuntDefinition.Types.Select(type => Substitute(type, map)).ToImmutableArray();
                 if (types.Length > 0 && !types.Any(ContainsTypeParameter))
-                    yield return (types, shape.Assembly);
+                    yield return (types, stuntDefinition.Assembly);
             }
         }
 
-        /// <summary>Gets the stunt shapes of a generator method definition.</summary>
-        public StuntClosureResult GetShapes(IMethodSymbol definition, CancellationToken cancellation = default)
+        /// <summary>Gets the stunt definitions of a generator method.</summary>
+        public StuntClosureResult GetDefinitions(IMethodSymbol definition, CancellationToken cancellation = default)
         {
             lock (sync)
                 return Compute(Normalize(definition.OriginalDefinition, cancellation), cancellation);
@@ -178,7 +178,7 @@ namespace Stunts.CodeAnalysis
 
         StuntClosureResult FromSource(IMethodSymbol definition, CancellationToken cancellation)
         {
-            var shapes = new List<StuntDefinition>();
+            var definitions = new List<StuntDefinition>();
             var depth = 0;
             foreach (var invocation in Invocations(definition, cancellation))
             {
@@ -192,7 +192,7 @@ namespace Stunts.CodeAnalysis
                 if (!arguments.Any(argument => References(argument, parameter => SymbolEqualityComparer.Default.Equals(parameter.DeclaringMethod, definition))))
                     continue;
 
-                // Forwarding the same type parameters to itself adds no shapes.
+                // Forwarding the same type parameters to itself adds no stunt definitions.
                 if (SymbolEqualityComparer.Default.Equals(target.OriginalDefinition, definition) &&
                     SameTypes(arguments, definition.TypeParameters))
                     continue;
@@ -206,11 +206,11 @@ namespace Stunts.CodeAnalysis
                 for (var i = 0; i < target.OriginalDefinition.TypeParameters.Length; i++)
                     map[target.OriginalDefinition.TypeParameters[i]] = arguments[i];
 
-                foreach (var shape in inner.Shapes)
-                    shapes.Add(new StuntDefinition(shape.Types.Select(type => Substitute(type, map)).ToImmutableArray(), shape.Assembly));
+                foreach (var stuntDefinition in inner.Definitions)
+                    definitions.Add(new StuntDefinition(stuntDefinition.Types.Select(type => Substitute(type, map)).ToImmutableArray(), stuntDefinition.Assembly));
             }
 
-            if (shapes.Count == 0 && depth == 0)
+            if (definitions.Count == 0 && depth == 0)
                 return Leaf(definition);
 
             if (definition.IsVirtual || definition.IsOverride || definition.IsAbstract ||
@@ -221,48 +221,48 @@ namespace Stunts.CodeAnalysis
             if (depth > MaxDepth)
                 return Error(StuntClosureError.TooDeep);
 
-            return new StuntClosureResult(Distinct(shapes), depth + 1, false);
+            return new StuntClosureResult(Distinct(definitions), depth + 1, false);
         }
 
         StuntClosureResult FromMetadata(IMethodSymbol definition)
         {
             if (!metadata.TryGetValue(definition.ContainingAssembly, out var lookup))
-                metadata[definition.ContainingAssembly] = lookup = ShapeMethods(definition.ContainingAssembly);
+                metadata[definition.ContainingAssembly] = lookup = DefinitionMethods(definition.ContainingAssembly);
 
             var id = DocumentationCommentId.CreateDeclarationId(definition) ?? "";
-            var shapes = new List<StuntDefinition>();
+            var definitions = new List<StuntDefinition>();
             foreach (var method in lookup[id])
             {
                 if (method.Arity != definition.Arity)
                     continue;
 
-                var assembly = method.GetAttributes().First(IsShapeAttribute).ConstructorArguments[1].Value as string;
+                var assembly = method.GetAttributes().First(IsDefinitionAttribute).ConstructorArguments[1].Value as string;
                 var constructed = definition.Arity == 0 ? method : method.Construct(definition.TypeParameters.Cast<ITypeSymbol>().ToArray());
-                shapes.Add(new StuntDefinition(constructed.Parameters.Select(parameter => parameter.Type).ToImmutableArray(),
+                definitions.Add(new StuntDefinition(constructed.Parameters.Select(parameter => parameter.Type).ToImmutableArray(),
                     assembly ?? definition.ContainingAssembly.Name));
             }
 
-            return shapes.Count == 0
+            return definitions.Count == 0
                 ? Leaf(definition)
-                : new StuntClosureResult(Distinct(shapes), 1, shapes.All(shape =>
-                    SameTypes(shape.Types, definition.TypeParameters)));
+                : new StuntClosureResult(Distinct(definitions), 1, definitions.All(stuntDefinition =>
+                    SameTypes(stuntDefinition.Types, definition.TypeParameters)));
         }
 
-        /// <summary>Gets the shape methods of an assembly, by the documentation id of their generator method.</summary>
-        public static ILookup<string, IMethodSymbol> ShapeMethods(IAssemblySymbol assembly)
+        /// <summary>Gets the definition methods of an assembly, by the documentation id of their generator method.</summary>
+        public static ILookup<string, IMethodSymbol> DefinitionMethods(IAssemblySymbol assembly)
         {
-            if (assembly.GetTypeByMetadataName(ShapesTypeName) is not INamedTypeSymbol type)
+            if (assembly.GetTypeByMetadataName(DefinitionsTypeName) is not INamedTypeSymbol type)
                 return Array.Empty<IMethodSymbol>().ToLookup(method => "");
 
             return type.GetMembers().OfType<IMethodSymbol>()
-                .Select(method => (Method: method, Attribute: method.GetAttributes().FirstOrDefault(IsShapeAttribute)))
+                .Select(method => (Method: method, Attribute: method.GetAttributes().FirstOrDefault(IsDefinitionAttribute)))
                 .Where(pair => pair.Attribute?.ConstructorArguments.Length == 2 && pair.Attribute.ConstructorArguments[0].Value is string)
                 .ToLookup(pair => (string)pair.Attribute!.ConstructorArguments[0].Value!, pair => pair.Method);
         }
 
         /// <summary>
         /// Adds the names of generic generator methods in referenced assemblies.
-        /// Identity forwards are omitted from <see cref="ShapeMethods"/>, so an inferred call
+        /// Identity forwards are omitted from <see cref="DefinitionMethods"/>, so an inferred call
         /// would otherwise never be bound.
         /// </summary>
         internal void AddReferencedGeneratorNames(ISet<string> names)
@@ -342,8 +342,8 @@ namespace Stunts.CodeAnalysis
         static bool SameTypes(ImmutableArray<ITypeSymbol> types, ImmutableArray<ITypeParameterSymbol> parameters)
             => types.Length == parameters.Length && types.Zip(parameters, (type, parameter) => SymbolEqualityComparer.Default.Equals(type, parameter)).All(same => same);
 
-        static bool IsShapeAttribute(AttributeData attribute)
-            => attribute.AttributeClass?.ToDisplayString() == ShapeAttributeName;
+        static bool IsDefinitionAttribute(AttributeData attribute)
+            => attribute.AttributeClass?.ToDisplayString() == DefinitionAttributeName;
 
         static StuntClosureResult Leaf(IMethodSymbol definition)
             => new(definition.Arity == 0 ? ImmutableArray<StuntDefinition>.Empty : ImmutableArray.Create(
@@ -352,8 +352,8 @@ namespace Stunts.CodeAnalysis
         static StuntClosureResult Error(StuntClosureError error)
             => new(ImmutableArray<StuntDefinition>.Empty, 0, false, error);
 
-        static ImmutableArray<StuntDefinition> Distinct(List<StuntDefinition> shapes)
-            => shapes.GroupBy(shape => shape.Assembly + "|" + string.Join(",", shape.Types.Select(type => type.ToDisplayString())))
+        static ImmutableArray<StuntDefinition> Distinct(List<StuntDefinition> definitions)
+            => definitions.GroupBy(stuntDefinition => stuntDefinition.Assembly + "|" + string.Join(",", stuntDefinition.Types.Select(type => type.ToDisplayString())))
                 .Select(group => group.First())
                 .ToImmutableArray();
 

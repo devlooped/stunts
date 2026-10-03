@@ -68,19 +68,19 @@ Every generated stunt is a closed, non-generic type: there are no open generic t
 A generic method passing its own type parameters to a generator method (e.g.
 `static IDictionary<string, T> Make<T>() => Stunt.Of<IDictionary<string, T>>()`) is a *wrapper*
 and must itself carry `[StuntGenerator]` (`ST016`, with a code fix adding the attribute).
-`StuntClosure` (shared by analyzers and the generator) computes each wrapper's *shapes*: the
+`StuntClosure` (shared by analyzers and the generator) computes each wrapper's *stunt definitions*: the
 stunt types it creates expressed over its own type parameters, flattened through nested wrappers.
-Each concrete call site (`Make<int>()`) substitutes its type arguments into the shapes, so only
+Each concrete call site (`Make<int>()`) substitutes its type arguments into the definitions, so only
 the combinations actually used are generated. Wrappers cannot use type parameters of a containing
 type (`ST017`), be virtual/abstract/interface members (`ST018`), recurse with different type
 arguments or chain more than `StuntClosure.MaxDepth` (8) wrappers (`ST019`). Local functions are
 supported; their symbols are normalized to the closure's own semantic model, since local function
 symbols bound by different models are not equal.
 
-Cross-assembly: each shape records the assembly that calls the leaf `Stunt.Of<T>` at run time
+Cross-assembly: each stunt definition records the assembly that calls the leaf `Stunt.Of<T>` at run time
 (the internal `Stunt` content class passes `typeof(Stunt).Assembly`). Libraries emit a public
 `Stunts.Generated.StuntDefinitions` class whose `[StuntDefinition(docId, assembly)]` methods carry the
-shapes of externally visible wrappers as parameter types (trivial forwarding shapes are omitted).
+stunt definitions of externally visible wrappers as parameter types (trivial forwarding definitions are omitted).
 Consumers read them from metadata, generate the closed stunts, and register them under the leaf
 assembly's name.
 

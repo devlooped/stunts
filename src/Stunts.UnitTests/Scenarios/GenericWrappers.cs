@@ -83,7 +83,7 @@ namespace Stunts.Scenarios.GenericWrappers
             ConstraintOnlyParameters();
             GenericRecord();
             AmbiguousConstraintInference();
-            ArrayShapes();
+            ArrayDefinitions();
             ChainedWrappers();
             LocalFunctionWrappers();
             AssemblyRegistrations();
@@ -264,7 +264,7 @@ namespace Stunts.Scenarios.GenericWrappers
         [StuntGenerator]
         static IArrayBox<T[]> Vector<T>() => Stunt.Of<IArrayBox<T[]>>();
 
-        void ArrayShapes()
+        void ArrayDefinitions()
         {
             Assert.IsAssignableFrom<IStunt>(Vector<int>());
             var nonVector = typeof(IArrayBox<>).MakeGenericType(typeof(int).MakeArrayType(1));

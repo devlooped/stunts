@@ -29,7 +29,7 @@ namespace Stunts
 
     /// <summary>
     /// Emits the module initializer that registers the typed factories of generated stunts 
-    /// with the <c>CompiledStuntFactory</c>, and the shapes of the externally visible 
+    /// with the <c>CompiledStuntFactory</c>, and the stunt definitions of the externally visible 
     /// generic wrappers so referencing projects can close them.
     /// </summary>
     static class StuntRegistrations
@@ -195,12 +195,12 @@ namespace Stunts
         }
 
         /// <summary>
-        /// Emits the shapes of the externally visible generic wrappers in the compilation, 
+        /// Emits the stunt definitions of the externally visible generic wrappers in the compilation, 
         /// which <see cref="StuntClosure"/> reads to close them in referencing projects.
         /// </summary>
-        public static string? Shapes(ProcessorContext context, StuntClosure closure, IEnumerable<IMethodSymbol> methods)
+        public static string? Definitions(ProcessorContext context, StuntClosure closure, IEnumerable<IMethodSymbol> methods)
         {
-            if (context.Compilation.GetTypeByMetadataName(StuntClosure.ShapeAttributeName) == null)
+            if (context.Compilation.GetTypeByMetadataName(StuntClosure.DefinitionAttributeName) == null)
                 return null;
 
             var assemblyName = context.Compilation.Assembly.Name;
@@ -212,24 +212,24 @@ namespace Stunts
                     DocumentationCommentId.CreateDeclarationId(method) is not string id)
                     continue;
 
-                var result = closure.GetShapes(method, context.CancellationToken);
+                var result = closure.GetDefinitions(method, context.CancellationToken);
                 if (result.Error != StuntClosureError.None || result.IsLeaf)
                     continue;
 
-                // The shape of a method that just forwards its own type parameters is implied.
-                if (result.Shapes.Length == 1 && result.Shapes[0].Assembly == assemblyName &&
-                    result.Shapes[0].Types.SequenceEqual<ITypeSymbol>(method.TypeParameters.Cast<ITypeSymbol>(), SymbolEqualityComparer.Default))
+                // The stunt definition of a method that just forwards its own type parameters is implied.
+                if (result.Definitions.Length == 1 && result.Definitions[0].Assembly == assemblyName &&
+                    result.Definitions[0].Types.SequenceEqual<ITypeSymbol>(method.TypeParameters.Cast<ITypeSymbol>(), SymbolEqualityComparer.Default))
                     continue;
 
                 var typeParameters = string.Join(", ", method.TypeParameters.Select(parameter => parameter.Name));
                 var constraints = Constraints(method.TypeParameters);
-                foreach (var shape in result.Shapes.Where(shape => shape.Types.All(IsPublic)))
+                foreach (var stuntDefinition in result.Definitions.Where(stuntDefinition => stuntDefinition.Types.All(IsPublic)))
                 {
-                    var parameters = string.Join(", ", shape.Types.Select((type, i) => $"{type.ToDisplayString(TypeFormat)} p{i}"));
+                    var parameters = string.Join(", ", stuntDefinition.Types.Select((type, i) => $"{type.ToDisplayString(TypeFormat)} p{i}"));
                     members
                         .Append("        [global::Stunts.StuntDefinition(").Append(SymbolDisplay.FormatLiteral(id, true)).Append(", ")
-                        .Append(SymbolDisplay.FormatLiteral(shape.Assembly, true)).AppendLine(")]")
-                        .Append("        public static void __Shape").Append(index++).Append('<').Append(typeParameters).Append(">(")
+                        .Append(SymbolDisplay.FormatLiteral(stuntDefinition.Assembly, true)).AppendLine(")]")
+                        .Append("        public static void __Definition").Append(index++).Append('<').Append(typeParameters).Append(">(")
                         .Append(parameters).Append(')').Append(constraints).AppendLine(" { }");
                 }
             }
@@ -268,7 +268,7 @@ namespace Stunts
                     constraints.Add("notnull");
 
                 // StuntDefinitions is public, so a non-public constraint type cannot appear in the clause.
-                // The parameter types still carry the shape.
+                // The parameter types still carry the stunt definition.
                 constraints.AddRange(parameter.ConstraintTypes.Where(IsPublic).Select(type => type.ToDisplayString(TypeFormat)));
                 if (parameter.HasConstructorConstraint)
                     constraints.Add("new()");

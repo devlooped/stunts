@@ -13,7 +13,7 @@ namespace Stunts
     [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class StuntDefinitionAttribute : Attribute
     {
-        /// <summary>Initializes the shape for the given factory method.</summary>
+        /// <summary>Initializes the stunt definition for the given factory method.</summary>
         /// <param name="method">Documentation comment identifier of the factory method.</param>
         /// <param name="assembly">Name of the assembly that requests the stunt at run time.</param>
         public StuntDefinitionAttribute(string method, string assembly)

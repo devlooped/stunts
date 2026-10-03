@@ -819,7 +819,7 @@ namespace UnitTests
         }
 
         [Fact]
-        public void AnnotatedTypeFactoryGeneratesAllClosedShapes()
+        public void AnnotatedTypeFactoryGeneratesAllClosedDefinitions()
         {
             var code = @"
 using System;
@@ -882,11 +882,11 @@ namespace Library
             var image = stream.ToArray();
             var libraryAssembly = Assembly.Load(image);
 
-            var shapes = libraryAssembly.GetType("Stunts.Generated.StuntDefinitions");
-            Assert.NotNull(shapes);
-            var shape = Assert.Single(shapes!.GetMethods(BindingFlags.Public | BindingFlags.Static),
+            var definitions = libraryAssembly.GetType("Stunts.Generated.StuntDefinitions");
+            Assert.NotNull(definitions);
+            var definition = Assert.Single(definitions!.GetMethods(BindingFlags.Public | BindingFlags.Static),
                 method => method.GetCustomAttribute<StuntDefinitionAttribute>() != null);
-            Assert.Equal(typeof(IDictionary<,>), shape.GetParameters().Single().ParameterType.GetGenericTypeDefinition());
+            Assert.Equal(typeof(IDictionary<,>), definition.GetParameters().Single().ParameterType.GetGenericTypeDefinition());
 
             var (diagnostics, compilation) = GetGeneratedOutput(@"
 using System;
@@ -940,7 +940,7 @@ namespace Library
             var image = stream.ToArray();
             var libraryAssembly = Assembly.Load(image);
 
-            // The forward is implied, so the library records no shape for it.
+            // The forward is implied, so the library records no stunt definition for it.
             Assert.Null(libraryAssembly.GetType("Stunts.Generated.StuntDefinitions"));
 
             var (diagnostics, compilation) = GetGeneratedOutput(@"
@@ -997,12 +997,12 @@ namespace Library
             var image = stream.ToArray();
             var libraryAssembly = Assembly.Load(image);
 
-            var shapes = libraryAssembly.GetType("Stunts.Generated.StuntDefinitions");
-            Assert.NotNull(shapes);
-            var shape = Assert.Single(shapes!.GetMethods(BindingFlags.Public | BindingFlags.Static),
+            var definitions = libraryAssembly.GetType("Stunts.Generated.StuntDefinitions");
+            Assert.NotNull(definitions);
+            var definition = Assert.Single(definitions!.GetMethods(BindingFlags.Public | BindingFlags.Static),
                 method => method.GetCustomAttribute<StuntDefinitionAttribute>() != null);
-            Assert.Equal(typeof(IList<>), shape.GetParameters().Single().ParameterType.GetGenericTypeDefinition());
-            var parameters = shape.GetGenericArguments();
+            Assert.Equal(typeof(IList<>), definition.GetParameters().Single().ParameterType.GetGenericTypeDefinition());
+            var parameters = definition.GetGenericArguments();
             Assert.Equal(GenericParameterAttributes.ReferenceTypeConstraint, parameters[0].GenericParameterAttributes);
             Assert.Equal(GenericParameterAttributes.None, parameters[1].GenericParameterAttributes);
             Assert.Empty(parameters[0].GetGenericParameterConstraints());
