@@ -2,8 +2,11 @@ using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 namespace Stunts
@@ -14,6 +17,20 @@ namespace Stunts
     /// </summary>
     public class DefaultValueProvider
     {
+#if NET8_0_OR_GREATER
+        static readonly ConditionalWeakTable<Type, GeneratedDefault> generated = new();
+#endif
+
+        /// <summary>Registers a statically generated default value factory for Native AOT.</summary>
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static void RegisterGenerated<T>(Func<DefaultValueProvider, T> factory, Func<T> fallback)
+        {
+#if NET8_0_OR_GREATER
+            if (!RuntimeFeature.IsDynamicCodeSupported)
+                generated.GetValue(typeof(T), _ => new GeneratedDefault(provider => factory(provider), () => fallback()));
+#endif
+        }
+
         [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
         readonly ConcurrentDictionary<Type, Func<Type, object?>> factories = new ConcurrentDictionary<Type, Func<Type, object?>>();
 
@@ -21,28 +38,46 @@ namespace Stunts
         /// Initializes the provider.
         /// </summary>
         /// <param name="registerDefaults">Whether to register the default value factories.</param>
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Reflection-based defaults are only registered when dynamic code is supported.")]
         public DefaultValueProvider(bool registerDefaults = true)
         {
             if (registerDefaults)
             {
-                factories[typeof(Array)] = CreateArray;
                 factories[typeof(Task)] = CreateTask;
-                factories[typeof(Task<>)] = CreateTaskOf;
                 factories[typeof(ValueTask)] = CreateValueTask;
-                factories[typeof(ValueTask<>)] = CreateValueTaskOf;
                 factories[typeof(IEnumerable)] = CreateEnumerable;
-                factories[typeof(IEnumerable<>)] = CreateEnumerableOf;
-                factories[typeof(IQueryable)] = CreateQueryable;
-                factories[typeof(IQueryable<>)] = CreateQueryableOf;
-                factories[typeof(ValueTuple<>)] = CreateValueTupleOf;
-                factories[typeof(ValueTuple<,>)] = CreateValueTupleOf;
-                factories[typeof(ValueTuple<,,>)] = CreateValueTupleOf;
-                factories[typeof(ValueTuple<,,,>)] = CreateValueTupleOf;
-                factories[typeof(ValueTuple<,,,,>)] = CreateValueTupleOf;
-                factories[typeof(ValueTuple<,,,,,>)] = CreateValueTupleOf;
-                factories[typeof(ValueTuple<,,,,,,>)] = CreateValueTupleOf;
-                factories[typeof(ValueTuple<,,,,,,,>)] = CreateValueTupleOf;
+#if NET8_0_OR_GREATER
+                useGenerated = true;
+                if (!RuntimeFeature.IsDynamicCodeSupported)
+                    return;
+#endif
+                RegisterDynamicDefaults();
             }
+        }
+
+#if NET8_0_OR_GREATER
+        readonly bool useGenerated;
+        readonly ConcurrentDictionary<Type, byte> disabled = new();
+#endif
+
+        [RequiresDynamicCode("Default values for runtime types require generic instantiation. Register a typed factory for Native AOT.")]
+        [RequiresUnreferencedCode("Default values for runtime types require reflection metadata. Register a typed factory for Native AOT.")]
+        void RegisterDynamicDefaults()
+        {
+            factories[typeof(Array)] = CreateArray;
+            factories[typeof(Task<>)] = CreateTaskOf;
+            factories[typeof(ValueTask<>)] = CreateValueTaskOf;
+            factories[typeof(IEnumerable<>)] = CreateEnumerableOf;
+            factories[typeof(IQueryable)] = CreateQueryable;
+            factories[typeof(IQueryable<>)] = CreateQueryableOf;
+            factories[typeof(ValueTuple<>)] = CreateValueTupleOf;
+            factories[typeof(ValueTuple<,>)] = CreateValueTupleOf;
+            factories[typeof(ValueTuple<,,>)] = CreateValueTupleOf;
+            factories[typeof(ValueTuple<,,,>)] = CreateValueTupleOf;
+            factories[typeof(ValueTuple<,,,,>)] = CreateValueTupleOf;
+            factories[typeof(ValueTuple<,,,,,>)] = CreateValueTupleOf;
+            factories[typeof(ValueTuple<,,,,,,>)] = CreateValueTupleOf;
+            factories[typeof(ValueTuple<,,,,,,,>)] = CreateValueTupleOf;
         }
 
         /// <summary>
@@ -53,6 +88,7 @@ namespace Stunts
         /// <summary>
         /// Gets a default value for the given type <paramref name="type"/>
         /// </summary>
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Native AOT uses generated defaults and never calls the guarded reflection fallback.")]
         public object? GetDefault(Type type)
         {
             // If type is by ref, we need to get the actual element type of the ref. 
@@ -68,6 +104,11 @@ namespace Stunts
             if (valueType.IsGenericType && factories.TryGetValue(valueType.GetGenericTypeDefinition(), out factory))
                 return factory.Invoke(valueType);
 
+#if NET8_0_OR_GREATER
+            if (!RuntimeFeature.IsDynamicCodeSupported && useGenerated &&
+                BuiltInKey(valueType) is Type key && !disabled.ContainsKey(key) && generated.TryGetValue(valueType, out var typed))
+                return typed.Create(this);
+#endif
             return GetFallbackDefaultValue(valueType);
         }
 
@@ -75,7 +116,15 @@ namespace Stunts
         /// Deregisters a default value factory for the given <paramref name="key"/>.
         /// </summary>
         /// <returns>Whether there was a registered factory and it was removed.</returns>
-        public bool Deregister(Type key) => factories.TryRemove(key, out _);
+        public bool Deregister(Type key)
+        {
+            var removed = factories.TryRemove(key, out _);
+#if NET8_0_OR_GREATER
+            if (!RuntimeFeature.IsDynamicCodeSupported && useGenerated && BuiltInKey(key) == key)
+                return disabled.TryAdd(key, 0) || removed;
+#endif
+            return removed;
+        }
 
         /// <summary>
         /// Registers a default value factory for the given <paramref name="key"/>.
@@ -97,7 +146,49 @@ namespace Stunts
         /// Determines the default value for the given <paramref name="type"/> when no suitable factory is registered for it.
         /// </summary>
         /// <param name="type">The type of which to produce a value.</param>
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "The reflection fallback is unreachable when dynamic code is unavailable.")]
         protected virtual object? GetFallbackDefaultValue(Type type)
+        {
+#if NET8_0_OR_GREATER
+            if (!RuntimeFeature.IsDynamicCodeSupported)
+            {
+                if (generated.TryGetValue(type, out var typed))
+                    return typed.Fallback();
+                if (type.IsValueType || useGenerated && BuiltInKey(type) is Type key && !disabled.ContainsKey(key))
+                    throw new NotSupportedException($"No default value factory is registered for '{type}'. Register a typed factory with DefaultValueProvider.Register<T>().");
+                return null;
+            }
+#endif
+            return GetDynamicFallback(type);
+        }
+
+#if NET8_0_OR_GREATER
+        static Type? BuiltInKey(Type type)
+        {
+            if (type.IsArray || type == typeof(Array))
+                return typeof(Array);
+            var key = type.IsGenericType ? type.GetGenericTypeDefinition() : type;
+            if (key == typeof(Task) || key == typeof(ValueTask) || key == typeof(IEnumerable) || key == typeof(IQueryable) ||
+                key == typeof(Task<>) || key == typeof(ValueTask<>) || key == typeof(IEnumerable<>) || key == typeof(IQueryable<>) ||
+                key == typeof(ValueTuple<>) || key == typeof(ValueTuple<,>) || key == typeof(ValueTuple<,,>) ||
+                key == typeof(ValueTuple<,,,>) || key == typeof(ValueTuple<,,,,>) || key == typeof(ValueTuple<,,,,,>) ||
+                key == typeof(ValueTuple<,,,,,,>) || key == typeof(ValueTuple<,,,,,,,>))
+                return key;
+            return null;
+        }
+
+        sealed class GeneratedDefault
+        {
+            public GeneratedDefault(Func<DefaultValueProvider, object?> create, Func<object?> fallback)
+                => (Create, Fallback) = (create, fallback);
+
+            public Func<DefaultValueProvider, object?> Create { get; }
+            public Func<object?> Fallback { get; }
+        }
+#endif
+
+        [RequiresUnreferencedCode("Default value construction requires the runtime type's constructor.")]
+        static object? GetDynamicFallback(Type type)
         {
             if (type.IsValueType)
             {
@@ -111,15 +202,21 @@ namespace Stunts
             return null;
         }
 
+        [RequiresDynamicCode("Array defaults require the element type's array instantiation. Register a typed factory for Native AOT.")]
         static object CreateArray(Type type) => Array.CreateInstance(
             type.GetElementType() ?? throw new ArgumentException(nameof(type)), new int[type.GetArrayRank()]);
 
         static object CreateEnumerable(Type type) => Enumerable.Empty<object>();
 
+        [RequiresDynamicCode("Enumerable defaults require the element type's array instantiation.")]
         static object CreateEnumerableOf(Type type) => Array.CreateInstance(type.GenericTypeArguments[0], 0);
 
+        [RequiresDynamicCode("Queryable defaults require runtime generic instantiation.")]
+        [RequiresUnreferencedCode("Queryable defaults require reflection metadata.")]
         static object CreateQueryable(Type type) => Enumerable.Empty<object>().AsQueryable();
 
+        [RequiresDynamicCode("Queryable defaults require runtime generic instantiation.")]
+        [RequiresUnreferencedCode("Queryable defaults require reflection metadata.")]
         static object? CreateQueryableOf(Type type)
         {
             var elementType = type.GetGenericArguments()[0];
@@ -131,6 +228,7 @@ namespace Stunts
                 .Invoke(null, new[] { array });
         }
 
+        [RequiresUnreferencedCode("Tuple defaults require constructor metadata.")]
         object? CreateValueTupleOf(Type type)
         {
             var itemTypes = type.GetGenericArguments();
@@ -147,6 +245,7 @@ namespace Stunts
         // See https://github.com/dotnet/runtime/blob/master/src/libraries/System.Private.CoreLib/src/System/Threading/Tasks/ValueTask.cs#L114
         static object CreateValueTask(Type type) => default(ValueTask);
 
+        [RequiresUnreferencedCode("ValueTask defaults require constructor metadata.")]
         object CreateValueTaskOf(Type type)
         {
             var resultType = type.GetGenericArguments()[0];
@@ -158,8 +257,12 @@ namespace Stunts
 
         static object CreateTask(Type type) => Task.CompletedTask;
 
+        [RequiresDynamicCode("Task defaults require runtime generic instantiation.")]
+        [RequiresUnreferencedCode("Task defaults require reflection metadata.")]
         object CreateTaskOf(Type type) => GetCompletedTaskForType(type.GenericTypeArguments[0]);
 
+        [RequiresDynamicCode("Task defaults require runtime generic instantiation.")]
+        [RequiresUnreferencedCode("Task defaults require reflection metadata.")]
         Task GetCompletedTaskForType(Type type)
         {
             var tcs = Activator.CreateInstance(typeof(TaskCompletionSource<>).MakeGenericType(type))

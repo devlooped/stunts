@@ -3,6 +3,8 @@
   <!-- If source generators aren't supported, we just won't register the compiled one -->
   <PropertyGroup>
     <SourceGeneratorSupported Condition="'$(Language)' == 'C#' AND $([System.Version]::Parse('16.8.0').CompareTo($([System.Version]::Parse($(MSBuildVersion))))) != 1">true</SourceGeneratorSupported>
+    <!-- Visual Basic only supports run-time stunts (Stunts.DynamicProxy). -->
+    <EnableCompileTimeStunts Condition="'$(Language)' == 'VB'">false</EnableCompileTimeStunts>
     <EnableCompileTimeStunts Condition="'$(EnableCompileTimeStunts)' == '' AND '$(SourceGeneratorSupported)' == 'true'">true</EnableCompileTimeStunts>
   </PropertyGroup>
 
@@ -17,6 +19,9 @@
   <ItemGroup>
     <CompilerVisibleProperty Include="EnableCompileTimeStunts" />
     <CompilerVisibleProperty Include="AllowUnsafeBlocks" />
+    <CompilerVisibleProperty Include="PublishAot" />
+    <CompilerVisibleProperty Include="IsAotCompatible" />
+    <CompilerVisibleProperty Include="EnableAotAnalyzer" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(EnableCompileTimeStunts)' == 'true'">
@@ -52,8 +57,15 @@
 
   <Target Name="CheckRunTimeStunts" BeforeTargets="CoreCompile"
           Condition="'$(EnableCompileTimeStunts)' != 'true' AND '$(StuntsDynamicProxy)' != 'true' AND '$(DesignTimeBuild)' != 'true'">
-    <Warning Code="ST011"
+    <Warning Code="ST011" Condition="'$(Language)' == 'VB'"
+             Text="Visual Basic only supports run-time stunts. Install the Stunts.DynamicProxy package to create stunts." />
+    <Warning Code="ST011" Condition="'$(Language)' != 'VB'"
              Text="Compile-time stunts are disabled or not supported by this project. Install the Stunts.DynamicProxy package to use run-time stunts." />
+  </Target>
+
+  <Target Name="CheckNativeAotStunts" BeforeTargets="CoreCompile"
+          Condition="('$(PublishAot)' == 'true' OR '$(IsAotCompatible)' == 'true' OR '$(EnableAotAnalyzer)' == 'true') AND '$(EnableCompileTimeStunts)' != 'true'">
+    <Warning Code="ST014" Text="Native AOT requires compile-time stunts. Runtime proxies require dynamic code. EnableCompileTimeStunts must be true." />
   </Target>
 
 </Project>

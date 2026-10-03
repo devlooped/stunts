@@ -60,6 +60,9 @@ namespace Stunts
         /// </summary>
         /// <param name="value">The stunt of type <typeparamref name="T"/> to reference.</param>
         /// <exception cref="ArgumentException">Thrown when the value does not implement <see cref="IStunt"/>.</exception>
+#if NET5_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2091", Justification = "Lazy<T> wraps an existing instance through a factory and never activates T through its default constructor.")]
+#endif
         public StuntReference(T value)
             : this(new Lazy<T>(() => value))
         {
@@ -260,6 +263,9 @@ namespace Stunts
         static T Create<T>(object[] constructorArgs, params Type[] interfaces) =>
             (T)StuntFactory.Default.CreateStunt(typeof(Stunt).Assembly, typeof(T), interfaces, constructorArgs);
 
+#if NET5_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2091", Justification = "Lazy<TResult> always receives a factory and never activates TResult through its default constructor.")]
+#endif
         static StuntReference<TResult> Defer<TResult>(Func<TResult> factory) =>
             new StuntReference<TResult>(new Lazy<TResult>(factory));
 

@@ -20,6 +20,7 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.CodeStyle" Version="5.9.0" />
     <!-- Required to unify this dependency across projects. -->
     <PackageVersion Include="System.Runtime.CompilerServices.Unsafe" Version="6.1.2" />
+    <PackageVersion Include="System.Reflection.Metadata" Version="9.0.0" />
 
     <!-- When running under .netframework, this dependency will be needed -->
     <PackageVersion Include="System.ValueTuple" Version="4.6.2" />

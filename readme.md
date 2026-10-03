@@ -144,19 +144,56 @@ public static T Of<T, T1>(params object[] constructorArgs) => Create<T>(construc
 As you can see, the Stunts API itself uses the same extensibility mechanism that your own custom factory methods can use.
 
 The attribute normally treats the generic arguments at the call site as the stunt's base type and
-additional interfaces. Factories that construct generic types inside their bodies also work:
+additional interfaces. Generic factories that construct stunt types from their own type parameters
+must be annotated too:
 
 ```csharp
-static IDictionary<TKey, TValue> Create<TKey, TValue>()
-    => Stunt.Of<IDictionary<TKey, TValue>>();
+[StuntGenerator]
+static IDictionary<string, T> Create<T>() => Stunt.Of<IDictionary<string, T>>();
 
-IDictionary<string, int> dictionary = Create<string, int>();
+IDictionary<string, int> dictionary = Create<int>();
 ```
 
-This wrapper needs no `[StuntGenerator]`: the call in its body generates a generic proxy template.
-At runtime, the compiled factory closes that template with the requested types, without tracing
-callers. Templates preserve constraints and support nested type arguments, classes, delegates, and
-additional interfaces. An existing closed proxy takes precedence over a matching template.
+The generator follows such wrappers (up to 8 levels, including across referenced assemblies) and
+generates the closed stunts each call site needs, here `IDictionary<string, int>`. Unannotated
+wrappers are reported (`ST016`, with a code fix). Stunt types only known at run time can be
+registered explicitly anywhere in the project:
+
+```csharp
+[assembly: Stunt<IDictionary<string, DateTime>, IDisposable>]
+```
+
+Requesting a stunt that was not generated throws a `NotSupportedException` containing the exact
+attribute to add.
+
+### Native AOT
+
+Compile-time stunts support Native AOT on .NET 8 and later. Generated registrations
+preserve constructors and invocation metadata, and generated typed factories
+provide `DefaultValueBehavior` defaults without runtime generic instantiation. Interfaces,
+classes, delegates, additional interfaces, constructor interception, default interface members,
+and closed generic targets are supported.
+Ref-struct holders additionally require .NET 9 or later for by-ref-like generics.
+Ref-struct and pointer signatures require unsafe blocks.
+
+Set `<PublishAot>true</PublishAot>` to publish a native executable. `IsAotCompatible` or
+`EnableAotAnalyzer` also enables the Stunts compatibility warnings during ordinary builds:
+
+| Warning | Limitation | Alternative |
+| --- | --- | --- |
+| `ST014` | Runtime proxies require dynamic code | Enable compile-time stunts |
+| `ST015` | Generic intercepted methods use runtime `MakeGenericMethod` | Use non-generic members with closed parameter and return types |
+| `ST015` | Ref-struct interception needs by-ref-like generics | Target .NET 9 or later |
+| `ST015` | `IQueryable` defaults require dynamic code | Register an AOT-compatible typed `DefaultValueProvider` factory, or avoid `DefaultValueBehavior` for that member |
+
+Generated stunts register typed constructors from a module initializer, so they are created
+without reflection. Use `Ref.Create<T>` instead of the reflection-based `Ref.Create(Type, object)`
+overload, which carries the standard .NET AOT and trimming warnings.
+
+Arrays, enumerable results, tasks, value tasks, tuples, and output defaults used by closed
+stunts have typed factories. Defaults for other runtime-only types require explicit
+`DefaultValueProvider.Register<T>` factories. Custom registrations, deregistration, and virtual
+fallback overrides remain available.
 
 ### Compiled vs Dynamic Stunts
 
@@ -170,6 +207,7 @@ not supported (or unwanted), install the `Stunts.DynamicProxy` package, which sw
 ```
 
 The package sets `EnableCompileTimeStunts=false` for you. Projects that can't use compile-time stunts and don't reference `Stunts.DynamicProxy` get a build warning (`ST011`).
+Visual Basic projects only support run-time stunts, so they always need `Stunts.DynamicProxy`.
 
 Compile-time stunts support optional parameters, inherited generic constraints, long signatures,
 and `ref`/`out` arguments alongside spans and other ref structs. Ref-struct and pointer signatures

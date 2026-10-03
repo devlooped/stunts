@@ -28,6 +28,22 @@ namespace Stunts.UnitTests
         }
 
         [Fact]
+        public void DoesNotEmitWithoutByRefLikeGenericSupport()
+        {
+            var compilation = CompilationWith().AddSyntaxTrees(CSharpSyntaxTree.ParseText(@"
+namespace System
+{
+    public class Object { }
+    public struct Span<T> { }
+    public struct ReadOnlySpan<T> { }
+}"));
+
+            Assert.NotNull(compilation.GetTypeByMetadataName("System.Span`1"));
+            Assert.False(compilation.SupportsRuntimeCapability(RuntimeCapability.ByRefLikeGenerics));
+            Assert.Empty(Generate(compilation));
+        }
+
+        [Fact]
         public void DoesNotEmitWhenTypesAlreadyExist()
         {
             var compilation = CompilationWith(

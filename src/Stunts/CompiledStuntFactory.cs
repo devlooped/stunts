@@ -1,191 +1,165 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Runtime.ExceptionServices;
 
 namespace Stunts
 {
     /// <summary>
-    /// Provides a <see cref="IStuntFactory"/> that creates proxies from types 
-    /// generated at compile-time that are included in the received stunt 
-    /// assembly in <see cref="CreateStunt"/>.
+    /// Provides a <see cref="IStuntFactory"/> that creates the stunts generated at 
+    /// compile-time, which register themselves when their assembly is loaded.
     /// </summary>
     [EditorBrowsable(EditorBrowsableState.Never)]
     public class CompiledStuntFactory : IStuntFactory
     {
-        static readonly ConditionalWeakTable<Assembly, Template[]> templates = new();
+        static readonly ConditionalWeakTable<Assembly, Registrations> byAssembly = new();
+        static readonly Dictionary<string, Registrations> byName = new(StringComparer.Ordinal);
 
         /// <summary>
-        /// Uses the <see cref="StuntNaming.GetFullName(Type, Type[])"/> method to 
-        /// determine the expected full type name of a compile-time generated stunt 
-        /// and tries to locate it from <paramref name="assembly"/>. If no closed stunt
-        /// exists, closes a matching generated generic template.
+        /// Registers a generated stunt for the given <paramref name="types"/>, requested
+        /// at run time by the <paramref name="assembly"/> that declares it.
         /// </summary>
-        /// <param name="assembly">The assembly containing the compile-time generated stunts.</param>
+        /// <param name="assembly">The assembly that requests the stunt (and declares it).</param>
+        /// <param name="stuntType">The generated stunt type.</param>
+        /// <param name="types">The base type and additional interfaces the stunt implements.</param>
+        /// <param name="constructors">The constructors of the stunt.</param>
+        public static void Register(Assembly assembly, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type stuntType, Type[] types, params StuntConstructor[] constructors)
+            => byAssembly.GetValue(assembly, _ => new Registrations()).Add(stuntType, types, constructors);
+
+        /// <summary>
+        /// Registers a generated stunt for the given <paramref name="types"/>, requested
+        /// at run time by a referenced assembly, such as a generic factory method in a 
+        /// library invoked with concrete types from the generating project.
+        /// </summary>
+        /// <param name="assembly">The name of the assembly that requests the stunt.</param>
+        /// <param name="stuntType">The generated stunt type.</param>
+        /// <param name="types">The base type and additional interfaces the stunt implements.</param>
+        /// <param name="constructors">The constructors of the stunt.</param>
+        public static void Register(string assembly, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type stuntType, Type[] types, params StuntConstructor[] constructors)
+        {
+            lock (byName)
+            {
+                if (!byName.TryGetValue(assembly, out var registrations))
+                    byName.Add(assembly, registrations = new Registrations());
+
+                registrations.Add(stuntType, types, constructors);
+            }
+        }
+
+        /// <summary>
+        /// Creates the stunt registered for <paramref name="baseType"/> and 
+        /// <paramref name="implementedInterfaces"/> by the generated code for 
+        /// <paramref name="assembly"/>.
+        /// </summary>
+        /// <param name="assembly">The assembly requesting the stunt.</param>
         /// <param name="baseType">Base type of the stunt.</param>
         /// <param name="implementedInterfaces">Additional interfaces the stunt implements.</param>
         /// <param name="constructorArguments">Optional additional constructor arguments for the stunt.</param>
         public object CreateStunt(Assembly assembly, Type baseType, Type[] implementedInterfaces, object?[] constructorArguments)
         {
-            var name = StuntNaming.GetFullName(baseType, implementedInterfaces);
-            ArgumentException? templateError = null;
-            var type = assembly.GetType(name, false, false) ?? FindTemplate(assembly, baseType, implementedInterfaces, out templateError);
-            if (type == null)
-                throw new ArgumentException(ThisAssembly.Strings.StaticStuntTypeNotFoundInAssembly(name, assembly.GetName().Name), nameof(assembly), templateError);
-
-            try
+            var key = new TypeSet(baseType, implementedInterfaces);
+            var registration = Find(assembly, key);
+            if (registration == null)
             {
-                var instance = Activator.CreateInstance(type, constructorArguments);
-                if (baseType.BaseType == typeof(MulticastDelegate))
-                    return Delegate.CreateDelegate(baseType, instance, instance.GetType().GetMethod("Invoke"));
-
-                return instance;
-            }
-            catch (TargetInvocationException tie)
-            {
-                var ex = ExceptionDispatchInfo.Capture(tie.GetBaseException());
-                ex.Throw();
+                // Registrations run from the module initializer, which may not have run yet
+                // if nothing else from the assembly was used.
+                RuntimeHelpers.RunModuleConstructor(assembly.ManifestModule.ModuleHandle);
+                registration = Find(assembly, key);
             }
 
-            // Code will never reach this.
-            throw new NotImplementedException();
+            if (registration == null)
+            {
+                var type = StuntTypeName(baseType, implementedInterfaces);
+                throw new NotSupportedException(ThisAssembly.Strings.StuntNotRegistered(type, assembly.GetName().Name));
+            }
+
+            return registration.Create(constructorArguments ?? Array.Empty<object?>(), baseType, implementedInterfaces);
         }
 
-        static Type? FindTemplate(Assembly assembly, Type baseType, Type[] interfaces, out ArgumentException? constraintError)
+        static Registration? Find(Assembly assembly, TypeSet key)
         {
-            constraintError = null;
-            var targets = new[] { baseType }.Concat(interfaces).ToArray();
-            foreach (var template in templates.GetValue(assembly, GetTemplates))
-            {
-                if (template.Targets.Length != targets.Length)
-                    continue;
+            if (byAssembly.TryGetValue(assembly, out var registrations) &&
+                registrations.TryGet(key) is Registration registration)
+                return registration;
 
-                var arguments = new Type?[template.Parameters.Length];
-                if (template.Definition.DeclaringType is Type parent && parent.IsGenericType)
+            if (assembly.GetName().Name is string name)
+            {
+                lock (byName)
                 {
-                    var nestedTarget = targets.FirstOrDefault(target => target.IsGenericType &&
-                        target.DeclaringType?.IsGenericType == true &&
-                        target.DeclaringType.GetGenericTypeDefinition() == parent.GetGenericTypeDefinition());
-                    if (nestedTarget != null)
-                        Array.Copy(nestedTarget.GetGenericArguments(), arguments, parent.GetGenericArguments().Length);
-                }
-                if (MatchTargets(template, targets, arguments, 0, ref constraintError) is Type closed)
-                    return closed;
-            }
-
-            return null;
-        }
-
-        static Template[] GetTemplates(Assembly assembly)
-            => assembly.GetTypes()
-                .Where(type => type.IsGenericTypeDefinition)
-                .SelectMany(type => type.GetMethods(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
-                    .Where(method => method.IsDefined(typeof(StuntTemplateAttribute), false))
-                    .Select(method => new Template(type, method.GetParameters().Select(parameter => parameter.ParameterType).ToArray())))
-                .OrderBy(template => template.Definition.FullName, StringComparer.Ordinal)
-                .ToArray();
-
-        static Type? MatchTargets(Template template, Type[] targets, Type?[] arguments, int index, ref ArgumentException? constraintError)
-        {
-            if (index == template.Targets.Length)
-                return CloseTemplate(template, arguments, ref constraintError);
-
-            for (var i = index; i < targets.Length; i++)
-            {
-                var inferred = (Type?[])arguments.Clone();
-                if (!Match(template.Targets[index], targets[i], inferred))
-                    continue;
-                var remaining = (Type[])targets.Clone();
-                (remaining[index], remaining[i]) = (remaining[i], remaining[index]);
-                if (MatchTargets(template, remaining, inferred, index + 1, ref constraintError) is Type closed)
-                    return closed;
-            }
-
-            return null;
-        }
-
-        static bool Match(Type pattern, Type target, Type?[] arguments)
-        {
-            if (pattern.IsGenericParameter)
-            {
-                var index = pattern.GenericParameterPosition;
-                if (arguments[index] != null)
-                    return arguments[index] == target;
-                arguments[index] = target;
-                return true;
-            }
-            if (pattern.IsArray)
-                return target.IsArray && pattern.GetArrayRank() == target.GetArrayRank() &&
-                    (pattern == pattern.GetElementType()!.MakeArrayType()) == (target == target.GetElementType()!.MakeArrayType()) &&
-                    Match(pattern.GetElementType()!, target.GetElementType()!, arguments);
-            if (!pattern.IsGenericType)
-                return pattern == target;
-            if (!target.IsGenericType || pattern.GetGenericTypeDefinition() != target.GetGenericTypeDefinition())
-                return false;
-
-            var patterns = pattern.GetGenericArguments();
-            var targets = target.GetGenericArguments();
-            for (var i = 0; i < patterns.Length; i++)
-                if (!Match(patterns[i], targets[i], arguments))
-                    return false;
-            return true;
-        }
-
-        static Type? CloseTemplate(Template template, Type?[] arguments, ref ArgumentException? constraintError)
-        {
-            var remaining = arguments.Count(argument => argument == null);
-            if (remaining == 0)
-            {
-                try
-                {
-                    return template.Definition.MakeGenericType(arguments.Select(argument => argument!).ToArray());
-                }
-                catch (ArgumentException error)
-                {
-                    // Structurally matching templates can have incompatible generic constraints.
-                    constraintError = error;
-                    return null;
-                }
-            }
-
-            for (var i = 0; i < template.Parameters.Length; i++)
-            {
-                if (arguments[i] is not Type target)
-                    continue;
-                foreach (var constraint in template.Parameters[i].GetGenericParameterConstraints())
-                {
-                    foreach (var candidate in SelfAndBases(target).Concat(target.GetInterfaces()))
-                    {
-                        var inferred = (Type?[])arguments.Clone();
-                        if (!Match(constraint, candidate, inferred) ||
-                            inferred.Count(argument => argument == null) == remaining)
-                            continue;
-                        if (CloseTemplate(template, inferred, ref constraintError) is Type closed)
-                            return closed;
-                    }
+                    if (byName.TryGetValue(name, out registrations))
+                        return registrations.TryGet(key);
                 }
             }
 
             return null;
         }
 
-        static IEnumerable<Type> SelfAndBases(Type type)
+        static string StuntTypeName(Type baseType, Type[] interfaces)
+            => string.Join(", ", new[] { baseType }.Concat(interfaces).Select(CSharpTypeName.Format));
+
+        sealed class Registrations
         {
-            for (var current = type; current != null; current = current.BaseType)
-                yield return current;
+            readonly Dictionary<TypeSet, Registration> registrations = new();
+
+            public void Add(Type stuntType, Type[] types, StuntConstructor[] constructors)
+            {
+                lock (registrations)
+                    registrations[new TypeSet(types[0], types.Skip(1).ToArray())] = new Registration(stuntType, constructors);
+            }
+
+            public Registration? TryGet(TypeSet key)
+            {
+                lock (registrations)
+                    return registrations.TryGetValue(key, out var registration) ? registration : null;
+            }
         }
 
-        sealed class Template
+        sealed class Registration
         {
-            public Template(Type definition, Type[] targets)
-                => (Definition, Targets, Parameters) = (definition, targets, definition.GetGenericArguments());
+            public Registration(Type stuntType, StuntConstructor[] constructors)
+                => (StuntType, Constructors) = (stuntType, constructors);
 
-            public Type Definition { get; }
-            public Type[] Targets { get; }
-            public Type[] Parameters { get; }
+            public Type StuntType { get; }
+
+            public StuntConstructor[] Constructors { get; }
+
+            public object Create(object?[] arguments, Type baseType, Type[] interfaces)
+            {
+                var candidates = Constructors.Where(constructor => constructor.Accepts(arguments)).ToArray();
+                var best = candidates.Where(candidate => candidates.All(other =>
+                    other == candidate || candidate.IsMoreSpecificThan(other, arguments))).ToArray();
+
+                if (candidates.Length == 0)
+                    throw new MissingMethodException(ThisAssembly.Strings.StuntConstructorNotFound(StuntTypeName(baseType, interfaces)));
+                if (best.Length != 1)
+                    throw new AmbiguousMatchException(ThisAssembly.Strings.AmbiguousStuntConstructor(StuntTypeName(baseType, interfaces)));
+
+                return best[0].Create(arguments);
+            }
+        }
+
+        // The set of types implemented by a stunt is order-insensitive, which matches the naming 
+        // convention of generated stunts, that sorts the additional interfaces.
+        readonly struct TypeSet : IEquatable<TypeSet>
+        {
+            readonly Type[] types;
+            readonly int hashCode;
+
+            public TypeSet(Type baseType, Type[] interfaces)
+            {
+                types = new[] { baseType }.Concat(interfaces).Distinct().ToArray();
+                hashCode = types.Aggregate(types.Length, (hash, type) => hash ^ type.GetHashCode());
+            }
+
+            public bool Equals(TypeSet other)
+                => types.Length == other.types.Length && types.All(type => Array.IndexOf(other.types, type) >= 0);
+
+            public override bool Equals(object? obj) => obj is TypeSet other && Equals(other);
+
+            public override int GetHashCode() => hashCode;
         }
     }
 }

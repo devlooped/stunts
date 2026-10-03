@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 namespace Stunts
@@ -19,6 +20,8 @@ namespace Stunts
         /// </summary>
         /// <exception cref="ArgumentException">The <paramref name="type"/> is <see langword="void"/> or the 
         /// <paramref name="value"/> cannot be casted to <paramref name="type"/>.</exception>
+        [RequiresDynamicCode("Ref<T> must be instantiated at compile time for Native AOT. Use Ref.Create<T>(value) instead.")]
+        [RequiresUnreferencedCode("Ref<T> constructor metadata may have been trimmed. Use Ref.Create<T>(value) instead.")]
         public static object Create(Type type, object? value)
         {
             if (type == typeof(void))

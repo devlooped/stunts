@@ -135,8 +135,14 @@
   <data name="ValueTypeIsNull" xml:space="preserve">
     <value>Argument '{arg}' is null and cannot be converted to expected type '{type}' because it is not a nullable value type.</value>
   </data>
-  <data name="StaticStuntTypeNotFoundInAssembly" xml:space="preserve">
-    <value>Expected stunt type named '{type}' in assembly '{assembly}' was not found. The static source generator may have failed to generate the required types during build, or the stunt types may be located in a different assembly.</value>
+  <data name="StuntNotRegistered" xml:space="preserve">
+    <value>No generated stunt for {type} in assembly '{assembly}'. Add to any file in that project: [assembly: Stunt&lt;{type}&gt;] or reference Stunts.DynamicProxy for run-time stunts.</value>
+  </data>
+  <data name="AmbiguousStuntConstructor" xml:space="preserve">
+    <value>Multiple constructors of the stunt for {type} match the provided arguments.</value>
+  </data>
+  <data name="StuntConstructorNotFound" xml:space="preserve">
+    <value>No constructor of the stunt for {type} matches the provided arguments.</value>
   </data>
   <data name="MethodArgumentsMismatch" xml:space="preserve">
     <value>The number of arguments for the invocation must match the number of parameters of the method being invoked. Method '{method}' has '{parameters}' but got '{arguments}' arguments.</value>

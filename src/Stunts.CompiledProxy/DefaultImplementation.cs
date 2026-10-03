@@ -40,15 +40,10 @@ namespace Stunts
 
         public static SyntaxNode CreateSyntax(NamingConvention naming, INamedTypeSymbol iface)
         {
-            var template = GenericStuntTemplate.Create(iface);
-            TypeDeclarationSyntax declaration = ClassDeclaration(template?.GetName(naming, "DefaultGeneric") ?? naming.GetDefaultImplementationName(iface))
-                .WithModifiers(TokenList(Token(IsPublic(iface) &&
-                    (template == null || template.Parameters.All(parameter => parameter.ConstraintTypes.All(IsPublic)))
-                        ? SyntaxKind.PublicKeyword : SyntaxKind.InternalKeyword)))
+            var declaration = ClassDeclaration(naming.GetDefaultImplementationName(iface))
+                .WithModifiers(TokenList(Token(IsPublic(iface) ? SyntaxKind.PublicKeyword : SyntaxKind.InternalKeyword)))
                 .WithBaseList(BaseList(SingletonSeparatedList<BaseTypeSyntax>(
-                    SimpleBaseType(template == null ? MemberScaffold.TypeName(iface) : ParseTypeName(template.Display(iface))))));
-            if (template != null)
-                declaration = template.Declaration(declaration);
+                    SimpleBaseType(MemberScaffold.TypeName(iface)))));
 
             return CompilationUnit()
                 .WithMembers(

@@ -55,7 +55,12 @@ Namespace Global.Stunts
         ''' </summary>
         ''' <param name="value">The stunt of type <typeparamref name="T"/> to reference.</param>
         ''' <exception cref="ArgumentException">Thrown when the value does not implement <see cref="IStunt"/>.</exception>
+#If NET5_0_OR_GREATER Then
+        <UnconditionalSuppressMessage("Trimming", "IL2091", Justification:="Lazy(Of T) wraps an existing instance through a factory and never activates T through its default constructor.")>
         Public Sub New(ByVal value As T)
+#Else
+        Public Sub New(ByVal value As T)
+#End If
             Me.New(New Lazy(Of T)(Function() value))
             ' Construction already happened, so behaviors apply to the live instance immediately.
             stunt = Unwrap(value)
@@ -315,7 +320,12 @@ Namespace Global.Stunts
             Return DirectCast(StuntFactory.[Default].CreateStunt(GetType(Stunt).Assembly, GetType(T), interfaces, constructorArgs), T)
         End Function
 
+#If NET5_0_OR_GREATER Then
+        <UnconditionalSuppressMessage("Trimming", "IL2091", Justification:="Lazy(Of TResult) always receives a factory and never activates TResult through its default constructor.")>
         Private Shared Function Defer(Of TResult)(ByVal factory As Func(Of TResult)) As StuntReference(Of TResult)
+#Else
+        Private Shared Function Defer(Of TResult)(ByVal factory As Func(Of TResult)) As StuntReference(Of TResult)
+#End If
             Return New StuntReference(Of TResult)(New Lazy(Of TResult)(factory))
         End Function
 
@@ -562,4 +572,3 @@ Namespace Global.Stunts
         End Function
     End Class
 End Namespace
-

@@ -2,7 +2,9 @@
   <Folder Name="/Solution Items/">
     <File Path="Directory.Build.props" />
     <File Path="Directory.Build.targets" />
+    <File Path="nuget.config" />
   </Folder>
+  <Project Path="CompiledAot/CompiledAot.csproj" />
   <Project Path="Dynamic.Basic/Dynamic.Basic.vbproj" />
   <Project Path="Dynamic/Dynamic.csproj" />
   <Project Path="Static/Static.csproj" />

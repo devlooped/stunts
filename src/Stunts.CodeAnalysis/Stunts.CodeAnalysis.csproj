@@ -16,6 +16,7 @@
     <PackageReference Include="Superpower" PrivateAssets="all" />
     <!-- 5.0 is the floor of the 5.x compiler line. The generator is packed once under tools\5.0. -->
     <PackageReference Include="Microsoft.CodeAnalysis.Common" VersionOverride="5.0.0" Pack="false" />
+    <PackageReference Include="System.Reflection.Metadata" PrivateAssets="all" />
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" PrivateAssets="all" />
   </ItemGroup>
 

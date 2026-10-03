@@ -25,10 +25,7 @@ namespace Stunts
         {
             public override SyntaxNode CreateSyntax(NamingConvention naming, INamedTypeSymbol[] symbols)
             {
-                var template = GenericStuntTemplate.Create(symbols);
-                var name = template?.GetName(naming) ?? naming.GetName(symbols);
-                TypeSyntax TargetType(INamedTypeSymbol type)
-                    => template == null ? AsTypeSyntax(type) : ParseTypeName(template.Display(type));
+                var name = naming.GetName(symbols);
                 var imports = new HashSet<string>();
                 var (baseType, implementedInterfaces) = symbols.ValidateGeneratorTypes();
 
@@ -46,28 +43,13 @@ namespace Stunts
                     .WithBaseList(delegateStunt
                         ? BaseList(SingletonSeparatedList<BaseTypeSyntax>(SimpleBaseType(ParseTypeName("object"))))
                         : BaseList(SeparatedList<BaseTypeSyntax>(
-                            symbols.Select(TargetType).Select(type => SimpleBaseType(type)))));
-
-                if (template != null)
-                {
-                    stunt = template.Declaration(stunt).AddMembers(
-                        MethodDeclaration(PredefinedType(Token(SyntaxKind.VoidKeyword)), "__StuntTemplate")
-                            .WithAttributeLists(SingletonList(AttributeList(SeparatedList(new[]
-                            {
-                                Attribute(ParseName("global::Stunts.StuntTemplate")),
-                                Attribute(IdentifierName("CompilerGenerated")),
-                            }))))
-                            .WithModifiers(TokenList(Token(SyntaxKind.StaticKeyword)))
-                            .WithParameterList(ParameterList(SeparatedList(symbols.Select((type, index) =>
-                                Parameter(Identifier("type" + index)).WithType(TargetType(type))))))
-                            .WithBody(Block()));
-                }
+                            symbols.Select(AsTypeSyntax).Select(type => SimpleBaseType(type)))));
 
                 if (delegateStunt)
                 {
                     stunt = stunt.AddMembers(FieldDeclaration(
                         VariableDeclaration(
-                            TargetType(baseType!),
+                            AsTypeSyntax(baseType!),
                             SingletonSeparatedList(VariableDeclarator(Identifier("implementation")))))
                         .WithModifiers(TokenList(Token(SyntaxKind.ReadOnlyKeyword))));
                 }

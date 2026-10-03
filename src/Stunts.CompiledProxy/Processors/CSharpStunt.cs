@@ -30,8 +30,6 @@ namespace Stunts.Processors
 
         class CSharpStuntVisitor : CSharpSyntaxRewriter
         {
-            int genericDepth;
-
             public override SyntaxNode? VisitTypeOfExpression(TypeOfExpressionSyntax node)
             {
                 var runtime = node.Type.GetAnnotations("Stunts.RuntimeType").FirstOrDefault()?.Data;
@@ -40,37 +38,24 @@ namespace Stunts.Processors
 
             public override SyntaxNode? VisitClassDeclaration(ClassDeclarationSyntax node)
             {
-                if (node.TypeParameterList != null)
-                    genericDepth++;
                 node = (ClassDeclarationSyntax)base.VisitClassDeclaration(node)!;
-                var isGeneric = genericDepth > 0;
-                if (node.TypeParameterList != null)
-                    genericDepth--;
                 // Enclosing partials exist only so the stunt can inherit a private nested type.
-                return node.BaseList == null ? node : Finish(node, isGeneric);
+                return node.BaseList == null ? node : Finish(node);
             }
 
             public override SyntaxNode? VisitRecordDeclaration(RecordDeclarationSyntax node)
             {
-                if (node.TypeParameterList != null)
-                    genericDepth++;
                 node = (RecordDeclarationSyntax)base.VisitRecordDeclaration(node)!;
-                var isGeneric = genericDepth > 0;
-                if (node.TypeParameterList != null)
-                    genericDepth--;
-                return node.BaseList == null ? node : Finish(node, isGeneric);
+                return node.BaseList == null ? node : Finish(node);
             }
 
-            static TDeclaration Finish<TDeclaration>(TDeclaration node, bool isGeneric)
+            static TDeclaration Finish<TDeclaration>(TDeclaration node)
                 where TDeclaration : TypeDeclarationSyntax
             {
                 TypeSyntax self = node.TypeParameterList == null
                     ? IdentifierName(node.Identifier.ValueText)
                     : GenericName(node.Identifier).WithTypeArgumentList(TypeArgumentList(SeparatedList<TypeSyntax>(
                         node.TypeParameterList.Parameters.Select(parameter => IdentifierName(parameter.Identifier)))));
-                if (isGeneric)
-                    node = (TDeclaration)new ConstructedMethods(self).Visit(node)!;
-
                 if (node.BaseList != null && !node.BaseList.Types.Any(x =>
                     x.ToString() == nameof(IStunt) ||
                     x.ToString() == typeof(IStunt).FullName))
@@ -128,31 +113,6 @@ namespace Stunts.Processors
                 }
 
                 return node;
-            }
-
-            sealed class ConstructedMethods : CSharpSyntaxRewriter
-            {
-                readonly TypeSyntax self;
-
-                public ConstructedMethods(TypeSyntax self) => this.self = self;
-
-                public override SyntaxNode? VisitInvocationExpression(InvocationExpressionSyntax node)
-                {
-                    if (node.Expression is not MemberAccessExpressionSyntax member ||
-                        member.Expression.ToString() != "MethodBase" || member.Name.Identifier.ValueText != "GetCurrentMethod")
-                        return base.VisitInvocationExpression(node);
-
-                    return SyntaxFactory.InvocationExpression(
-                        SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            IdentifierName("MethodBase"), IdentifierName("GetMethodFromHandle")),
-                        ArgumentList(SeparatedList(new[]
-                        {
-                            Argument(SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                node, IdentifierName("MethodHandle"))),
-                            Argument(SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                TypeOfExpression(self), IdentifierName("TypeHandle"))),
-                        })));
-                }
             }
         }
     }
