@@ -148,7 +148,9 @@ namespace Stunts
                         parameter.RefKind is not (RefKind.None or RefKind.In) ||
                         parameter.Type.IsRefLikeType ||
                         parameter.Type.TypeKind is TypeKind.Pointer or TypeKind.FunctionPointer or TypeKind.Error ||
-                        !compilation.IsSymbolAccessibleWithin(parameter.Type, within)))
+                        !compilation.IsSymbolAccessibleWithin(parameter.Type, within)) ||
+                    IsObsoleteError(constructor) ||
+                    RequiresMemberInitializer(constructor))
                     continue;
 
                 var parameterTypes = constructor.Parameters.Select(parameter => parameter.Type.ToDisplayString(TypeFormat)).ToArray();
@@ -287,6 +289,73 @@ namespace Stunts
             }
 
             return true;
+        }
+
+        // An obsolete-as-error constructor can be declared, but the registration is not
+        // itself obsolete, so calling it is CS0619. Required members make `new T(...)`
+        // illegal unless the constructor is marked SetsRequiredMembers (CS9035).
+        static bool IsObsoleteError(ISymbol symbol)
+        {
+            foreach (var attribute in symbol.GetAttributes())
+            {
+                if (attribute.AttributeClass is not INamedTypeSymbol type ||
+                    type.Name != "ObsoleteAttribute" ||
+                    type.ContainingNamespace?.ToDisplayString() != "System" ||
+                    attribute.ConstructorArguments.Length < 2 ||
+                    attribute.ConstructorArguments[1].Value is not true)
+                    continue;
+
+                return true;
+            }
+
+            return false;
+        }
+
+        static bool RequiresMemberInitializer(IMethodSymbol constructor)
+        {
+            if (HasAttribute(constructor, "System.Runtime.CompilerServices.SetsRequiredMembersAttribute") ||
+                HasAttribute(constructor, "System.Diagnostics.CodeAnalysis.SetsRequiredMembersAttribute"))
+                return false;
+
+            for (var type = constructor.ContainingType; type != null; type = type.BaseType)
+            {
+                foreach (var member in type.GetMembers())
+                {
+                    if (!member.IsStatic && IsRequiredMember(member))
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
+        // `required` is a modifier. Source symbols expose it as IsRequired, while
+        // metadata symbols also carry RequiredMemberAttribute.
+        static bool IsRequiredMember(ISymbol member) => member switch
+        {
+            IFieldSymbol field => field.IsRequired || HasAttribute(field, "System.Runtime.CompilerServices.RequiredMemberAttribute"),
+            IPropertySymbol property => property.IsRequired || HasAttribute(property, "System.Runtime.CompilerServices.RequiredMemberAttribute"),
+            _ => false,
+        };
+
+        static bool HasAttribute(ISymbol symbol, string metadataName)
+        {
+            foreach (var attribute in symbol.GetAttributes())
+            {
+                if (attribute.AttributeClass is INamedTypeSymbol type && MetadataName(type) == metadataName)
+                    return true;
+            }
+
+            return false;
+        }
+
+        static string MetadataName(INamedTypeSymbol type)
+        {
+            var name = type.ContainingType != null ? MetadataName(type.ContainingType) + "+" + type.Name : type.Name;
+            var ns = type.ContainingNamespace;
+            if (type.ContainingType != null || ns == null || ns.IsGlobalNamespace)
+                return name;
+            return ns.ToDisplayString() + "." + name;
         }
 
         static bool IsPublic(ITypeSymbol type) => type switch
