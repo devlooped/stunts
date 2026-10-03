@@ -15,6 +15,10 @@ namespace Stunts
             /// <summary><c>AllowUnsafeBlocks</c>.</summary>
             public const string AllowUnsafeBlocks = "build_property.AllowUnsafeBlocks";
 
+            public const string PublishAot = "build_property.PublishAot";
+            public const string IsAotCompatible = "build_property.IsAotCompatible";
+            public const string EnableAotAnalyzer = "build_property.EnableAotAnalyzer";
+
             /// <summary><c>StuntsAnalyzerDir</c>.</summary>
             public const string StuntsAnalyzerDir = "build_property.StuntsAnalyzerDir";
 
@@ -40,6 +44,14 @@ namespace Stunts
         public static bool CompileTimeStuntsAndUnsafe(AnalyzerConfigOptions options)
             => IsTrue(options, Name.EnableCompileTimeStunts) &&
                IsTrue(options, Name.AllowUnsafeBlocks);
+
+        public static bool NativeAot(AnalyzerConfigOptions options)
+            => IsTrue(options, Name.PublishAot) || IsTrue(options, Name.IsAotCompatible) || IsTrue(options, Name.EnableAotAnalyzer);
+
+        /// <summary><c>EnableCompileTimeStunts</c> was explicitly set to false (i.e. only run-time stunts are used).</summary>
+        public static bool CompileTimeStuntsDisabled(AnalyzerConfigOptions options)
+            => options.TryGetValue(Name.EnableCompileTimeStunts, out var value) &&
+               string.Equals(value, "false", StringComparison.OrdinalIgnoreCase);
 
         /// <summary>Directory that contains analyzer dependencies.</summary>
         public static string? StuntsAnalyzerDir(AnalyzerConfigOptions options)

@@ -1,5 +1,4 @@
 using System;
-using TypeNameFormatter;
 
 namespace Stunts
 {
@@ -13,7 +12,7 @@ namespace Stunts
             {
                 throw new ArgumentNullException(
                     argumentName,
-                    ThisAssembly.Strings.ValueTypeIsNull(argumentName, expectedType.GetFormattedName()));
+                    ThisAssembly.Strings.ValueTypeIsNull(argumentName, expectedType.GetDisplayName()));
             }
 
             return value;

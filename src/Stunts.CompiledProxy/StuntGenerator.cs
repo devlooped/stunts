@@ -45,6 +45,7 @@ namespace Stunts
             new DefaultImports(),
             new CSharpRewrite(),
             new CSharpStunt(),
+            new CSharpAot(),
             new CSharpGenerated(),
             new FixupImports(),
             new CSharpFileHeader(),
@@ -102,6 +103,19 @@ namespace Stunts
         /// </summary>
         public ImmutableArray<ISyntaxProcessor> Processors { get; init; }
 
+        /// <summary>
+        /// Default assembly attribute used to explicitly request generated stunts, 
+        /// such as <c>[assembly: Stunt&lt;IFoo&gt;]</c>.
+        /// </summary>
+        public static Type DefaultRegistrationAttribute { get; } = typeof(StuntAttribute<>);
+
+        /// <summary>
+        /// The generic assembly attribute whose type arguments request generated stunts. 
+        /// Attributes with the same namespace and name and any arity are considered too, 
+        /// so the stunt can implement additional interfaces.
+        /// </summary>
+        public Type RegistrationAttribute { get; init; } = DefaultRegistrationAttribute;
+
         /// <inheritdoc/>
         [MethodImpl(MethodImplOptions.NoInlining)]
         public void Execute(GeneratorExecutionContext context)
@@ -129,7 +143,7 @@ namespace Stunts
         public void Initialize(GeneratorInitializationContext context)
             => context.RegisterForSyntaxNotifications(()
                 => new AggregateSyntaxReceiver(
-                    new ISyntaxReceiver[] { new StuntGeneratorReceiver(GeneratorAttribute) }
+                    new ISyntaxReceiver[] { new StuntGeneratorReceiver(RegistrationAttribute) }
                     .Concat(receivers.Select(x => x())).ToArray()));
 
         /// <summary>
@@ -137,6 +151,12 @@ namespace Stunts
         /// </summary>
         public StuntGenerator WithGeneratorAttribute(Type generatorAttribute)
             => this with { GeneratorAttribute = generatorAttribute };
+
+        /// <summary>
+        /// Replaces the <see cref="RegistrationAttribute"/> in use.
+        /// </summary>
+        public StuntGenerator WithRegistrationAttribute(Type registrationAttribute)
+            => this with { RegistrationAttribute = registrationAttribute };
 
         /// <summary>
         /// Replaces the <see cref="NamingConvention"/> in use.
@@ -178,13 +198,20 @@ namespace Stunts
 
             var driver = new SyntaxProcessorDriver(processors);
             var factory = StuntSyntaxFactory.CreateFactory(context.Language);
-            var stunts = new HashSet<string>();
+            var closure = StuntClosure.Create(context.Compilation, GeneratorAttribute)!;
+            var assemblyName = context.Compilation.Assembly.Name;
+            var stunts = new Dictionary<string, GeneratedStunt>();
+            var generated = new List<GeneratedStunt>();
             var defaults = new HashSet<string>();
             var hintNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var generatorReceiver = context.SyntaxReceivers.OfType<StuntGeneratorReceiver>().FirstOrDefault();
 
-            foreach (var (source, candidate) in context.SyntaxReceivers
+            foreach (var (source, candidate, requester) in context.SyntaxReceivers
                 .OfType<IStuntCandidatesReceiver>()
-                .SelectMany(receiver => receiver.GetCandidates(context)).ToArray())
+                .SelectMany(receiver => receiver is StuntGeneratorReceiver stuntReceiver
+                    ? stuntReceiver.GetStunts(context, closure)
+                    : receiver.GetCandidates(context).Select(pair => (pair.source, pair.candidate, assemblyName)))
+                .ToArray())
             {
                 var inaccessible = candidate.Select(type => (Type: type, Member: InterfaceImplementation.InaccessibleMember(type, context.Compilation)))
                     .FirstOrDefault(pair => pair.Member != null);
@@ -217,14 +244,24 @@ namespace Stunts
                     !candidate.TryValidateGeneratorTypes(out _))
                     continue;
 
-                var name = naming.GetNamespace(candidate) + "." +
-                    (GenericStuntTemplate.Create(candidate)?.GetName(naming) ?? naming.GetName(candidate));
-                if (stunts.Contains(name))
+                var name = naming.GetNamespace(candidate) + "." + naming.GetName(candidate);
+                if (stunts.TryGetValue(name, out var existing))
+                {
+                    existing.Assemblies.Add(requester);
                     continue;
+                }
 
                 if (candidate.FirstOrDefault(type => type.TypeKind != TypeKind.Interface) is INamedTypeSymbol nested &&
                     NestedTypeStunt.NonPartialContainer(nested) != null)
                     continue;
+
+                if (candidate.FirstOrDefault(NestedTypeStunt.MustNest) is INamedTypeSymbol mustNest &&
+                    GenericContainer(mustNest) is INamedTypeSymbol genericContainer)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        StuntDiagnostics.GenericContainingType, source.GetLocation(), mustNest.Name, genericContainer.Name));
+                    continue;
+                }
 
                 var syntax = factory.CreateSyntax(naming, candidate);
                 var stuntContext = context with { DefaultImplementations = new(SymbolEqualityComparer.Default) };
@@ -232,8 +269,18 @@ namespace Stunts
                 if (syntax.IsEquivalentTo(updated))
                     continue;
 
+                if (BuildProperties.NativeAot(context.AnalyzerConfigOptions.GlobalOptions))
+                {
+                    if (updated.DescendantNodes().OfType<MethodDeclarationSyntax>().Any(method => method.TypeParameterList != null))
+                        context.ReportDiagnostic(Diagnostic.Create(StuntDiagnostics.AotUnsupportedMember, source.GetLocation(), "generic intercepted methods require runtime MakeGenericMethod"));
+                    if (updated.GetAnnotatedNodes("Stunts.AotQueryable").Any())
+                        context.ReportDiagnostic(Diagnostic.Create(StuntDiagnostics.AotUnsupportedMember, source.GetLocation(), "IQueryable default values require dynamic code; register a typed DefaultValueProvider factory"));
+                    if (updated.GetAnnotatedNodes("Stunts.AotRefStruct").Any())
+                        context.ReportDiagnostic(Diagnostic.Create(StuntDiagnostics.AotUnsupportedMember, source.GetLocation(), "ref-struct interception requires by-ref-like generic runtime support (.NET 9 or later)"));
+                }
+
                 // At this point, we should have a type that has at least one public constructor
-                if (!updated.DescendantNodes().OfType<ConstructorDeclarationSyntax>().Any())
+                if (!updated.DescendantNodes().OfType<ConstructorDeclarationSyntax>().Any(constructor => !constructor.Modifiers.Any(SyntaxKind.StaticKeyword)))
                 {
                     context.ReportDiagnostic(
                         Diagnostic.Create(
@@ -243,13 +290,14 @@ namespace Stunts
                     continue;
                 }
 
-                stunts.Add(name);
-                AddSource(context, name, updated, hintNames);
+                var stunt = new GeneratedStunt(name, candidate, source, updated);
+                stunt.Assemblies.Add(requester);
+                stunts.Add(name, stunt);
+                generated.Add(stunt);
 
                 foreach (var iface in stuntContext.DefaultImplementations)
                 {
-                    var defaultName = naming.GetNamespace(new[] { iface }) + "." +
-                        (GenericStuntTemplate.Create(iface)?.GetName(naming, "DefaultGeneric") ?? naming.GetDefaultImplementationName(iface));
+                    var defaultName = naming.GetNamespace(new[] { iface }) + "." + naming.GetDefaultImplementationName(iface);
                     if (!defaults.Add(defaultName))
                         continue;
 
@@ -257,15 +305,51 @@ namespace Stunts
                         DefaultImplementation.Driver.Process(DefaultImplementation.CreateSyntax(naming, iface), context), hintNames);
                 }
             }
+
+            string? registrations = null;
+            if (generated.Count > 0)
+            {
+                if (((CSharpParseOptions)context.ParseOptions).LanguageVersion < LanguageVersion.CSharp9)
+                    context.ReportDiagnostic(Diagnostic.Create(StuntDiagnostics.LanguageVersionNotSupported, generated[0].Source.GetLocation()));
+                else
+                    registrations = StuntRegistrations.Register(context, naming, generated);
+            }
+
+            foreach (var stunt in generated)
+                AddSource(context, stunt.Name, stunt.Syntax, hintNames);
+
+            if (registrations != null)
+                context.AddSource(UniqueHintName("Stunts.Generated.StuntRegistrations", hintNames), SourceText.From(registrations, Encoding.UTF8));
+
+            if (generatorReceiver != null &&
+                StuntRegistrations.Shapes(context, closure, generatorReceiver.GetGeneratorMethods(context, closure)) is string shapes)
+                context.AddSource(UniqueHintName("Stunts.Generated.StuntDefinitions", hintNames), SourceText.From(shapes, Encoding.UTF8));
         }
 
-        static void AddSource(ProcessorContext context, string name, SyntaxNode updated, HashSet<string> hintNames)
+        static INamedTypeSymbol? GenericContainer(INamedTypeSymbol type)
+        {
+            for (var current = type.ContainingType; current != null; current = current.ContainingType)
+            {
+                if (current.IsGenericType)
+                    return current;
+            }
+
+            return null;
+        }
+
+        static string UniqueHintName(string name, HashSet<string> hintNames)
         {
             var hintName = name;
             var suffix = 1;
             while (!hintNames.Add(hintName))
                 hintName = name + "." + suffix++;
 
+            return hintName;
+        }
+
+        static void AddSource(ProcessorContext context, string name, SyntaxNode updated, HashSet<string> hintNames)
+        {
+            var hintName = UniqueHintName(name, hintNames);
             var code = updated.NormalizeWhitespace().ToFullString();
             var options = context.AnalyzerConfigOptions.GlobalOptions;
             // Pretty-printing is C# only. The debugger dump below still uses the flag for every language.
@@ -384,73 +468,153 @@ namespace Stunts
         }
 
         /// <summary>
-        /// A <see cref="ISyntaxReceiver"/> that collects invocations to generic methods, 
-        /// which are initial candidates for lookup.
+        /// A <see cref="ISyntaxReceiver"/> that collects invocations to generator methods, 
+        /// generator method declarations, and assembly-level stunt registrations.
         /// </summary>
         class StuntGeneratorReceiver : IStuntCandidatesReceiver
         {
-            readonly Type generatorAttribute;
-            readonly List<(InvocationExpressionSyntax, GenericNameSyntax)> invocations = new();
+            readonly Type registrationAttribute;
+            readonly List<(InvocationExpressionSyntax Invocation, string? Name)> invocations = new();
+            readonly List<AttributeSyntax> attributes = new();
+            readonly List<SyntaxNode> methods = new();
 
-            public StuntGeneratorReceiver(Type generatorAttribute) => this.generatorAttribute = generatorAttribute;
+            public StuntGeneratorReceiver(Type registrationAttribute) => this.registrationAttribute = registrationAttribute;
 
             public IEnumerable<(SyntaxNode source, INamedTypeSymbol[] candidate)> GetCandidates(ProcessorContext context)
-            {
-                var generatorAttr = context.Compilation.GetTypeByMetadataName(generatorAttribute.FullName);
-                if (generatorAttr == null)
-                    yield break;
+                => StuntClosure.Create(context.Compilation, StuntGenerator.DefaultGeneratorAttribute) is StuntClosure closure
+                    ? GetStunts(context, closure).Select(stunt => (stunt.Source, stunt.Types))
+                    : Enumerable.Empty<(SyntaxNode, INamedTypeSymbol[])>();
 
+            /// <summary>
+            /// Gets the stunts requested by generator method invocations (closing generic wrappers) 
+            /// and assembly attributes, with the name of the assembly that requests each at run time.
+            /// </summary>
+            public IEnumerable<(SyntaxNode Source, INamedTypeSymbol[] Types, string Assembly)> GetStunts(ProcessorContext context, StuntClosure closure)
+            {
+                var compilation = context.Compilation;
                 var models = new Dictionary<SyntaxTree, SemanticModel>();
-                var templates = new Dictionary<IMethodSymbol, bool>(SymbolEqualityComparer.Default);
-                foreach (var (invocation, genericName) in invocations)
+                SemanticModel Model(SyntaxTree tree)
+                {
+                    if (!models.TryGetValue(tree, out var model))
+                        models.Add(tree, model = compilation.GetSemanticModel(tree));
+                    return model;
+                }
+
+                // Invocations without explicit type arguments are only bound when they may 
+                // be inferred invocations of a known generator method.
+                var names = new HashSet<string>(methods.Select(method => method switch
+                {
+                    MethodDeclarationSyntax declaration => declaration.Identifier.ValueText,
+                    LocalFunctionStatementSyntax local => local.Identifier.ValueText,
+                    _ => "",
+                }));
+                foreach (var assembly in compilation.SourceModule.ReferencedAssemblySymbols)
+                    foreach (var id in StuntClosure.ShapeMethods(assembly).Select(group => group.Key))
+                        names.Add(MethodName(id));
+
+                // Identity forwards are omitted from the shape methods, so their names come from the attribute.
+                closure.AddReferencedGeneratorNames(names);
+
+                foreach (var (invocation, name) in invocations)
                 {
                     context.CancellationToken.ThrowIfCancellationRequested();
-                    if (!models.TryGetValue(invocation.SyntaxTree, out var semantic))
+                    if (name != null && !names.Contains(name))
+                        continue;
+
+                    if (Model(invocation.SyntaxTree).GetSymbolInfo(invocation, context.CancellationToken).Symbol is not IMethodSymbol method ||
+                        !method.IsGenericMethod || !closure.IsGenerator(method))
+                        continue;
+
+                    foreach (var (types, assembly) in closure.Close(method, context.CancellationToken))
                     {
-                        semantic = context.Compilation.GetSemanticModel(invocation.SyntaxTree);
-                        models.Add(invocation.SyntaxTree, semantic);
+                        if (Candidate(types) is INamedTypeSymbol[] candidate)
+                            yield return (invocation, candidate, assembly);
                     }
-                    var symbol = semantic.GetSymbolInfo(invocation, context.CancellationToken);
-                    if (symbol.Symbol is not IMethodSymbol method)
-                        continue;
-
-                    if (!method.GetAttributes().Any(attr => SymbolEqualityComparer.Default.Equals(attr.AttributeClass, generatorAttr)))
-                        continue;
-
-                    var definition = method.OriginalDefinition;
-                    if (!templates.TryGetValue(definition, out var usesTemplate))
-                    {
-                        usesTemplate = GenericFactory.UsesTemplate(definition, context.Compilation, generatorAttr, context.CancellationToken);
-                        templates.Add(definition, usesTemplate);
-                    }
-                    if (usesTemplate)
-                        continue;
-
-                    var typeArgs = genericName.TypeArgumentList.Arguments
-                        .Select(name => semantic.GetSymbolInfo(name, context.CancellationToken).Symbol as INamedTypeSymbol)
-                        .ToList();
-
-                    // A corresponding diagnostics analyzer would flag this as a compile error.
-                    if (!typeArgs.All(CanGenerateFor))
-                        continue;
-
-                    yield return (invocation, typeArgs.Cast<INamedTypeSymbol>().ToArray());
                 }
+
+                var own = compilation.Assembly.Name;
+                foreach (var attribute in attributes)
+                {
+                    context.CancellationToken.ThrowIfCancellationRequested();
+                    if (Model(attribute.SyntaxTree).GetSymbolInfo(attribute, context.CancellationToken).Symbol is IMethodSymbol constructor &&
+                        constructor.ContainingType is { IsGenericType: true } type &&
+                        IsRegistrationAttribute(type) &&
+                        Candidate(type.TypeArguments) is INamedTypeSymbol[] candidate)
+                        yield return (attribute, candidate, own);
+                }
+            }
+
+            /// <summary>Gets the generator methods declared in source.</summary>
+            public IEnumerable<IMethodSymbol> GetGeneratorMethods(ProcessorContext context, StuntClosure closure)
+            {
+                foreach (var syntax in methods)
+                {
+                    var model = context.Compilation.GetSemanticModel(syntax.SyntaxTree);
+                    if (model.GetDeclaredSymbol(syntax, context.CancellationToken) is IMethodSymbol method && closure.IsGenerator(method))
+                        yield return method;
+                }
+            }
+
+            bool IsRegistrationAttribute(INamedTypeSymbol type)
+            {
+                var name = registrationAttribute.Name;
+                var tick = name.IndexOf('`');
+                if (tick > 0)
+                    name = name.Substring(0, tick);
+
+                return type.Name == name &&
+                    type.ContainingType == null &&
+                    type.ContainingNamespace.ToDisplayString() == registrationAttribute.Namespace;
+            }
+
+            static INamedTypeSymbol[]? Candidate(ImmutableArray<ITypeSymbol> types)
+            {
+                if (types.Length == 0 || !types.All(type => type is INamedTypeSymbol named && CanGenerateFor(named)))
+                    return null;
+
+                return types.Select(type => (INamedTypeSymbol)type.WithNullableAnnotation(NullableAnnotation.None)).ToArray();
+            }
+
+            static string MethodName(string id)
+            {
+                var end = id.IndexOf('(');
+                if (end < 0)
+                    end = id.Length;
+                var arity = id.LastIndexOf("``", end, StringComparison.Ordinal);
+                if (arity > 0)
+                    end = arity;
+                var start = id.LastIndexOf('.', end - 1) + 1;
+                return id.Substring(start, end - start);
             }
 
             public void OnVisitSyntaxNode(SyntaxNode node)
             {
-                // TODO: VB in the future?
-                if (node.IsKind(SyntaxKind.InvocationExpression) &&
-                    node is InvocationExpressionSyntax invocation)
+                switch (node)
                 {
-                    // Both Class.Method<T, ...>()
-                    if (invocation.Expression is MemberAccessExpressionSyntax member &&
-                        member.Name is GenericNameSyntax memberName)
-                        invocations.Add((invocation, memberName));
-                    // And Method<T, ...>()
-                    else if (invocation.Expression is GenericNameSyntax methodName)
-                        invocations.Add((invocation, methodName));
+                    case InvocationExpressionSyntax invocation:
+                        // Class.Method<T, ...>() and Method<T, ...>() are always considered, 
+                        // Class.Method(...) and Method(...) only if the name is a generator's.
+                        var name = invocation.Expression switch
+                        {
+                            MemberAccessExpressionSyntax { Name: GenericNameSyntax } => null,
+                            GenericNameSyntax => null,
+                            MemberAccessExpressionSyntax { Name: IdentifierNameSyntax identifier } => identifier.Identifier.ValueText,
+                            IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
+                            _ => "",
+                        };
+                        if (name != "")
+                            invocations.Add((invocation, name));
+                        break;
+                    case AttributeSyntax attribute when attribute.Parent is AttributeListSyntax { Target.Identifier.RawKind: (int)SyntaxKind.AssemblyKeyword } &&
+                        attribute.Name.DescendantNodesAndSelf().OfType<GenericNameSyntax>().Any():
+                        attributes.Add(attribute);
+                        break;
+                    case MethodDeclarationSyntax method when method.TypeParameterList != null && method.AttributeLists.Count > 0:
+                        methods.Add(method);
+                        break;
+                    case LocalFunctionStatementSyntax local when local.TypeParameterList != null && local.AttributeLists.Count > 0:
+                        methods.Add(local);
+                        break;
                 }
             }
         }

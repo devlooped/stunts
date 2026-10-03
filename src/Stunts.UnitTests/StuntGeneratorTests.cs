@@ -79,6 +79,198 @@ namespace Stunts.UnitTests
 
     public class StuntGeneratorTests
     {
+        [Fact]
+        public void RegistersClosedStunts()
+        {
+            var (diagnostics, compilation) = GetGeneratedOutput(@"
+using System;
+using Stunts;
+public static class Test { public static IDisposable Create() => Stunt.Of<IDisposable>(); }");
+
+            Assert.Empty(diagnostics);
+            Assert.Contains(compilation.SyntaxTrees, tree => tree.ToString().Contains("CompiledStuntFactory.Register("));
+            var assembly = compilation.Emit(false);
+            Assert.IsAssignableFrom<IStunt>(new CompiledStuntFactory().CreateStunt(
+                assembly, typeof(IDisposable), Array.Empty<Type>(), Array.Empty<object>()));
+        }
+
+        [Fact]
+        public void UnregisteredStuntReportsAttributeToAdd()
+        {
+            var (diagnostics, compilation) = GetGeneratedOutput(@"
+using System;
+using Stunts;
+public static class Test { public static IDisposable Create() => Stunt.Of<IDisposable>(); }");
+
+            Assert.Empty(diagnostics);
+            var assembly = compilation.Emit(false);
+            var error = Assert.Throws<NotSupportedException>(() => new CompiledStuntFactory().CreateStunt(
+                assembly, typeof(IDictionary<DateTime, decimal>), new[] { typeof(IDisposable) }, Array.Empty<object>()));
+
+            Assert.Contains("[assembly: Stunt<System.Collections.Generic.IDictionary<System.DateTime, decimal>, System.IDisposable>]", error.Message);
+            Assert.Contains(assembly.GetName().Name!, error.Message);
+        }
+
+        [Fact]
+        public void RegistersAssemblyAttributeStunts()
+        {
+            var (diagnostics, compilation) = GetGeneratedOutput(@"
+using System;
+using System.Collections.Generic;
+using Stunts;
+[assembly: Stunt<IDictionary<string, int>, IDisposable>]
+[assembly: Stunt<IList<Guid>>]
+public static class Test { }");
+
+            Assert.Empty(diagnostics);
+            Assert.Empty(compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
+            var assembly = compilation.Emit(false);
+            var factory = new CompiledStuntFactory();
+            var dictionary = factory.CreateStunt(assembly, typeof(IDictionary<string, int>), new[] { typeof(IDisposable) }, Array.Empty<object>());
+            Assert.IsAssignableFrom<IDisposable>(dictionary);
+            Assert.IsAssignableFrom<IList<Guid>>(factory.CreateStunt(assembly, typeof(IList<Guid>), Array.Empty<Type>(), Array.Empty<object>()));
+        }
+
+        [Fact]
+        public void ReportsAmbiguousConstructorArguments()
+        {
+            var (diagnostics, compilation) = GetGeneratedOutput(@"
+using Stunts;
+public class Ambiguous
+{
+    public Ambiguous(string value) { }
+    public Ambiguous(System.Uri value) { }
+    public virtual int Value() => 1;
+}
+public static class Test
+{
+    public static Ambiguous Null() => Stunt.Of<Ambiguous>(new object[] { null });
+    public static Ambiguous Text() => Stunt.Of<Ambiguous>(""text"");
+}");
+
+            Assert.Empty(diagnostics);
+            var assembly = compilation.Emit(false);
+            var test = assembly.GetType("Test")!;
+            Assert.IsAssignableFrom<IStunt>(test.GetMethod("Text")!.Invoke(null, null));
+            var error = Assert.Throws<TargetInvocationException>(() => test.GetMethod("Null")!.Invoke(null, null));
+            Assert.IsType<AmbiguousMatchException>(error.InnerException);
+        }
+
+        [Fact]
+        public async Task ReportsUnannotatedGenericWrappers()
+        {
+            var (diagnostics, compilation) = GetGeneratedOutput(@"
+using System.Collections.Generic;
+using Stunts;
+public static class Test
+{
+    public static object Run() => Create<string, int>();
+    public static IDictionary<TKey, TValue> Create<TKey, TValue>() => Stunt.Of<IDictionary<TKey, TValue>>();
+}");
+
+            Assert.Empty(diagnostics);
+            var analyzed = await compilation.WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(new GenericWrapperAnalyzer()))
+                .GetAnalyzerDiagnosticsAsync();
+            Assert.Equal(StuntDiagnostics.UnannotatedGenericWrapper.Id, Assert.Single(analyzed).Id);
+        }
+
+        [Fact]
+        public void ReportsLanguageVersionWithoutModuleInitializers()
+        {
+            var (diagnostics, _) = GetGeneratedOutput(@"
+using System;
+using Stunts;
+public static class Test { public static IDisposable Create() => Stunt.Of<IDisposable>(); }", languageVersion: LanguageVersion.CSharp8);
+
+            Assert.Equal(StuntDiagnostics.LanguageVersionNotSupported.Id, Assert.Single(diagnostics).Id);
+        }
+
+        [Fact]
+        public void ReportsNestedStuntsInGenericTypes()
+        {
+            var (diagnostics, _) = GetGeneratedOutput(@"
+using Stunts;
+public partial class Outer<T>
+{
+    protected class Hidden { public virtual int Value() => 1; }
+}
+public partial class Derived : Outer<int>
+{
+    public static object Create() => Stunt.Of<Hidden>();
+}");
+
+            Assert.Equal(StuntDiagnostics.GenericContainingType.Id, Assert.Single(diagnostics).Id);
+        }
+
+        [Fact]
+        public void WarnsAboutGenericInterceptedMethodsForAot()
+        {
+            var (diagnostics, compilation) = GetGeneratedOutput(@"
+using Stunts;
+public interface IGeneric { T Echo<T>(T value); }
+public static class Test { public static IGeneric Create() => Stunt.Of<IGeneric>(); }", aotProperty: "PublishAot");
+
+            var diagnostic = Assert.Single(diagnostics);
+            Assert.Equal("ST015", diagnostic.Id);
+            Assert.Contains("MakeGenericMethod", diagnostic.GetMessage());
+            compilation.Emit(false);
+        }
+
+        [Fact]
+        public void WarnsAboutQueryableDefaultsForAot()
+        {
+            var (diagnostics, compilation) = GetGeneratedOutput(@"
+using System.Linq;
+using Stunts;
+public interface IQuery { IQueryable<int> Query(); }
+public static class Test { public static IQuery Create() => Stunt.Of<IQuery>(); }", aotProperty: "PublishAot");
+
+            var diagnostic = Assert.Single(diagnostics);
+            Assert.Equal("ST015", diagnostic.Id);
+            Assert.Contains("DefaultValueProvider", diagnostic.GetMessage());
+            compilation.Emit(false);
+        }
+
+        [Fact]
+        public void CreatesInaccessibleNestedStunts()
+        {
+            var (diagnostics, compilation) = GetGeneratedOutput(@"
+using Stunts;
+public partial class Outer
+{
+    class Hidden { public virtual int Value() => 1; }
+    public static object Create() => Stunt.Of<Hidden>();
+}", aotProperty: "PublishAot");
+
+            Assert.Empty(diagnostics);
+            Assert.Empty(compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
+            var instance = compilation.Emit(false).GetType("Outer")!.GetMethod("Create")!.Invoke(null, null);
+            Assert.IsAssignableFrom<IStunt>(instance);
+        }
+
+        [Fact]
+        public void ClosedFactoriesDoNotWarnForAot()
+        {
+            var (diagnostics, compilation) = GetGeneratedOutput(@"
+using System;
+using System.Collections.Generic;
+using Stunts;
+public static class Test
+{
+    public static IDictionary<string, int> Create() => Stunt.Of<IDictionary<string, int>>();
+    public static IDisposable Reference() => Stunt.For<IDisposable>().ToObject();
+    public static Func<int, int> Delegate() => Stunt.Builder().Build<Func<int, int>>(value => value);
+}", aotProperty: "PublishAot");
+
+            Assert.Empty(diagnostics);
+            Assert.Empty(compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
+            var test = compilation.Emit(false).GetType("Test")!;
+            Assert.IsAssignableFrom<IStunt>(test.GetMethod("Create")!.Invoke(null, null));
+            Assert.IsAssignableFrom<IStunt>(test.GetMethod("Reference")!.Invoke(null, null));
+            var function = Assert.IsType<Func<int, int>>(test.GetMethod("Delegate")!.Invoke(null, null));
+            Assert.IsAssignableFrom<IStunt>(function.Target);
+        }
+
         // NOTE: add more representative types here if needed when fixing codegen
         [InlineData(typeof(IDisposable), typeof(IServiceProvider), typeof(IFormatProvider))]
         [InlineData(typeof(ICollection<string>), typeof(IDisposable))]
@@ -494,10 +686,8 @@ namespace UnitTests
             Assert.Equal(8, diagnostic.Location.GetLineSpan().StartLinePosition.Line);
         }
 
-        [Theory]
-        [InlineData(false)]
-        [InlineData(true)]
-        public async Task CreatesConstructedGenericStuntsFromGenericMethod(bool annotateFactory)
+        [Fact]
+        public async Task CreatesConstructedGenericStuntsFromGenericMethod()
         {
             var code = @"
 using System;
@@ -511,18 +701,18 @@ namespace UnitTests
         public static object[] Run()
             => new object[] { Create<string, int>(), Create<Guid, string>() };
 
-        $ATTRIBUTE$
+        [StuntGenerator]
         static IDictionary<T0, T1> Create<T0, T1>()
             => global::Stunts.Stunt.Of<global::System.Collections.Generic.IDictionary<T0, T1>>();
     }
-}".Replace("$ATTRIBUTE$", annotateFactory ? "[StuntGenerator]" : "");
+}";
 
-            var (diagnostics, compilation) = GetGeneratedOutput(code, test: nameof(CreatesConstructedGenericStuntsFromGenericMethod) + annotateFactory);
+            var (diagnostics, compilation) = GetGeneratedOutput(code);
 
             Assert.Empty(diagnostics);
             Assert.Empty(compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
             Assert.Empty(await compilation.WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(
-                new ValidateTypesAnalyzer())).GetAnalyzerDiagnosticsAsync());
+                new ValidateTypesAnalyzer(), new GenericWrapperAnalyzer())).GetAnalyzerDiagnosticsAsync());
 
             var assembly = compilation.Emit(false);
             var instances = (object[])assembly.GetType("UnitTests.Test")!.GetMethod("Run")!.Invoke(null, null)!;
@@ -531,12 +721,11 @@ namespace UnitTests
 
             Assert.IsAssignableFrom<IStunt>(first);
             Assert.IsAssignableFrom<IStunt>(second);
-            Assert.Equal(first.GetType().GetGenericTypeDefinition(), second.GetType().GetGenericTypeDefinition());
+            Assert.False(first.GetType().IsGenericType);
 
-            var unseen = new CompiledStuntFactory().CreateStunt(assembly,
-                typeof(IDictionary<DateTime, decimal>), Array.Empty<Type>(), Array.Empty<object>());
-            Assert.IsAssignableFrom<IDictionary<DateTime, decimal>>(unseen);
-            Assert.Equal(first.GetType().GetGenericTypeDefinition(), unseen.GetType().GetGenericTypeDefinition());
+            var error = Assert.Throws<NotSupportedException>(() => new CompiledStuntFactory().CreateStunt(assembly,
+                typeof(IDictionary<DateTime, decimal>), Array.Empty<Type>(), Array.Empty<object>()));
+            Assert.Contains("[assembly: Stunt<System.Collections.Generic.IDictionary<System.DateTime, decimal>>]", error.Message);
 
             Stunt.Get(first).AddBehavior(new DefaultValueBehavior());
             Stunt.Get(second).AddBehavior(new DefaultValueBehavior());
@@ -580,7 +769,7 @@ namespace UnitTests
         }
 
         [Fact]
-        public void AnnotatedTypeFactoryStillGeneratesCallerTypeWhenItAlsoUsesTemplates()
+        public void AnnotatedTypeFactoryGeneratesAllClosedShapes()
         {
             var code = @"
 using System;
@@ -599,7 +788,6 @@ namespace UnitTests
             _ = Stunt.Of<ICollection<T>>();
             return Stunt.Of<T>();
         }
-
     }
 }";
 
@@ -613,6 +801,191 @@ namespace UnitTests
 
             Assert.IsAssignableFrom<IServiceProvider>(instance);
             Assert.IsAssignableFrom<IStunt>(instance);
+            Assert.IsAssignableFrom<IStunt>(new CompiledStuntFactory().CreateStunt(assembly,
+                typeof(ICollection<IServiceProvider>), Array.Empty<Type>(), Array.Empty<object>()));
+        }
+
+        [Fact]
+        public void ClosesGenericWrappersFromReferencedAssemblies()
+        {
+            var (libraryDiagnostics, library) = GetGeneratedOutput(@"
+using System.Collections.Generic;
+using Stunts;
+
+namespace Library
+{
+    public static class Factory
+    {
+        [StuntGenerator]
+        public static IDictionary<string, T> Make<T>() => Inner<T>();
+
+        [StuntGenerator]
+        static IDictionary<string, T> Inner<T>() => Stunt.Of<IDictionary<string, T>>();
+    }
+}", test: "WrapperLibrary");
+
+            Assert.Empty(libraryDiagnostics);
+            Assert.Empty(library.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
+
+            using var stream = new MemoryStream();
+            library.Emit(stream).AssertSuccess();
+            var image = stream.ToArray();
+            var libraryAssembly = Assembly.Load(image);
+
+            var shapes = libraryAssembly.GetType("Stunts.Generated.StuntDefinitions");
+            Assert.NotNull(shapes);
+            var shape = Assert.Single(shapes!.GetMethods(BindingFlags.Public | BindingFlags.Static),
+                method => method.GetCustomAttribute<StuntDefinitionAttribute>() != null);
+            Assert.Equal(typeof(IDictionary<,>), shape.GetParameters().Single().ParameterType.GetGenericTypeDefinition());
+
+            var (diagnostics, compilation) = GetGeneratedOutput(@"
+using System;
+using System.Collections.Generic;
+using Library;
+
+public static class Test
+{
+    public static object Run() => Factory.Make<int>();
+}", test: "WrapperConsumer", references: new[] { MetadataReference.CreateFromImage(image) });
+
+            Assert.Empty(diagnostics);
+            Assert.Empty(compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
+
+            ResolveEventHandler resolve = (_, args) => new AssemblyName(args.Name).Name == "WrapperLibrary" ? libraryAssembly : null;
+            AppDomain.CurrentDomain.AssemblyResolve += resolve;
+            try
+            {
+                var assembly = compilation.Emit(false);
+                var instance = assembly.GetType("Test")!.GetMethod("Run")!.Invoke(null, null);
+                var dictionary = Assert.IsAssignableFrom<IDictionary<string, int>>(instance);
+                Assert.IsAssignableFrom<IStunt>(dictionary);
+                Assert.Same(assembly, dictionary.GetType().Assembly);
+            }
+            finally
+            {
+                AppDomain.CurrentDomain.AssemblyResolve -= resolve;
+            }
+        }
+
+        [Fact]
+        public void ClosesInferredIdentityWrapperFromReferencedAssembly()
+        {
+            var (libraryDiagnostics, library) = GetGeneratedOutput(@"
+using Stunts;
+
+namespace Library
+{
+    public static class Factory
+    {
+        [StuntGenerator]
+        public static T Make<T>(T prototype) => Stunt.Of<T>();
+    }
+}", test: "IdentityLibrary");
+
+            Assert.Empty(libraryDiagnostics);
+            Assert.Empty(library.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
+
+            using var stream = new MemoryStream();
+            library.Emit(stream).AssertSuccess();
+            var image = stream.ToArray();
+            var libraryAssembly = Assembly.Load(image);
+
+            // The forward is implied, so the library records no shape for it.
+            Assert.Null(libraryAssembly.GetType("Stunts.Generated.StuntDefinitions"));
+
+            var (diagnostics, compilation) = GetGeneratedOutput(@"
+using System;
+using Library;
+
+public static class Test
+{
+    public static object Run() => Factory.Make(default(IDisposable));
+}", test: "IdentityConsumer", references: new[] { MetadataReference.CreateFromImage(image) });
+
+            Assert.Empty(diagnostics);
+            Assert.Empty(compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
+
+            ResolveEventHandler resolve = (_, args) => new AssemblyName(args.Name).Name == "IdentityLibrary" ? libraryAssembly : null;
+            AppDomain.CurrentDomain.AssemblyResolve += resolve;
+            try
+            {
+                var assembly = compilation.Emit(false);
+                var instance = assembly.GetType("Test")!.GetMethod("Run")!.Invoke(null, null);
+                Assert.IsAssignableFrom<IDisposable>(instance);
+                Assert.IsAssignableFrom<IStunt>(instance);
+                Assert.Same(assembly, instance.GetType().Assembly);
+            }
+            finally
+            {
+                AppDomain.CurrentDomain.AssemblyResolve -= resolve;
+            }
+        }
+
+        [Fact]
+        public void ClosesReferencedWrapperWhenConstraintTypeIsInaccessible()
+        {
+            var (libraryDiagnostics, library) = GetGeneratedOutput(@"
+using System.Collections.Generic;
+using Stunts;
+
+namespace Library
+{
+    public class Factory
+    {
+        protected class Secret { }
+
+        [StuntGenerator]
+        protected static IList<T> Make<T, U>() where T : class where U : Secret => Stunt.Of<IList<T>>();
+    }
+}", test: "ConstraintLibrary");
+
+            Assert.Empty(libraryDiagnostics);
+            Assert.Empty(library.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
+
+            using var stream = new MemoryStream();
+            library.Emit(stream).AssertSuccess();
+            var image = stream.ToArray();
+            var libraryAssembly = Assembly.Load(image);
+
+            var shapes = libraryAssembly.GetType("Stunts.Generated.StuntDefinitions");
+            Assert.NotNull(shapes);
+            var shape = Assert.Single(shapes!.GetMethods(BindingFlags.Public | BindingFlags.Static),
+                method => method.GetCustomAttribute<StuntDefinitionAttribute>() != null);
+            Assert.Equal(typeof(IList<>), shape.GetParameters().Single().ParameterType.GetGenericTypeDefinition());
+            var parameters = shape.GetGenericArguments();
+            Assert.Equal(GenericParameterAttributes.ReferenceTypeConstraint, parameters[0].GenericParameterAttributes);
+            Assert.Equal(GenericParameterAttributes.None, parameters[1].GenericParameterAttributes);
+            Assert.Empty(parameters[0].GetGenericParameterConstraints());
+            Assert.Empty(parameters[1].GetGenericParameterConstraints());
+
+            var (diagnostics, compilation) = GetGeneratedOutput(@"
+using System.Collections.Generic;
+using Library;
+
+public class Derived : Factory
+{
+    protected class MySecret : Secret { }
+
+    public static object Run() => Make<string, MySecret>();
+}", test: "ConstraintConsumer", references: new[] { MetadataReference.CreateFromImage(image) });
+
+            Assert.Empty(diagnostics);
+            Assert.Empty(compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
+
+            ResolveEventHandler resolve = (_, args) => new AssemblyName(args.Name).Name == "ConstraintLibrary" ? libraryAssembly : null;
+            AppDomain.CurrentDomain.AssemblyResolve += resolve;
+            try
+            {
+                var assembly = compilation.Emit(false);
+                var instance = assembly.GetType("Derived")!.GetMethod("Run")!.Invoke(null, null);
+                var list = Assert.IsAssignableFrom<IList<string>>(instance);
+                Assert.IsAssignableFrom<IStunt>(list);
+                Assert.Same(assembly, list.GetType().Assembly);
+            }
+            finally
+            {
+                AppDomain.CurrentDomain.AssemblyResolve -= resolve;
+            }
         }
 
         [Fact]
@@ -671,7 +1044,8 @@ public class BaseTypeInternalCtor
             Assert.Empty(diagnostics);
         }
 
-        static (ImmutableArray<Diagnostic>, Compilation) GetGeneratedOutput(string source, string[] additionalSources = null, [CallerMemberName] string? test = null)
+        static (ImmutableArray<Diagnostic>, Compilation) GetGeneratedOutput(string source, string[] additionalSources = null, [CallerMemberName] string? test = null, string aotProperty = null, bool aotEnabled = true,
+            LanguageVersion languageVersion = LanguageVersion.Latest, MetadataReference[] references = null)
         {
             var libs = new HashSet<string>(File.ReadAllLines("lib.txt"), StringComparer.OrdinalIgnoreCase)
                 .Distinct(FileNameEqualityComparer.Default)
@@ -683,7 +1057,7 @@ public class BaseTypeInternalCtor
             // net10 csc passes /features:InterceptorsNamespaces. The generator builds its
             // trees with default parse options, and Roslyn refuses to mix those features.
             var parseOptions = args.ParseOptions
-                .WithLanguageVersion(LanguageVersion.Latest)
+                .WithLanguageVersion(languageVersion)
                 .WithFeatures(Enumerable.Empty<KeyValuePair<string, string>>());
 
             var sources = (additionalSources ?? Array.Empty<string>())
@@ -699,23 +1073,24 @@ public class BaseTypeInternalCtor
                     CSharpSyntaxTree.ParseText(File.ReadAllText("Stunt/Stunt.StaticFactory.cs"), options: parseOptions, path: "Stunt.StaticFactory.cs", encoding: Encoding.UTF8),
                 });
 
-            var references = args.MetadataReferences.Select(x => libs.TryGetValue(Path.GetFileName(x.Reference), out var lib) ?
+            var metadata = args.MetadataReferences.Select(x => libs.TryGetValue(Path.GetFileName(x.Reference), out var lib) ?
                     MetadataReference.CreateFromFile(lib) :
                     MetadataReference.CreateFromFile(x.Reference))
+                .Concat(references ?? Array.Empty<MetadataReference>())
                 .ToList();
 
             // Types passed to GenerateCode (e.g. BaseClass) live in this assembly.
             var testAssembly = typeof(StuntGeneratorTests).Assembly.Location;
             if (!string.IsNullOrEmpty(testAssembly) &&
-                !references.Any(r => string.Equals(r.Display, testAssembly, StringComparison.OrdinalIgnoreCase)))
+                !metadata.Any(r => string.Equals(r.Display, testAssembly, StringComparison.OrdinalIgnoreCase)))
             {
-                references.Add(MetadataReference.CreateFromFile(testAssembly));
+                metadata.Add(MetadataReference.CreateFromFile(testAssembly));
             }
 
             var compilation = CSharpCompilation.Create(
                 test,
                 sources,
-                references,
+                metadata,
                 args.CompilationOptions.WithCryptoKeyFile(null).WithOutputKind(OutputKind.DynamicallyLinkedLibrary));
 
             Predicate<Diagnostic> ignored = d =>
@@ -726,17 +1101,53 @@ public class BaseTypeInternalCtor
             if (diagnostics.Any())
                 return (diagnostics, compilation);
 
+            var optionsProvider = EditorConfigOptionsProvider.Create(Directory.EnumerateFiles(
+                Path.Combine(ThisAssembly.Project.MSBuildProjectDirectory, ThisAssembly.Project.IntermediateOutputPath),
+                "*.editorconfig", SearchOption.TopDirectoryOnly));
+            if (aotProperty != null)
+                optionsProvider = new AotOptionsProvider(optionsProvider, "build_property." + aotProperty, aotEnabled);
             var driver = CSharpGeneratorDriver.Create(
                 new ISourceGenerator[] { new StuntGenerator(), new SignatureRefGenerator().AsSourceGenerator() },
                 parseOptions: parseOptions,
-                optionsProvider: EditorConfigOptionsProvider.Create(Directory.EnumerateFiles(
-                    Path.Combine(ThisAssembly.Project.MSBuildProjectDirectory, ThisAssembly.Project.IntermediateOutputPath),
-                    "*.editorconfig", SearchOption.TopDirectoryOnly)));
+                optionsProvider: optionsProvider);
 
             driver.RunGeneratorsAndUpdateCompilation(compilation, out var output, out diagnostics);
             diagnostics = diagnostics.RemoveAll(ignored);
 
             return (diagnostics, output);
+        }
+
+        sealed class AotOptionsProvider : AnalyzerConfigOptionsProvider
+        {
+            readonly AnalyzerConfigOptionsProvider original;
+            readonly AnalyzerConfigOptions options;
+
+            public AotOptionsProvider(AnalyzerConfigOptionsProvider original, string property, bool enabled)
+                => (this.original, options) = (original, new AotOptions(original.GlobalOptions, property, enabled));
+
+            public override AnalyzerConfigOptions GlobalOptions => options;
+            public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => original.GetOptions(tree);
+            public override AnalyzerConfigOptions GetOptions(AdditionalText textFile) => original.GetOptions(textFile);
+
+            sealed class AotOptions : AnalyzerConfigOptions
+            {
+                readonly AnalyzerConfigOptions original;
+                readonly string property;
+                readonly bool enabled;
+
+                public AotOptions(AnalyzerConfigOptions original, string property, bool enabled)
+                    => (this.original, this.property, this.enabled) = (original, property, enabled);
+
+                public override bool TryGetValue(string key, out string value)
+                {
+                    if (key == property)
+                    {
+                        value = enabled ? "true" : "false";
+                        return true;
+                    }
+                    return original.TryGetValue(key, out value);
+                }
+            }
         }
     }
 }

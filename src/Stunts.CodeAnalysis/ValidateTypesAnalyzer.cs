@@ -52,96 +52,98 @@ namespace Stunts.CodeAnalysis
         {
             context.EnableConcurrentExecution();
             context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
-            context.RegisterOperationAction(AnalyzeOperation, OperationKind.Invocation);
+            context.RegisterCompilationStartAction(start =>
+            {
+                if (StuntClosure.Create(start.Compilation, generatorAttribute) is StuntClosure closure)
+                    start.RegisterOperationAction(operation => AnalyzeOperation(operation, closure), OperationKind.Invocation);
+            });
         }
 
-        void AnalyzeOperation(OperationAnalysisContext context)
+        void AnalyzeOperation(OperationAnalysisContext context, StuntClosure closure)
         {
             var invocation = (IInvocationOperation)context.Operation;
-
-            // Get the matching symbol for the given generator attribute from the current compilation.
-            var generator = context.Compilation.GetTypeByMetadataName(generatorAttribute.FullName);
-            if (generator == null)
+            if (!closure.IsGenerator(invocation.TargetMethod))
                 return;
 
-            if (invocation.TargetMethod.GetAttributes().Any(x => SymbolEqualityComparer.Default.Equals(x.AttributeClass, generator)))
+            // Generic wrappers are validated with the stunt types they create, not their type arguments.
+            foreach (var (types, _) in closure.Close(invocation.TargetMethod, context.CancellationToken))
+                Validate(context, invocation, types);
+        }
+
+        static void Validate(OperationAnalysisContext context, IInvocationOperation invocation, ImmutableArray<ITypeSymbol> types)
+        {
+            foreach (var type in types.OfType<INamedTypeSymbol>())
             {
-                if (GenericFactory.UsesTemplate(invocation.TargetMethod, context.Compilation, generator, context.CancellationToken))
-                    return;
+                if (InterfaceImplementation.InaccessibleMember(type, context.Compilation) is ISymbol member)
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        StuntDiagnostics.InaccessibleInterfaceMember,
+                        invocation.Syntax.GetLocation(),
+                        type.Name,
+                        member.ToDisplayString()));
+                if (RuntimeSignature.UnsupportedMember(type, context.Compilation) is ISymbol unsupported)
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        StuntDiagnostics.UnsupportedRuntimeSignature,
+                        invocation.Syntax.GetLocation(), type.Name, unsupported.ToDisplayString()));
+            }
 
-                foreach (var type in invocation.TargetMethod.TypeArguments.OfType<INamedTypeSymbol>())
-                {
-                    if (InterfaceImplementation.InaccessibleMember(type, context.Compilation) is ISymbol member)
-                        context.ReportDiagnostic(Diagnostic.Create(
-                            StuntDiagnostics.InaccessibleInterfaceMember,
-                            invocation.Syntax.GetLocation(),
-                            type.Name,
-                            member.ToDisplayString()));
-                    if (RuntimeSignature.UnsupportedMember(type, context.Compilation) is ISymbol unsupported)
-                        context.ReportDiagnostic(Diagnostic.Create(
-                            StuntDiagnostics.UnsupportedRuntimeSignature,
-                            invocation.Syntax.GetLocation(), type.Name, unsupported.ToDisplayString()));
-                }
+            foreach (var enumType in types.Where(x => x.TypeKind == TypeKind.Enum))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    StuntDiagnostics.EnumType,
+                    invocation.Syntax.GetLocation(),
+                    enumType.Name));
+            }
 
-                foreach (var enumType in invocation.TargetMethod.TypeArguments.Where(x => x.TypeKind == TypeKind.Enum))
+            var delegateTypes = types.Where(x => x.TypeKind == TypeKind.Delegate).ToArray();
+            if (delegateTypes.Length > 0 && types.Length != 1)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    StuntDiagnostics.DelegateWithOtherTypes,
+                    invocation.Syntax.GetLocation(),
+                    delegateTypes[0].Name));
+            }
+            else if (delegateTypes.Length == 1 &&
+                delegateTypes[0] is INamedTypeSymbol delegateType &&
+                NestedTypeStunt.NonPartialContainer(delegateType) is INamedTypeSymbol delegateContainer)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    StuntDiagnostics.ContainingTypeNotPartial,
+                    invocation.Syntax.GetLocation(),
+                    delegateType.Name,
+                    delegateContainer.Name));
+            }
+
+            var classes = types.Where(x => x.TypeKind == TypeKind.Class).ToArray();
+            if (classes.Length > 1)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    StuntDiagnostics.DuplicateBaseType,
+                    invocation.Syntax.GetLocation()));
+            }
+            if (classes.Length == 1)
+            {
+                if (classes[0].IsSealed)
                 {
                     context.ReportDiagnostic(Diagnostic.Create(
-                        StuntDiagnostics.EnumType,
+                        StuntDiagnostics.SealedBaseType,
                         invocation.Syntax.GetLocation(),
-                        enumType.Name));
+                        classes[0].Name));
                 }
-
-                var delegateTypes = invocation.TargetMethod.TypeArguments.Where(x => x.TypeKind == TypeKind.Delegate).ToArray();
-                if (delegateTypes.Length > 0 && invocation.TargetMethod.TypeArguments.Length != 1)
+                else if (types.IndexOf(classes[0]) != 0)
                 {
                     context.ReportDiagnostic(Diagnostic.Create(
-                        StuntDiagnostics.DelegateWithOtherTypes,
+                        StuntDiagnostics.BaseTypeNotFirst,
                         invocation.Syntax.GetLocation(),
-                        delegateTypes[0].Name));
+                        classes[0].Name));
                 }
-                else if (delegateTypes.Length == 1 &&
-                    delegateTypes[0] is INamedTypeSymbol delegateType &&
-                    NestedTypeStunt.NonPartialContainer(delegateType) is INamedTypeSymbol delegateContainer)
+                else if (classes[0] is INamedTypeSymbol named &&
+                    NestedTypeStunt.NonPartialContainer(named) is INamedTypeSymbol container)
                 {
                     context.ReportDiagnostic(Diagnostic.Create(
                         StuntDiagnostics.ContainingTypeNotPartial,
                         invocation.Syntax.GetLocation(),
-                        delegateType.Name,
-                        delegateContainer.Name));
-                }
-
-                var classes = invocation.TargetMethod.TypeArguments.Where(x => x.TypeKind == TypeKind.Class).ToArray();
-                if (classes.Length > 1)
-                {
-                    context.ReportDiagnostic(Diagnostic.Create(
-                        StuntDiagnostics.DuplicateBaseType,
-                        invocation.Syntax.GetLocation()));
-                }
-                if (classes.Length == 1)
-                {
-                    if (classes[0].IsSealed)
-                    {
-                        context.ReportDiagnostic(Diagnostic.Create(
-                            StuntDiagnostics.SealedBaseType,
-                            invocation.Syntax.GetLocation(),
-                            classes[0].Name));
-                    }
-                    else if (invocation.TargetMethod.TypeArguments.IndexOf(classes[0]) != 0)
-                    {
-                        context.ReportDiagnostic(Diagnostic.Create(
-                            StuntDiagnostics.BaseTypeNotFirst,
-                            invocation.Syntax.GetLocation(),
-                            classes[0].Name));
-                    }
-                    else if (classes[0] is INamedTypeSymbol named &&
-                        NestedTypeStunt.NonPartialContainer(named) is INamedTypeSymbol container)
-                    {
-                        context.ReportDiagnostic(Diagnostic.Create(
-                            StuntDiagnostics.ContainingTypeNotPartial,
-                            invocation.Syntax.GetLocation(),
-                            named.Name,
-                            container.Name));
-                    }
+                        named.Name,
+                        container.Name));
                 }
             }
         }

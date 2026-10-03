@@ -38,26 +38,23 @@ namespace Stunts
         {
             context.EnableConcurrentExecution();
             context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
-            context.RegisterOperationAction(AnalyzeOperation, OperationKind.Invocation);
+            context.RegisterCompilationStartAction(start =>
+            {
+                if (StuntClosure.Create(start.Compilation, generatorAttribute) is StuntClosure closure)
+                    start.RegisterOperationAction(operation => AnalyzeOperation(operation, closure), OperationKind.Invocation);
+            });
         }
 
-        void AnalyzeOperation(OperationAnalysisContext context)
+        void AnalyzeOperation(OperationAnalysisContext context, StuntClosure closure)
         {
-            var generator = context.Compilation.GetTypeByMetadataName(generatorAttribute.FullName);
-            if (generator == null)
-                return;
-
             var invocation = (IInvocationOperation)context.Operation;
-            if (!invocation.TargetMethod.GetAttributes().Any(attribute => SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, generator)))
-                return;
-
-            if (GenericFactory.UsesTemplate(invocation.TargetMethod, context.Compilation, generator, context.CancellationToken))
+            if (!closure.IsGenerator(invocation.TargetMethod))
                 return;
 
             if (BuildProperties.CompileTimeStuntsAndUnsafe(context.Options.AnalyzerConfigOptionsProvider.GlobalOptions))
                 return;
 
-            foreach (var argument in invocation.TargetMethod.TypeArguments)
+            foreach (var argument in closure.Close(invocation.TargetMethod, context.CancellationToken).SelectMany(shape => shape.Types).Distinct(SymbolEqualityComparer.Default).OfType<ITypeSymbol>())
             {
                 if (argument is not INamedTypeSymbol type || type.TypeKind == TypeKind.Error)
                     continue;

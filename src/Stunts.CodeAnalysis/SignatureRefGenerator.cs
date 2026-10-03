@@ -7,7 +7,8 @@ namespace Stunts
 {
     /// <summary>
     /// Adds <c>StructRef&lt;T&gt;</c>, <c>SpanRef&lt;T&gt;</c> and <c>ReadOnlySpanRef&lt;T&gt;</c>
-    /// when compile-time stunts and unsafe blocks are enabled, the compilation does not already define them, and it can reference <c>Span&lt;T&gt;</c>.
+    /// when compile-time stunts and unsafe blocks are enabled, the runtime supports by-ref-like generics,
+    /// the compilation does not already define them, and it can reference <c>Span&lt;T&gt;</c>.
     /// </summary>
     /// <remarks>
     /// These types have to be visible in the IDE. The compile-time stunt generator
@@ -38,6 +39,7 @@ namespace Stunts
 
         static bool ShouldEmit(Compilation compilation, AnalyzerConfigOptionsProvider options)
             => BuildProperties.CompileTimeStuntsAndUnsafe(options.GlobalOptions) &&
+               compilation.SupportsRuntimeCapability(RuntimeCapability.ByRefLikeGenerics) &&
                compilation.GetTypeByMetadataName("System.Span`1") is not null &&
                compilation.GetTypeByMetadataName("System.ReadOnlySpan`1") is not null &&
                compilation.GetTypeByMetadataName("Stunts.StructRef`1") is null &&

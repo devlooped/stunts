@@ -2,7 +2,6 @@ using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
-using TypeNameFormatter;
 
 namespace Stunts
 {
@@ -72,7 +71,7 @@ namespace Stunts
                 if (type.IsAssignableFrom(value.GetType()) || AcceptsSignatureRef(type, value.GetType()))
                     return value;
                 else
-                    throw new ArgumentException(ThisAssembly.Strings.ValueNotCompatible(Parameter.Name, value.GetType().GetFormattedName(), type.GetFormattedName()));
+                    throw new ArgumentException(ThisAssembly.Strings.ValueNotCompatible(Parameter.Name, value.GetType().GetDisplayName(), type.GetDisplayName()));
             }
 
             return value;
@@ -165,7 +164,7 @@ namespace Stunts
                 ValueConversion.Validate(value, Parameter.Name, type);
                 if (!type.IsAssignableFrom(typeof(T)) && !AcceptsSignatureRef(type, typeof(T)))
                     throw new ArgumentException(ThisAssembly.Strings.TypeNotCompatible(
-                        typeof(T).GetFormattedName(), type.GetFormattedName(), Parameter.Name));
+                        typeof(T).GetDisplayName(), type.GetDisplayName(), Parameter.Name));
 
                 this.value = value;
             }
@@ -200,7 +199,7 @@ namespace Stunts
         [DebuggerNonUserCode]
         public override string ToString() =>
             // Render as: [ref|out]? [type] [name]: [value|null]
-            (Parameter.IsOut ? Parameter.ParameterType.GetFormattedName().Replace("ref ", "out ") : Parameter.ParameterType.GetFormattedName()) +
+            (Parameter.IsOut ? Parameter.ParameterType.GetDisplayName().Replace("ref ", "out ") : Parameter.ParameterType.GetDisplayName()) +
             " " + Parameter.Name +
             (": " + Value == null ? "null" :
                 (IsString(Parameter.ParameterType) ? "\"" + Value + "\"" :

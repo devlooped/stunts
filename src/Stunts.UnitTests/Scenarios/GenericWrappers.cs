@@ -1,12 +1,15 @@
 #pragma warning disable CS0436
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System.Text;
+using Stunts;
 using Xunit;
 
-namespace Stunts.Scenarios.OpenGenericTemplates
+[assembly: Stunt<Stunts.Scenarios.GenericWrappers.IRegistered<int>>]
+[assembly: Stunt<Stunts.Scenarios.GenericWrappers.IRegistered<string>, IDisposable>]
+
+namespace Stunts.Scenarios.GenericWrappers
 {
     public interface IBox<T>
     {
@@ -37,6 +40,11 @@ namespace Stunts.Scenarios.OpenGenericTemplates
     {
     }
 
+    public interface IRegistered<T>
+    {
+        T Value { get; }
+    }
+
     public class DualValue : IValue<int>, IValue<string>
     {
     }
@@ -59,56 +67,48 @@ namespace Stunts.Scenarios.OpenGenericTemplates
         public virtual T Echo(T value) => value;
     }
 
-    public partial class Outer<T0>
-    {
-        public interface IInner<U>
-        {
-            T0 Get(U value);
-        }
-
-        class Hidden
-        {
-            public virtual T0 Echo(T0 value) => value;
-        }
-
-        public static IInner<U> Inner<U>() => Stunt.Of<IInner<U>>();
-        public static object HiddenInstance() => Stunt.Of<Hidden>();
-    }
-
     public class Test : IRunnable
     {
         public void Run()
         {
-            CanonicalTemplatesAreReused();
+            WrappersAreClosedAtCallSites();
             PartiallyClosedAndNestedArguments();
-            RepeatedArgumentsMustMatch();
+            RepeatedArguments();
             ClassConstraintsAndConstructorArguments();
             AdditionalInterfacesAndBuilder();
             GenericDelegate();
             GenericDefaultImplementation();
-            ClosedProxyTakesPrecedence();
-            DifferentConstraintsDoNotCollide();
-            NestedGenericTypes();
+            WrapperAndDirectCallShareTheStunt();
+            ConstrainedWrappers();
             ConstraintOnlyParameters();
             GenericRecord();
             AmbiguousConstraintInference();
-            ArrayShapesMustMatch();
+            ArrayShapes();
+            ChainedWrappers();
+            LocalFunctionWrappers();
+            AssemblyRegistrations();
         }
 
+        [StuntGenerator]
         static IDictionary<K, V> Create<K, V>() => Stunt.Of<IDictionary<K, V>>();
+        [StuntGenerator]
         static IDictionary<Key, Value> Renamed<Key, Value>() => Stunt.Of<IDictionary<Key, Value>>();
 
-        void CanonicalTemplatesAreReused()
+        void WrappersAreClosedAtCallSites()
         {
             IDictionary<string, int> first = Create<string, int>();
             IDictionary<Guid, string> second = Renamed<Guid, string>();
 
-            Assert.Equal(first.GetType().GetGenericTypeDefinition(), second.GetType().GetGenericTypeDefinition());
+            Assert.False(first.GetType().IsGenericType);
+            Assert.False(second.GetType().IsGenericType);
             Assert.Same(typeof(Test).Assembly, first.GetType().Assembly);
-            Assert.Single(typeof(Test).Assembly.GetTypes(), type => type.IsGenericTypeDefinition &&
-                type.GetInterfaces().Any(iface => iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(IDictionary<,>)));
+
+            var error = Assert.Throws<NotSupportedException>(() => new CompiledStuntFactory().CreateStunt(
+                typeof(Test).Assembly, typeof(IDictionary<DateTime, decimal>), Array.Empty<Type>(), Array.Empty<object>()));
+            Assert.Contains("[assembly: Stunt<System.Collections.Generic.IDictionary<System.DateTime, decimal>>]", error.Message);
         }
 
+        [StuntGenerator]
         static IBox<Tuple<string, T[]>> Nested<T>() => Stunt.Of<IBox<Tuple<string, T[]>>>();
 
         void PartiallyClosedAndNestedArguments()
@@ -124,21 +124,21 @@ namespace Stunts.Scenarios.OpenGenericTemplates
 
             var getter = Assert.IsAssignableFrom<MethodInfo>(recorder.Invocations[0].Invocation.MethodBase);
             Assert.Equal(typeof(Tuple<string, int[]>), getter.ReturnType);
-            Assert.False(getter.DeclaringType!.ContainsGenericParameters);
             var method = Assert.IsAssignableFrom<MethodInfo>(recorder.Invocations[1].Invocation.MethodBase);
             Assert.Equal(typeof(int), method.GetGenericArguments()[0]);
-            Assert.Equal(typeof(int), method.GetParameters()[0].ParameterType);
         }
 
+        [StuntGenerator]
         static IRepeated<Tuple<T, T>> Repeated<T>() => Stunt.Of<IRepeated<Tuple<T, T>>>();
 
-        void RepeatedArgumentsMustMatch()
+        void RepeatedArguments()
         {
             Assert.IsAssignableFrom<IStunt>(Repeated<int>());
-            Assert.Throws<ArgumentException>(() => new CompiledStuntFactory().CreateStunt(
+            Assert.Throws<NotSupportedException>(() => new CompiledStuntFactory().CreateStunt(
                 typeof(Test).Assembly, typeof(IRepeated<Tuple<int, string>>), Array.Empty<Type>(), Array.Empty<object>()));
         }
 
+        [StuntGenerator]
         static Box<T, U> Constrained<T, U>(T value, U number) where T : class, new() where U : unmanaged
             => Stunt.Of<Box<T, U>>(value, number);
 
@@ -149,18 +149,20 @@ namespace Stunts.Scenarios.OpenGenericTemplates
 
             Assert.Same(value, box.Value);
             Assert.Equal(42, box.Number);
-            var parameters = box.GetType().GetGenericTypeDefinition().GetGenericArguments();
-            Assert.True(parameters[0].GenericParameterAttributes.HasFlag(GenericParameterAttributes.ReferenceTypeConstraint));
-            Assert.True(parameters[0].GenericParameterAttributes.HasFlag(GenericParameterAttributes.DefaultConstructorConstraint));
-            Assert.True(parameters[1].GenericParameterAttributes.HasFlag(GenericParameterAttributes.NotNullableValueTypeConstraint));
+
+            Assert.Throws<MissingMethodException>(() => new CompiledStuntFactory().CreateStunt(
+                typeof(Test).Assembly, typeof(Box<StringBuilder, int>), Array.Empty<Type>(), new object[] { "wrong", 42 }));
         }
 
+        [StuntGenerator]
         static StuntReference<IBox<T>> Reference<T>()
             => Stunt.For<IBox<T>, ITag<List<T>>, IDisposable>();
 
+        [StuntGenerator]
         static IBox<T> Build<T>(StuntBuilder builder)
             => builder.Build<IBox<T>, ITag<List<T>>, IDisposable>();
 
+        [StuntGenerator]
         static IBox<T> Plain<T>() => Stunt.Of<IBox<T>>();
 
         void AdditionalInterfacesAndBuilder()
@@ -178,6 +180,7 @@ namespace Stunts.Scenarios.OpenGenericTemplates
             Assert.Equal(first.GetType(), reordered.GetType());
         }
 
+        [StuntGenerator]
         static Echo<T> Delegate<T>(Echo<T> implementation) => Stunt.Of<Echo<T>>(implementation);
 
         void GenericDelegate()
@@ -190,6 +193,7 @@ namespace Stunts.Scenarios.OpenGenericTemplates
             Assert.Equal(100, echo(42));
         }
 
+        [StuntGenerator]
         static IEcho<T> Default<T>() => Stunt.Of<IEcho<T>>();
 
         void GenericDefaultImplementation()
@@ -202,42 +206,29 @@ namespace Stunts.Scenarios.OpenGenericTemplates
             Assert.Equal("Ada!", echo.Echo("Ada"));
         }
 
-        void ClosedProxyTakesPrecedence()
+        void WrapperAndDirectCallShareTheStunt()
         {
             IBox<int> direct = Stunt.Of<IBox<int>>();
-            IBox<int> throughTemplate = Plain<int>();
-            var fromFactory = new CompiledStuntFactory().CreateStunt(
-                typeof(Test).Assembly, typeof(IBox<int>), Array.Empty<Type>(), Array.Empty<object>());
+            IBox<int> wrapped = Plain<int>();
 
-            Assert.False(direct.GetType().IsGenericType);
-            Assert.Equal(direct.GetType(), fromFactory.GetType());
-            Assert.Equal(direct.GetType(), throughTemplate.GetType());
+            Assert.Equal(direct.GetType(), wrapped.GetType());
         }
 
+        [StuntGenerator]
         static ITag<T> Struct<T>() where T : struct => Stunt.Of<ITag<T>>();
+        [StuntGenerator]
         static ITag<T> Class<T>() where T : class => Stunt.Of<ITag<T>>();
 
-        void DifferentConstraintsDoNotCollide()
+        void ConstrainedWrappers()
         {
             ITag<int> first = Struct<int>();
             ITag<string> second = Class<string>();
 
-            Assert.NotEqual(first.GetType().GetGenericTypeDefinition(), second.GetType().GetGenericTypeDefinition());
             Assert.IsAssignableFrom<IStunt>(first);
             Assert.IsAssignableFrom<IStunt>(second);
         }
 
-        void NestedGenericTypes()
-        {
-            Outer<string>.IInner<int> inner = Outer<string>.Inner<int>();
-            Stunt.Get(inner).AddBehavior(new DefaultValueBehavior());
-
-            Assert.Null(inner.Get(42));
-
-            var hidden = Outer<string>.HiddenInstance();
-            Assert.Equal("Ada", hidden.GetType().GetMethod("Echo")!.Invoke(hidden, new object[] { "Ada" }));
-        }
-
+        [StuntGenerator]
         static IConstrainedCollection<T> WithConstraint<T, U>() where T : class, IEnumerable<U> where U : struct
             => Stunt.Of<IConstrainedCollection<T>>();
 
@@ -246,13 +237,9 @@ namespace Stunts.Scenarios.OpenGenericTemplates
             IConstrainedCollection<List<int>> box = WithConstraint<List<int>, int>();
 
             Assert.IsAssignableFrom<IStunt>(box);
-            Assert.Equal(new[] { typeof(List<int>), typeof(int) }, box.GetType().GetGenericArguments());
-
-            var error = Assert.Throws<ArgumentException>(() => new CompiledStuntFactory().CreateStunt(
-                typeof(Test).Assembly, typeof(IConstrainedCollection<List<string>>), Array.Empty<Type>(), Array.Empty<object>()));
-            Assert.IsType<ArgumentException>(error.InnerException);
         }
 
+        [StuntGenerator]
         static RecordBox<T> Record<T>(T value) => Stunt.Of<RecordBox<T>>(value);
 
         void GenericRecord()
@@ -263,6 +250,7 @@ namespace Stunts.Scenarios.OpenGenericTemplates
             Assert.Equal("Bea", box.Echo("Bea"));
         }
 
+        [StuntGenerator]
         static IConstrainedCollection<T> Ambiguous<T, U>() where T : IValue<U> where U : class
             => Stunt.Of<IConstrainedCollection<T>>();
 
@@ -270,18 +258,55 @@ namespace Stunts.Scenarios.OpenGenericTemplates
         {
             IConstrainedCollection<DualValue> box = Ambiguous<DualValue, string>();
 
-            Assert.Equal(new[] { typeof(DualValue), typeof(string) }, box.GetType().GetGenericArguments());
+            Assert.IsAssignableFrom<IStunt>(box);
         }
 
+        [StuntGenerator]
         static IArrayBox<T[]> Vector<T>() => Stunt.Of<IArrayBox<T[]>>();
 
-        void ArrayShapesMustMatch()
+        void ArrayShapes()
         {
             Assert.IsAssignableFrom<IStunt>(Vector<int>());
             var nonVector = typeof(IArrayBox<>).MakeGenericType(typeof(int).MakeArrayType(1));
 
-            Assert.Throws<ArgumentException>(() => new CompiledStuntFactory().CreateStunt(
+            Assert.Throws<NotSupportedException>(() => new CompiledStuntFactory().CreateStunt(
                 typeof(Test).Assembly, nonVector, Array.Empty<Type>(), Array.Empty<object>()));
+        }
+
+        [StuntGenerator]
+        static IList<ITag<T>> Outer<T>() => Middle<ITag<T>>();
+        [StuntGenerator]
+        static IList<T> Middle<T>() => Inner<IList<T>, T>();
+        [StuntGenerator]
+        static TList Inner<TList, TItem>() where TList : IList<TItem> => Stunt.Of<TList>();
+
+        void ChainedWrappers()
+        {
+            IList<ITag<Guid>> list = Outer<Guid>();
+
+            Assert.IsAssignableFrom<IStunt>(list);
+            Assert.False(list.GetType().IsGenericType);
+        }
+
+        void LocalFunctionWrappers()
+        {
+            ITag<DateTime> tag = Local<DateTime>();
+
+            Assert.IsAssignableFrom<IStunt>(tag);
+
+            [StuntGenerator]
+            static ITag<T> Local<T>() => Stunt.Of<ITag<T>>();
+        }
+
+        void AssemblyRegistrations()
+        {
+            var factory = new CompiledStuntFactory();
+            var first = factory.CreateStunt(typeof(Test).Assembly, typeof(IRegistered<int>), Array.Empty<Type>(), Array.Empty<object>());
+            var second = factory.CreateStunt(typeof(Test).Assembly, typeof(IRegistered<string>), new[] { typeof(IDisposable) }, Array.Empty<object>());
+
+            Assert.IsAssignableFrom<IRegistered<int>>(first);
+            Assert.IsAssignableFrom<IDisposable>(second);
+            Assert.IsAssignableFrom<IStunt>(second);
         }
     }
 }

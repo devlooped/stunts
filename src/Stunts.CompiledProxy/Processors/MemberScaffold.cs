@@ -124,11 +124,7 @@ namespace Stunts.Processors
         // interface provides the default for a base interface member.
         static ExpressionSyntax DefaultInstance(NamingConvention naming, INamedTypeSymbol provider, INamedTypeSymbol iface)
         {
-            var template = GenericStuntTemplate.Create(provider);
-            var fullName = template == null
-                ? naming.GetDefaultImplementationFullName(provider)
-                : naming.GetNamespace(new[] { provider }) + "." + template.GetName(naming, "DefaultGeneric") +
-                    "<" + string.Join(", ", template.Parameters.Select(parameter => parameter.ToDisplayString(TypeFormat))) + ">";
+            var fullName = naming.GetDefaultImplementationFullName(provider);
             ExpressionSyntax instance = MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
                 ParseName("global::" + fullName),

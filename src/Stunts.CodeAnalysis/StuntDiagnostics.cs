@@ -8,6 +8,61 @@ namespace Stunts.CodeAnalysis
     /// </summary>
     public static class StuntDiagnostics
     {
+        /// <summary>Reports intercepted members that require runtime generic instantiation.</summary>
+        public static DiagnosticDescriptor AotUnsupportedMember { get; } = new DiagnosticDescriptor(
+            "ST015", "Stunt member requires dynamic code",
+            "This stunt has a Native AOT limitation: {0}",
+            "Build", DiagnosticSeverity.Warning, true);
+
+        /// <summary>
+        /// Reports a generic method that passes its own type parameters to a generator 
+        /// method without being a generator method itself, so the stunt types its 
+        /// callers need cannot be generated.
+        /// </summary>
+        public static DiagnosticDescriptor UnannotatedGenericWrapper { get; } = new DiagnosticDescriptor(
+            "ST016", "Generic stunt wrapper must be a generator method",
+            "'{0}' passes its type parameters to '{1}', so it must be annotated with [{2}] for its callers to get compile-time stunts",
+            "Build", DiagnosticSeverity.Error, true);
+
+        /// <summary>
+        /// Reports a generator invocation that uses type parameters of a containing type, 
+        /// which cannot be closed at call sites.
+        /// </summary>
+        public static DiagnosticDescriptor ContainingTypeParameter { get; } = new DiagnosticDescriptor(
+            "ST017", "Stunt types cannot use type parameters of a containing type",
+            "'{0}' uses type parameters of its containing type '{1}' to create stunts. Pass them as type parameters of a generic method annotated with [{2}] instead.",
+            "Build", DiagnosticSeverity.Error, true);
+
+        /// <summary>
+        /// Reports a virtual generic wrapper, whose actual implementation (and stunt types) 
+        /// cannot be known at its call sites.
+        /// </summary>
+        public static DiagnosticDescriptor VirtualGenericWrapper { get; } = new DiagnosticDescriptor(
+            "ST018", "Generic stunt wrapper cannot be virtual",
+            "'{0}' passes its type parameters to other generator methods, so it cannot be virtual, abstract, an override or an interface member",
+            "Build", DiagnosticSeverity.Error, true);
+
+        /// <summary>
+        /// Reports a generic wrapper whose stunt types cannot be determined by following 
+        /// the wrapper chain.
+        /// </summary>
+        public static DiagnosticDescriptor UnboundedGenericWrapper { get; } = new DiagnosticDescriptor(
+            "ST019", "Generic stunt wrapper cannot be closed",
+            "The stunt types created by '{0}' cannot be determined: {1}",
+            "Build", DiagnosticSeverity.Error, true);
+
+        /// <summary>Reports a C# language version that cannot register compile-time stunts.</summary>
+        public static DiagnosticDescriptor LanguageVersionNotSupported { get; } = new DiagnosticDescriptor(
+            "ST020", "Compile-time stunts require C# 9 or later",
+            "Compile-time stunts require C# 9 or later to register themselves. Set LangVersion to 9 or later, or use Stunts.DynamicProxy.",
+            "Build", DiagnosticSeverity.Error, true);
+
+        /// <summary>Reports a stunt for a nested type that can only be generated inside a generic type.</summary>
+        public static DiagnosticDescriptor GenericContainingType { get; } = new DiagnosticDescriptor(
+            "ST021", "Stunts cannot be nested in generic types",
+            "A stunt for '{0}' must be nested in the generic type '{1}', which is not supported. Make '{0}' internal or public.",
+            "Build", DiagnosticSeverity.Error, true);
+
         /// <summary>
         /// Diagnostic reported whenever type parameters specified for a 
         /// <see cref="StuntGeneratorAttribute"/>-annotated method contain a base 

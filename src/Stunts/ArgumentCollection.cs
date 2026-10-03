@@ -6,7 +6,6 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
-using TypeNameFormatter;
 
 namespace Stunts
 {
@@ -207,7 +206,7 @@ namespace Stunts
         [ExcludeFromCodeCoverage]
         [DebuggerNonUserCode]
         string ToString(ParameterInfo parameter) =>
-            (parameter.IsOut ? parameter.ParameterType.GetFormattedName().Replace("ref ", "out ") : parameter.ParameterType.GetFormattedName()) +
+            (parameter.IsOut ? parameter.ParameterType.GetDisplayName().Replace("ref ", "out ") : parameter.ParameterType.GetDisplayName()) +
             " " + parameter.Name +
             (parameter.IsOut ? "" :
                 (": " + (!arguments.TryGetValue(parameter.Name, out var argument) ? "null" :
