@@ -40,6 +40,14 @@ namespace Stunts.UnitTests
             => VerifyCSharpFix(new[] { LocalSource, Stunt }, LocalFixed);
 
         [Fact]
+        public void AddsGeneratorAttributePreservingLineFeed()
+        {
+            const string source = "using System.Collections.Generic;\nusing Stunts;\n\npublic static class Factory\n{\n    public static IList<T> Create<T>() => Stunt.Of<IList<T>>();\n}\n";
+            const string fixedSource = "using System.Collections.Generic;\nusing Stunts;\n\npublic static class Factory\n{\n    [StuntGenerator]\n    public static IList<T> Create<T>() => Stunt.Of<IList<T>>();\n}\n";
+            VerifyCSharpFix(new[] { source, Stunt }, fixedSource);
+        }
+
+        [Fact]
         public void AnnotatedWrappersAreClosed()
             => VerifyCSharpDiagnostic(new[] { Fixed, Stunt });
 
