@@ -1,14 +1,22 @@
-# Builds a release version of the project and uploads 
-# as artifacts of the release for verification/history
+# Builds a release version on every supported OS and uploads the packages
+# as artifacts of the release for verification/history. Upload waits for the whole matrix.
 
 name: release-artifacts
 on:
   release:
     types: [published]
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
-  release-artifacts:
-    runs-on: ubuntu-latest
+  build:
+    name: build-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
     steps:
       - name: 🤘 checkout
         uses: actions/checkout@v4
@@ -18,9 +26,6 @@ jobs:
 
       - name: ⚙ dotnet
         uses: devlooped/actions-dotnet-env@v1
-
-      - name: 🏷 current
-        run: echo "CURRENT_TAG=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
 
       - name: 🙏 build
         run: dotnet build -m:1 -bl:build.binlog -p:version=${GITHUB_REF#refs/*/v} -p:RepositoryBranch=${GITHUB_REF#refs/*/}
@@ -35,8 +40,28 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: logs
+          name: logs-${{ matrix.os }}
           path: '**/*.binlog'
+
+      - name: 🔼 packages
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bin-ubuntu-latest
+          path: bin/*.nupkg
+
+  release-artifacts:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🏷 current
+        run: echo "CURRENT_TAG=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+
+      - name: 🔽 packages
+        uses: actions/download-artifact@v4
+        with:
+          name: bin-ubuntu-latest
+          path: bin
 
       - name: 🔽 gh 
         run: |
