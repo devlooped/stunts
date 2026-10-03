@@ -1,4 +1,4 @@
-﻿# Builds and runs tests in all three supported OSes
+﻿# Builds and runs tests on Ubuntu. The full OS matrix runs in publish and release.
 # Pushes CI feed if secrets.SLEET_CONNECTION is provided
 
 name: build
@@ -38,12 +38,9 @@ jobs:
           dotnet format style --verify-no-changes -v:diag --exclude ~/.nuget
 
   build:
-    name: build-${{ matrix.os }}
+    name: build
     needs: dotnet-format
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+    runs-on: ubuntu-latest
     steps:
       - name: 🤘 checkout
         uses: actions/checkout@v4
@@ -58,7 +55,7 @@ jobs:
         run: dotnet build -m:1 -bl:build.binlog -p:VersionLabel="$GITHUB_REF.$GITHUB_RUN_NUMBER" -p:RepositoryBranch=${GITHUB_REF#refs/*/}
 
       - name: 🧪 test
-        run: dotnet test --no-build -m:1 --blame-hang --blame-hang-timeout 5m -d $GITHUB_WORKSPACE/logs/${{ matrix.os }}.txt --results-directory $GITHUB_WORKSPACE/logs
+        run: dotnet test --no-build -m:1 --blame-hang --blame-hang-timeout 5m -d $GITHUB_WORKSPACE/logs/ubuntu-latest.txt --results-directory $GITHUB_WORKSPACE/logs
 
       - name: 📦 pack
         run: dotnet pack -m:1 -bl:pack.binlog -p:VersionLabel="$GITHUB_REF.$GITHUB_RUN_NUMBER" -p:RepositoryBranch=${GITHUB_REF#refs/*/}
@@ -66,14 +63,14 @@ jobs:
       - name: 🔼 packages
         uses: actions/upload-artifact@v4
         with:
-          name: bin-${{ matrix.os }}
+          name: bin-ubuntu-latest
           path: bin/*.nupkg
       
-      # Only push CI package to sleet feed if building on ubuntu (fastest)
+      # Push the CI package to the sleet feed when a connection is configured
       - name: 🚀 sleet
         env:
           SLEET_CONNECTION: ${{ secrets.SLEET_CONNECTION }}
-        if: matrix.os == 'ubuntu-latest' && env.SLEET_CONNECTION != ''
+        if: env.SLEET_CONNECTION != ''
         run: |
           dotnet tool update sleet -g --allow-downgrade --version $(curl -s --compressed ${{ vars.SLEET_FEED_URL }} | jq '.["sleet:version"]' -r) 
           sleet push bin --config none -f --verbose -p "SLEET_FEED_CONTAINER=nuget" -p "SLEET_FEED_CONNECTIONSTRING=${{ secrets.SLEET_CONNECTION }}" -p "SLEET_FEED_TYPE=azure" || echo "No packages found"

@@ -1,5 +1,5 @@
-﻿# Builds a final release version and pushes to nuget.org 
-# whenever a release is published.
+﻿# Builds a final release version on every supported OS and pushes to nuget.org
+# whenever a release is published. Packages are pushed only after the whole matrix passes.
 # Requires: secrets.NUGET_API_KEY
 
 name: publish
@@ -11,9 +11,17 @@ env:
   DOTNET_NOLOGO: true
   Configuration: Release
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
-  publish:
-    runs-on: ubuntu-latest
+  build:
+    name: build-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
     steps:
       - name: 🤘 checkout
         uses: actions/checkout@v4
@@ -37,7 +45,7 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: logs
+          name: logs-${{ matrix.os }}
           path: '*.binlog'
 
       - name: ✅ validate
@@ -49,6 +57,23 @@ jobs:
             Write-Error "Found dev/local packages with disallowed 42.42* version prefix:`n$($invalid.Name -join "`n")"
             exit 1
           }
+
+      - name: 🔼 packages
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bin-ubuntu-latest
+          path: bin/*.nupkg
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🔽 packages
+        uses: actions/download-artifact@v4
+        with:
+          name: bin-ubuntu-latest
+          path: bin
 
       - name: 🚀 nuget
         env:
