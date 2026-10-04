@@ -204,7 +204,8 @@ namespace Stunts
 
         [RequiresDynamicCode("Array defaults require the element type's array instantiation. Register a typed factory for Native AOT.")]
         static object CreateArray(Type type) => Array.CreateInstance(
-            type.GetElementType() ?? throw new ArgumentException(nameof(type)), new int[type.GetArrayRank()]);
+            type.GetElementType() ?? throw new ArgumentException("Type must be an array type.", nameof(type)),
+            new int[type.GetArrayRank()]);
 
         static object CreateEnumerable(Type type) => Enumerable.Empty<object>();
 
