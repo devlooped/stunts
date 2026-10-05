@@ -95,6 +95,27 @@ public static class Test { public static IDisposable Create() => Stunt.Of<IDispo
         }
 
         [Fact]
+        public void RegistersClosedAsyncAdapters()
+        {
+            var (diagnostics, compilation) = GetGeneratedOutput(@"
+using System.Threading.Tasks;
+using Stunts;
+public interface IService
+{
+    Task<int> GetAsync();
+    ValueTask<string> ReadAsync();
+    Task RunAsync();
+}
+public static class Test { public static IService Create() => Stunt.Of<IService>(); }");
+
+            Assert.Empty(diagnostics);
+            var text = string.Concat(compilation.SyntaxTrees.Select(tree => tree.ToString()));
+            Assert.Contains("AsyncRegistry.Register<int>()", text);
+            Assert.Contains("AsyncRegistry.Register<string>()", text);
+            Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(text, "AsyncRegistry.Register<").Count);
+        }
+
+        [Fact]
         public void SkipsUncallableConstructorsInRegistration()
         {
             var (diagnostics, compilation) = GetGeneratedOutput("""

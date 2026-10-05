@@ -33,8 +33,27 @@ namespace Stunts.Processors
                 return syntax;
 
             var types = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
+            var asyncAdapters = new HashSet<string>();
             var registrations = new List<StatementSyntax>();
             var usesQueryable = false;
+            void RegisterAwaitable(ITypeSymbol type)
+            {
+                if (type is not INamedTypeSymbol named || !named.IsGenericType)
+                    return;
+
+                var definition = named.OriginalDefinition.ToDisplayString();
+                if (definition != "System.Threading.Tasks.Task<TResult>" &&
+                    definition != "System.Threading.Tasks.ValueTask<TResult>")
+                    return;
+
+                var argument = named.TypeArguments[0];
+                if (argument.TypeKind is TypeKind.TypeParameter or TypeKind.Error || argument.IsRefLikeType)
+                    return;
+
+                var name = argument.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                if (asyncAdapters.Add(name))
+                    registrations.Add(ParseStatement($"global::Stunts.AsyncRegistry.Register<{name}>();"));
+            }
             void Register(ITypeSymbol type)
             {
                 if (type.SpecialType == SpecialType.System_Void || type.IsRefLikeType ||
@@ -82,6 +101,7 @@ namespace Stunts.Processors
             foreach (var method in symbol.GetMembers().OfType<IMethodSymbol>().Where(method => !method.IsGenericMethod && !method.IsStatic))
             {
                 Register(method.ReturnType);
+                RegisterAwaitable(method.ReturnType);
                 foreach (var parameter in method.Parameters.Where(parameter => parameter.RefKind == RefKind.Out))
                     Register(parameter.Type);
             }
