@@ -39,7 +39,7 @@ namespace Stunts
             }
 
             var input = new MethodInvocation(invocation.Proxy, invocation.Method,
-                (m, n) =>
+                (target, m) =>
                 {
                     try
                     {

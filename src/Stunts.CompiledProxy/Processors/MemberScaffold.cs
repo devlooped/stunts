@@ -18,7 +18,8 @@ namespace Stunts.Processors
     /// <remarks>
     /// Virtual members call <c>base</c>. Abstract and interface members throw
     /// <see cref="System.NotImplementedException"/>. <see cref="CSharpRewrite"/> turns
-    /// both shapes into pipeline invocations.
+    /// both shapes into pipeline invocations that run that body for the stunt and the
+    /// same member on any other target.
     /// </remarks>
     public class MemberScaffold : ISyntaxProcessor
     {
@@ -196,11 +197,30 @@ namespace Stunts.Processors
         {
             assembly ??= stunt?.ContainingAssembly ?? member.ContainingAssembly;
             var receiver = defaultInstance ?? (isOverride && !member.IsAbstract ? BaseExpression() : null);
+            MemberDeclarationSyntax declaration;
             if (member is IMethodSymbol method)
-                return Method(method, isOverride, explicitInterface, receiver, assembly);
-            if (member is IPropertySymbol property)
-                return property.IsIndexer ? Indexer(property, isOverride, explicitInterface, receiver, stunt, assembly) : Property(property, isOverride, explicitInterface, receiver, stunt, assembly);
-            return Event((IEventSymbol)member, isOverride, explicitInterface, defaultInstance, assembly);
+                declaration = Method(method, isOverride, explicitInterface, receiver, assembly);
+            else if (member is IPropertySymbol property)
+                declaration = property.IsIndexer ? Indexer(property, isOverride, explicitInterface, receiver, stunt, assembly) : Property(property, isOverride, explicitInterface, receiver, stunt, assembly);
+            else
+                declaration = Event((IEventSymbol)member, isOverride, explicitInterface, defaultInstance, assembly);
+
+            return WithForward(declaration, member, explicitInterface, stunt);
+        }
+
+        // The rewrite casts another invocation target to this type. Interface members use
+        // the interface they belong to; class members use the stunt's base class.
+        static MemberDeclarationSyntax WithForward(MemberDeclarationSyntax declaration, ISymbol member, INamedTypeSymbol? explicitInterface, INamedTypeSymbol? stunt)
+        {
+            var type = explicitInterface ??
+                (member.ContainingType.TypeKind == TypeKind.Interface ? member.ContainingType : stunt?.BaseType);
+            if (type == null)
+                return declaration;
+
+            var name = type.SpecialType == SpecialType.System_Object
+                ? "global::System.Object"
+                : type.ToDisplayString(TypeFormat);
+            return declaration.WithAdditionalAnnotations(Annotations.Forward(name));
         }
 
         static MethodDeclarationSyntax Method(IMethodSymbol method, bool isOverride, INamedTypeSymbol? explicitInterface, ExpressionSyntax? receiver, IAssemblySymbol assembly)

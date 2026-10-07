@@ -163,6 +163,8 @@ Namespace Global.Stunts
     ''' extension methods available for any <see cref="IStunt"/>, and each <c>Build</c> 
     ''' call creates the stunt with a pipeline initialized with a snapshot of the 
     ''' behaviors configured at that point, via <see cref="BehaviorPipelineFactory.UseAmbient"/>.
+    ''' A target registered with <c>Forward</c> is appended to that snapshot when exactly one
+    ''' registration is assignable to every type the build requests.
     ''' </remarks>
     <CompilerGenerated>
     <ExcludeFromCodeCoverage>
@@ -179,11 +181,97 @@ Namespace Global.Stunts
         End Property
 
         Private ReadOnly behaviorList As IList(Of IStuntBehavior) = New List(Of IStuntBehavior)
+        Private ReadOnly forwards As List(Of ForwardRegistration) = New List(Of ForwardRegistration)()
+
+        ''' <summary>
+        ''' Forwards calls on each built stunt to <paramref name="instance"/> when its runtime
+        ''' type is assignable to every type that build requests.
+        ''' </summary>
+        ''' <remarks>
+        ''' The registration is keyed by the instance's runtime type, so one object can serve
+        ''' every build it is assignable to. Registering that runtime type again throws.
+        ''' </remarks>
+        ''' <exception cref="ArgumentNullException"><paramref name="instance"/> is <see langword="Nothing"/>.</exception>
+        ''' <exception cref="InvalidOperationException">That runtime type is already registered.</exception>
+        Public Function Forward(Of T As Class)(ByVal instance As T) As StuntBuilder
+            If instance Is Nothing Then
+                Throw New ArgumentNullException(NameOf(instance))
+            End If
+
+            Return AddForward(instance.GetType(), instance, Nothing)
+        End Function
+
+        ''' <summary>
+        ''' Forwards calls on each built stunt to the object returned by <paramref name="factory"/>.
+        ''' </summary>
+        ''' <remarks>
+        ''' The factory is keyed by <typeparamref name="T"/> and is not invoked while matching,
+        ''' so a factory must be typed as the concrete class (or an interface that already covers
+        ''' every build it should serve). It runs once per built stunt, on the first forwarded call.
+        ''' Reuse of the instance is decided entirely by the factory.
+        ''' </remarks>
+        ''' <exception cref="ArgumentNullException"><paramref name="factory"/> is <see langword="Nothing"/>.</exception>
+        ''' <exception cref="InvalidOperationException"><typeparamref name="T"/> is already registered.</exception>
+        Public Function Forward(Of T As Class)(ByVal factory As Func(Of T)) As StuntBuilder
+            If factory Is Nothing Then
+                Throw New ArgumentNullException(NameOf(factory))
+            End If
+
+            Return AddForward(GetType(T), Nothing, Function() factory())
+        End Function
+
+        Private Function AddForward(ByVal type As Type, ByVal instance As Object, ByVal factory As Func(Of Object)) As StuntBuilder
+            If forwards.Exists(Function(registration) registration.Type.Equals(type)) Then
+                Throw New InvalidOperationException(type.ToString() & " is already registered.")
+            End If
+
+            forwards.Add(New ForwardRegistration(type, instance, factory))
+            Return Me
+        End Function
 
         Private Function Create(Of T)(ByVal constructorArgs As Object(), ParamArray interfaces As Type()) As T
-            Using BehaviorPipelineFactory.UseAmbient(New BuilderPipelineFactory(behaviorList))
+            ' The pipeline factory only sees the generated stunt class, so the requested
+            ' interfaces have to be matched here, before that class is constructed.
+            Dim behaviors As New List(Of IStuntBehavior)(behaviorList)
+            Dim registration = Match(GetType(T), interfaces)
+            If registration IsNot Nothing Then
+                behaviors.Add(registration.CreateBehavior())
+            End If
+
+            Using BehaviorPipelineFactory.UseAmbient(New BuilderPipelineFactory(behaviors))
                 Return DirectCast(StuntFactory.[Default].CreateStunt(GetType(Stunt).Assembly, GetType(T), interfaces, constructorArgs), T)
             End Using
+        End Function
+
+        Private Function Match(ByVal primary As Type, ByVal interfaces As Type()) As ForwardRegistration
+            Dim found As ForwardRegistration = Nothing
+            For Each candidate In forwards
+                If Not AssignableToAll(candidate.Type, primary, interfaces) Then
+                    Continue For
+                End If
+
+                If found IsNot Nothing Then
+                    Throw New AmbiguousMatchException(found.Type.ToString() & " and " & candidate.Type.ToString() & " both match the requested stunt.")
+                End If
+
+                found = candidate
+            Next
+
+            Return found
+        End Function
+
+        Private Shared Function AssignableToAll(ByVal candidate As Type, ByVal primary As Type, ByVal interfaces As Type()) As Boolean
+            If Not primary.IsAssignableFrom(candidate) Then
+                Return False
+            End If
+
+            For Each iface In interfaces
+                If Not iface.IsAssignableFrom(candidate) Then
+                    Return False
+                End If
+            Next
+
+            Return True
         End Function
 
         ''' <summary>
@@ -293,6 +381,31 @@ Namespace Global.Stunts
         Public Function Build(Of T, T1, T2, T3, T4, T5, T6, T7, T8)(ParamArray constructorArgs As Object()) As T
             Return Create(Of T)(constructorArgs, GetType(T1), GetType(T2), GetType(T3), GetType(T4), GetType(T5), GetType(T6), GetType(T7), GetType(T8))
         End Function
+
+        Private NotInheritable Class ForwardRegistration
+            Private ReadOnly instance As Object
+            Private ReadOnly factory As Func(Of Object)
+
+            Public Sub New(ByVal type As Type, ByVal instance As Object, ByVal factory As Func(Of Object))
+                Me.Type = type
+                Me.instance = instance
+                Me.factory = factory
+            End Sub
+
+            Public ReadOnly Property Type As Type
+
+            Public Function CreateBehavior() As IStuntBehavior
+                If instance IsNot Nothing Then
+                    Return New TargetBehavior(instance)
+                End If
+
+                If factory Is Nothing Then
+                    Throw New InvalidOperationException(Type.ToString() & " has no target.")
+                End If
+
+                Return New TargetBehavior(factory)
+            End Function
+        End Class
 
         Private Class BuilderPipelineFactory
             Implements IBehaviorPipelineFactory

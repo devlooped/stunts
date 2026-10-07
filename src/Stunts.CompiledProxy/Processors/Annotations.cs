@@ -15,5 +15,11 @@ namespace Stunts.Processors
 
         /// <summary>A call that proceeds to a default interface implementation.</summary>
         public static readonly SyntaxAnnotation DefaultImplementation = new("Stunts.DefaultImplementation");
+
+        /// <summary>The type an invocation target is cast to when it is not the stunt.</summary>
+        public const string ForwardKind = "Stunts.Forward";
+
+        /// <summary>Marks the type name stored for <see cref="ForwardKind"/>.</summary>
+        public static SyntaxAnnotation Forward(string typeName) => new(ForwardKind, typeName);
     }
 }

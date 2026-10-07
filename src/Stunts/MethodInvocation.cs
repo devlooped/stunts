@@ -14,7 +14,7 @@ namespace Stunts
     /// </summary>
     public partial class MethodInvocation : IEquatable<MethodInvocation>, IMethodInvocation
     {
-        readonly ExecuteHandler implementation;
+        readonly MethodInvoker implementation;
 
         /// <summary>
         /// Initializes the <see cref="MethodInvocation"/> for a method that has no parameters.
@@ -42,7 +42,7 @@ namespace Stunts
             if (method.GetParameters().Length != Arguments.Count)
                 throw new TargetParameterCountException(ThisAssembly.Strings.MethodArgumentsMismatch(method.Name, method.GetParameters().Length, Arguments.Count));
 
-            implementation = (m, n) => throw new NotImplementedException(ThisAssembly.Strings.NotImplemented(ToString()));
+            implementation = (_, call) => throw new NotImplementedException(ThisAssembly.Strings.NotImplemented(call.ToString()));
         }
 
         /// <summary>
@@ -50,8 +50,8 @@ namespace Stunts
         /// </summary>
         /// <param name="target">The target object where the invocation is being performed.</param>
         /// <param name="method">The method being invoked.</param>
-        /// <param name="implementation">Delegate to invoke the method implementation.</param>
-        public MethodInvocation(object target, MethodBase method, ExecuteHandler implementation)
+        /// <param name="implementation">Delegate that invokes the member on a target.</param>
+        public MethodInvocation(object target, MethodBase method, MethodInvoker implementation)
             : this(target, method, implementation, new ArgumentCollection())
         {
         }
@@ -61,9 +61,9 @@ namespace Stunts
         /// </summary>
         /// <param name="target">The target object where the invocation is being performed.</param>
         /// <param name="method">The method being invoked.</param>
-        /// <param name="implementation">Delegate to invoke the method implementation.</param>
+        /// <param name="implementation">Delegate that invokes the member on a target.</param>
         /// <param name="arguments">The arguments of the method invocation.</param>
-        public MethodInvocation(object target, MethodBase method, ExecuteHandler implementation, IArgumentCollection arguments)
+        public MethodInvocation(object target, MethodBase method, MethodInvoker implementation, IArgumentCollection arguments)
         {
             // TODO: validate that arguments length and type match the method info?
             Target = target ?? throw new ArgumentNullException(nameof(target));
@@ -73,7 +73,7 @@ namespace Stunts
             if (method.GetParameters().Length != Arguments.Count)
                 throw new TargetParameterCountException(ThisAssembly.Strings.MethodArgumentsMismatch(method.Name, method.GetParameters().Length, Arguments.Count));
 
-            this.implementation = implementation;
+            this.implementation = implementation ?? throw new ArgumentNullException(nameof(implementation));
             HasImplementation = true;
         }
 
@@ -105,8 +105,16 @@ namespace Stunts
 
         /// <inheritdoc />
         public IMethodReturn CreateInvokeReturn(IArgumentCollection? arguments = null)
-            => implementation.Invoke(arguments == null ? this : new MethodInvocation(Target, MethodBase, arguments),
-                (m, n) => throw new NotSupportedException(ThisAssembly.Strings.GetNextNotSupported));
+            => implementation.Invoke(Target, arguments == null ? this : new MethodInvocation(Target, MethodBase, arguments));
+
+        /// <inheritdoc />
+        public IMethodReturn Invoke(object target)
+        {
+            if (target == null)
+                throw new ArgumentNullException(nameof(target));
+
+            return implementation.Invoke(target, this);
+        }
 
         /// <summary>
         /// Gets a friendly representation of the invocation.
