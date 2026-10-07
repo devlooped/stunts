@@ -6,8 +6,6 @@ using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Diagnostics.Metrics;
 using Microsoft.Extensions.Logging;
 using Stunts;
 using Xunit;
@@ -31,7 +29,6 @@ namespace Stunts.UnitTests
             UnknownArgumentNameFailsBeforeTheTarget();
             InnerActivityIsParentedToTheObservabilityActivity();
             LoggerFailureDoesNotReplaceTheOutcome();
-            AddStuntObservabilityUsesTheStuntsCategoryAndMeter();
             NullLoggerOrMeterThrows();
         }
 
@@ -214,22 +211,6 @@ namespace Stunts.UnitTests
             Assert.Single(observed.Samples);
         }
 
-        public void AddStuntObservabilityUsesTheStuntsCategoryAndMeter()
-        {
-            var factory = new RecordingLoggerFactory();
-            var meters = new RecordingMeterFactory();
-            var services = new ServiceCollection();
-            services.AddSingleton<ILoggerFactory>(factory);
-            services.AddSingleton<IMeterFactory>(meters);
-            services.AddStuntObservability();
-
-            using var provider = services.BuildServiceProvider();
-            provider.GetRequiredService<ObservabilityBehavior>();
-
-            Assert.Equal("Stunts", factory.Category);
-            Assert.Equal("Stunts", meters.Name);
-        }
-
         public void NullLoggerOrMeterThrows()
         {
             using var meter = new Meter(nameof(NullLoggerOrMeterThrows));
@@ -347,40 +328,6 @@ namespace Stunts.UnitTests
                 public void Dispose()
                 {
                 }
-            }
-        }
-
-        sealed class RecordingLoggerFactory : ILoggerFactory
-        {
-            public string? Category { get; private set; }
-
-            public void AddProvider(ILoggerProvider provider)
-            {
-            }
-
-            public ILogger CreateLogger(string categoryName)
-            {
-                Category = categoryName;
-                return new ListLogger();
-            }
-
-            public void Dispose()
-            {
-            }
-        }
-
-        sealed class RecordingMeterFactory : IMeterFactory
-        {
-            public string? Name { get; private set; }
-
-            public Meter Create(MeterOptions options)
-            {
-                Name = options.Name;
-                return new Meter(options);
-            }
-
-            public void Dispose()
-            {
             }
         }
 
