@@ -366,24 +366,16 @@ namespace Stunts.UnitTests
             }
         }
 
-        sealed class DelayedTarget : IStuntBehavior
+        sealed class DelayedTarget(TaskCompletionSource<int> gate) : IStuntBehavior
         {
-            readonly TaskCompletionSource<int> gate;
-
-            public DelayedTarget(TaskCompletionSource<int> gate) => this.gate = gate;
-
             public bool AppliesTo(IMethodInvocation invocation) => true;
 
             public IMethodReturn Execute(IMethodInvocation invocation, ExecuteHandler next)
                 => invocation.CreateValueReturn(gate.Task);
         }
 
-        sealed class ThrowingTarget : IStuntBehavior
+        sealed class ThrowingTarget(Exception exception) : IStuntBehavior
         {
-            readonly Exception exception;
-
-            public ThrowingTarget(Exception exception) => this.exception = exception;
-
             public bool AppliesTo(IMethodInvocation invocation) => true;
 
             public IMethodReturn Execute(IMethodInvocation invocation, ExecuteHandler next) => throw exception;
@@ -412,12 +404,8 @@ namespace Stunts.UnitTests
             }
         }
 
-        sealed class ParentTarget : IStuntBehavior
+        sealed class ParentTarget(Action<Activity?> parent) : IStuntBehavior
         {
-            readonly Action<Activity?> parent;
-
-            public ParentTarget(Action<Activity?> parent) => this.parent = parent;
-
             public bool AppliesTo(IMethodInvocation invocation) => true;
 
             public IMethodReturn Execute(IMethodInvocation invocation, ExecuteHandler next)

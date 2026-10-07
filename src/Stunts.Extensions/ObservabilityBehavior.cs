@@ -14,7 +14,12 @@ namespace Stunts
     /// duration cover every behavior added after it. The duration is <see cref="ProceedOutcome.Elapsed"/>
     /// in milliseconds and includes the time until a returned <see cref="Task"/> or <see cref="ValueTask"/> completes.
     /// </remarks>
-    public sealed class ObservabilityBehavior : IStuntBehavior
+    /// <param name="logger">Receives one event per settled call.</param>
+    /// <param name="duration">Duration histogram, in milliseconds. Create it with unit <c>ms</c>.</param>
+    /// <param name="activities">Activity source. <see cref="Source"/> is used when this is <see langword="null"/>.</param>
+    /// <param name="redact">Optional projection of arguments before they are logged or tagged.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="logger"/> or <paramref name="duration"/> is <see langword="null"/>.</exception>
+    public sealed class ObservabilityBehavior(ILogger logger, Histogram<double> duration, ActivitySource? activities = null, ObservabilityRedaction? redact = null) : IStuntBehavior
     {
         /// <summary>Event name <c>StuntInvocation</c>.</summary>
         public static EventId StuntInvocation { get; } = new(1, "StuntInvocation");
@@ -22,10 +27,9 @@ namespace Stunts
         /// <summary>Activity source named <c>Stunts</c>.</summary>
         public static ActivitySource Source { get; } = new("Stunts");
 
-        readonly ILogger logger;
-        readonly Histogram<double> duration;
-        readonly ActivitySource activities;
-        readonly ObservabilityRedaction? redact;
+        readonly ILogger log = logger ?? throw new ArgumentNullException(nameof(logger));
+        readonly Histogram<double> histogram = duration ?? throw new ArgumentNullException(nameof(duration));
+        readonly ActivitySource source = activities ?? Source;
 
         /// <summary>
         /// Observes every call with <paramref name="logger"/> and a histogram named
@@ -37,38 +41,8 @@ namespace Stunts
         /// <param name="redact">Optional projection of arguments before they are logged or tagged.</param>
         /// <exception cref="ArgumentNullException"><paramref name="logger"/> or <paramref name="meter"/> is <see langword="null"/>.</exception>
         public ObservabilityBehavior(ILogger logger, Meter meter, ObservabilityRedaction? redact = null)
+            : this(logger, CreateDuration(meter), Source, redact)
         {
-            if (logger == null)
-                throw new ArgumentNullException(nameof(logger));
-            if (meter == null)
-                throw new ArgumentNullException(nameof(meter));
-
-            this.logger = logger;
-            duration = meter.CreateHistogram<double>("stunts.invocation.duration", unit: "ms");
-            activities = Source;
-            this.redact = redact;
-        }
-
-        /// <summary>
-        /// Observes every call with <paramref name="logger"/> and <paramref name="duration"/>.
-        /// The histogram receives <see cref="ProceedOutcome.Elapsed"/> in milliseconds, so create it with unit <c>ms</c>.
-        /// </summary>
-        /// <param name="logger">Receives one event per settled call.</param>
-        /// <param name="duration">Duration histogram, in milliseconds.</param>
-        /// <param name="activities">Activity source. <see cref="Source"/> is used when this is <see langword="null"/>.</param>
-        /// <param name="redact">Optional projection of arguments before they are logged or tagged.</param>
-        /// <exception cref="ArgumentNullException"><paramref name="logger"/> or <paramref name="duration"/> is <see langword="null"/>.</exception>
-        public ObservabilityBehavior(ILogger logger, Histogram<double> duration, ActivitySource? activities = null, ObservabilityRedaction? redact = null)
-        {
-            if (logger == null)
-                throw new ArgumentNullException(nameof(logger));
-            if (duration == null)
-                throw new ArgumentNullException(nameof(duration));
-
-            this.logger = logger;
-            this.duration = duration;
-            this.activities = activities ?? Source;
-            this.redact = redact;
         }
 
         /// <summary>
@@ -81,7 +55,7 @@ namespace Stunts
             if (redact == null)
                 throw new ArgumentNullException(nameof(redact));
 
-            return new ObservabilityBehavior(logger, duration, activities, redact);
+            return new ObservabilityBehavior(log, histogram, source, redact);
         }
 
         /// <summary>Observes every invocation.</summary>
@@ -98,7 +72,7 @@ namespace Stunts
 
             var member = invocation.MethodBase.Name;
             var stuntType = StuntType(invocation.Target);
-            var activity = activities.StartActivity(member, ActivityKind.Internal);
+            var activity = source.StartActivity(member, ActivityKind.Internal);
             if (activity != null)
             {
                 activity.SetTag("stunt.type", stuntType);
@@ -128,7 +102,7 @@ namespace Stunts
 
             try
             {
-                duration.Record(outcome.Elapsed.TotalMilliseconds, new TagList
+                histogram.Record(outcome.Elapsed.TotalMilliseconds, new TagList
                 {
                     { "stunt.type", stuntType },
                     { "member.name", member },
@@ -148,9 +122,9 @@ namespace Stunts
                     OperationCanceledException => LogLevel.Warning,
                     _ => LogLevel.Error
                 };
-                if (logger.IsEnabled(level))
+                if (log.IsEnabled(level))
                 {
-                    logger.Log(
+                    log.Log(
                         level,
                         StuntInvocation,
                         outcome.Exception is OperationCanceledException ? null : outcome.Exception,
@@ -175,6 +149,14 @@ namespace Stunts
             {
                 // Stopping the activity must not replace the invocation outcome.
             }
+        }
+
+        static Histogram<double> CreateDuration(Meter meter)
+        {
+            if (meter == null)
+                throw new ArgumentNullException(nameof(meter));
+
+            return meter.CreateHistogram<double>("stunts.invocation.duration", unit: "ms");
         }
 
         static string StuntType(object target)
