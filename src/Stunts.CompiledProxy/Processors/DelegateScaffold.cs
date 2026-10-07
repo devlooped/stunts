@@ -194,8 +194,8 @@ namespace Stunts.Processors
             return ParenthesizedLambdaExpression()
                 .WithParameterList(ParameterList(SeparatedList(new[]
                 {
+                    Parameter(Identifier("target")),
                     Parameter(Identifier("invocation")),
-                    Parameter(Identifier("next")),
                 })))
                 .WithBody(Block(statements));
         }

@@ -85,7 +85,7 @@ namespace Stunts.UnitTests
         public void RefOutputIsPreserved()
         {
             var method = Sample(nameof(ISample.Inc));
-            var invocation = MethodInvocation.Create(new object(), method, (invocation, next) =>
+            var invocation = MethodInvocation.Create(new object(), method, (target, invocation) =>
             {
                 var value = (int)invocation.Arguments.GetValue("value")!;
                 return invocation.CreateValueReturn(null, invocation.Arguments.SetValue("value", value + 1));
@@ -216,7 +216,7 @@ namespace Stunts.UnitTests
         public async Task ValueTaskIsConsumedOnceAcrossBehaviors()
         {
             var method = Sample(nameof(ISample.ReadAsync));
-            var invocation = MethodInvocation.Create(new object(), method, (call, next) => call.CreateValueReturn(new ValueTask<int>(7)));
+            var invocation = MethodInvocation.Create(new object(), method, (target, call) => call.CreateValueReturn(new ValueTask<int>(7)));
             var pipeline = new BehaviorPipeline(
                 (ExecuteHandler)((call, next) => call.Proceed(next, (outcome, again) =>
                     new ValueTask<ProceedOutcome>(ProceedOutcome.FromValue((int)outcome.Value! + 1, outcome.Elapsed)))),

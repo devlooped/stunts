@@ -22,20 +22,9 @@ namespace Stunts.UnitTests
             Action a = WhenInvokingPipelineWithNoBehaviors_ThenInvokesTarget;
 
             pipeline.Invoke(MethodInvocation.Create(this, a.GetMethodInfo(),
-                (m, n) => { targetCalled = true; return m.CreateReturn(); }));
+                (target, m) => { targetCalled = true; return m.CreateReturn(); }));
 
             Assert.True(targetCalled);
-        }
-
-        [Fact]
-        public void WhenInvokingPipelineWithNoBehaviors_ThenTargetCannotInvokeNext()
-        {
-            var pipeline = new BehaviorPipeline();
-
-            Action a = WhenInvokingPipelineWithNoBehaviors_ThenInvokesTarget;
-
-            Assert.Throws<NotSupportedException>(() => pipeline.Invoke(
-                new MethodInvocation(this, a.GetMethodInfo(), (m, n) => n.Invoke(m, n))));
         }
 
         [Fact]
@@ -52,7 +41,7 @@ namespace Stunts.UnitTests
             Action a = WhenInvokingPipeline_ThenInvokesAllBehaviorsAndTarget;
 
             pipeline.Invoke(MethodInvocation.Create(this, a.GetMethodInfo(),
-                (m, n) => { targetCalled = true; return m.CreateReturn(); }));
+                (target, m) => { targetCalled = true; return m.CreateReturn(); }));
 
             Assert.True(firstCalled);
             Assert.True(secondCalled);
@@ -73,7 +62,7 @@ namespace Stunts.UnitTests
             Action a = WhenInvokingPipelineWithNoApplicableBehaviors_ThenInvokesTarget;
 
             pipeline.Invoke(MethodInvocation.Create(this, a.GetMethodInfo(),
-                (m, n) => { targetCalled = true; return m.CreateReturn(); }));
+                (target, m) => { targetCalled = true; return m.CreateReturn(); }));
 
             Assert.False(firstCalled);
             Assert.False(secondCalled);
@@ -94,7 +83,7 @@ namespace Stunts.UnitTests
             Action a = WhenInvokingPipeline_ThenInvokesAllBehaviorsAndTarget;
 
             pipeline.Invoke(MethodInvocation.Create(this, a.GetMethodInfo(),
-                (m, n) => { targetCalled = true; return m.CreateReturn(); }));
+                (target, m) => { targetCalled = true; return m.CreateReturn(); }));
 
             Assert.True(firstCalled);
             Assert.False(secondCalled);
@@ -115,7 +104,7 @@ namespace Stunts.UnitTests
             Action a = WhenInvokingPipeline_ThenBehaviorCanShortcircuitInvocation;
 
             pipeline.Invoke(MethodInvocation.Create(this, a.GetMethodInfo(),
-                (m, n) => { targetCalled = true; return m.CreateReturn(); }));
+                (target, m) => { targetCalled = true; return m.CreateReturn(); }));
 
             Assert.True(firstCalled);
             Assert.False(secondCalled);
@@ -134,7 +123,7 @@ namespace Stunts.UnitTests
 
             Action a = WhenInvokingPipeline_ThenBehaviorsCanPassDataWithContext;
 
-            var result = pipeline.Invoke(MethodInvocation.Create(this, a.GetMethodInfo(), (m, n) => m.CreateReturn()));
+            var result = pipeline.Invoke(MethodInvocation.Create(this, a.GetMethodInfo(), (target, m) => m.CreateReturn()));
 
             Assert.Equal(expected, actual);
             Assert.True(result.Context.ContainsKey("guid"));
@@ -257,7 +246,7 @@ namespace Stunts.UnitTests
             Func<object?> f = NonVoidMethod;
 
             Assert.Same(value, pipeline.Execute<object>(MethodInvocation.Create(this, f.GetMethodInfo(),
-                (m, n) => m.CreateValueReturn(value))));
+                (target, m) => m.CreateValueReturn(value))));
         }
 
         [Fact]
@@ -277,7 +266,7 @@ namespace Stunts.UnitTests
 
             Action a = CanExecutePipelineWithTarget;
 
-            pipeline.Execute(MethodInvocation.Create(this, a.GetMethodInfo(), (m, n) => m.CreateReturn()));
+            pipeline.Execute(MethodInvocation.Create(this, a.GetMethodInfo(), (target, m) => m.CreateReturn()));
         }
 
         [Fact]

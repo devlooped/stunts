@@ -24,7 +24,7 @@ namespace Stunts.Sample
         readonly BehaviorPipeline pipeline = BehaviorPipelineFactory.Default.CreatePipeline<CalculatorStunt>();
 
         [CompilerGenerated]
-        public CalculatorStunt() => pipeline.Execute(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) => m.CreateReturn()));
+        public CalculatorStunt() => pipeline.Execute(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) => m.CreateReturn()));
 
         [CompilerGenerated]
         IList<IStuntBehavior> IStunt.Behaviors => pipeline.Behaviors;
@@ -32,8 +32,8 @@ namespace Stunts.Sample
         [CompilerGenerated]
         public override int? this[string name]
         {
-            get => pipeline.Execute<int?>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) => m.CreateValueReturn(base[m.Arguments.Get<string>("name")]), name));
-            set => pipeline.Execute(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) =>
+            get => pipeline.Execute<int?>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) => m.CreateValueReturn(base[m.Arguments.Get<string>("name")]), name));
+            set => pipeline.Execute(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) =>
             {
                 base[m.Arguments.Get<string>("name")] = m.Arguments.GetNullable<int?>("value");
                 return m.CreateReturn();
@@ -46,8 +46,8 @@ namespace Stunts.Sample
         [CompilerGenerated]
         public override CalculatorMode Mode
         {
-            get => pipeline.Execute<CalculatorMode>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) => m.CreateValueReturn(base.Mode)));
-            set => pipeline.Execute(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) =>
+            get => pipeline.Execute<CalculatorMode>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) => m.CreateValueReturn(base.Mode)));
+            set => pipeline.Execute(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) =>
             {
                 base.Mode = m.Arguments.Get<CalculatorMode>("value");
                 return m.CreateReturn();
@@ -58,50 +58,50 @@ namespace Stunts.Sample
         public override ICalculatorMemory Memory => pipeline.Execute<ICalculatorMemory>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod()));
 
         [CompilerGenerated]
-        public override int Add(int x, int y) => pipeline.Execute<int>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) => m.CreateValueReturn(base.Add(x, y)), x, y));
+        public override int Add(int x, int y) => pipeline.Execute<int>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) => m.CreateValueReturn(base.Add(x, y)), x, y));
 
         [CompilerGenerated]
-        public override int Add(int x, int y, int z) => pipeline.Execute<int>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) => m.CreateValueReturn(base.Add(x, y, z)), x, y, z));
+        public override int Add(int x, int y, int z) => pipeline.Execute<int>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) => m.CreateValueReturn(base.Add(x, y, z)), x, y, z));
 
         [CompilerGenerated]
-        public override void Clear(string name) => pipeline.Execute(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) =>
+        public override void Clear(string name) => pipeline.Execute(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) =>
         {
             base.Clear(name);
             return m.CreateReturn();
         }, name));
 
         [CompilerGenerated]
-        public override void Dispose() => pipeline.Execute(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) =>
+        public override void Dispose() => pipeline.Execute(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) =>
         {
             base.Dispose();
             return m.CreateReturn();
         }));
 
         [CompilerGenerated]
-        public override bool Equals(object obj) => pipeline.Execute<bool>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) => m.CreateValueReturn(base.Equals(obj)), obj));
+        public override bool Equals(object obj) => pipeline.Execute<bool>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) => m.CreateValueReturn(base.Equals(obj)), obj));
 
         [CompilerGenerated]
-        public override int GetHashCode() => pipeline.Execute<int>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) => m.CreateValueReturn(base.GetHashCode())));
+        public override int GetHashCode() => pipeline.Execute<int>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) => m.CreateValueReturn(base.GetHashCode())));
 
         [CompilerGenerated]
-        public override int? Recall(string name) => pipeline.Execute<int?>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) => m.CreateValueReturn(base.Recall(name)), name));
+        public override int? Recall(string name) => pipeline.Execute<int?>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) => m.CreateValueReturn(base.Recall(name)), name));
 
         [CompilerGenerated]
-        public override void Store(string name, int value) => pipeline.Execute(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) =>
+        public override void Store(string name, int value) => pipeline.Execute(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) =>
         {
             base.Store(name, value);
             return m.CreateReturn();
         }, name, value));
 
         [CompilerGenerated]
-        public override string ToString() => pipeline.Execute<string>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) => m.CreateValueReturn(base.ToString())));
+        public override string ToString() => pipeline.Execute<string>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) => m.CreateValueReturn(base.ToString())));
 
         [CompilerGenerated]
         public override bool TryAdd(ref int x, ref int y, out int? z)
         {
             var _method = MethodBase.GetCurrentMethod();
             z = default;
-            var _result = pipeline.Invoke(new MethodInvocation(this, _method, (m, n) =>
+            var _result = pipeline.Invoke(new MethodInvocation(this, _method, (target, m) =>
             {
                 var _x = m.Arguments.Get<int>("x");
                 var _y = m.Arguments.Get<int>("y");
@@ -125,7 +125,7 @@ namespace Stunts.Sample
         }
 
         [CompilerGenerated]
-        public override void TurnOn() => pipeline.Execute(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) =>
+        public override void TurnOn() => pipeline.Execute(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) =>
         {
             base.TurnOn();
             return m.CreateReturn();
@@ -134,12 +134,12 @@ namespace Stunts.Sample
         [CompilerGenerated]
         public override event EventHandler TurnedOn
         {
-            add => pipeline.Execute(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) =>
+            add => pipeline.Execute(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) =>
             {
                 base.TurnedOn += value;
                 return m.CreateReturn();
             }, value));
-            remove => pipeline.Execute(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) =>
+            remove => pipeline.Execute(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) =>
             {
                 base.TurnedOn -= value;
                 return m.CreateReturn();

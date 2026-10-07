@@ -24,7 +24,7 @@ namespace Stunts.Sample
         readonly BehaviorPipeline pipeline = BehaviorPipelineFactory.Default.CreatePipeline<ICalculatorIDisposableStunt>();
 
         [CompilerGenerated]
-        public ICalculatorIDisposableStunt() => pipeline.Execute(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) => m.CreateReturn()));
+        public ICalculatorIDisposableStunt() => pipeline.Execute(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) => m.CreateReturn()));
 
         [CompilerGenerated]
         IList<IStuntBehavior> IStunt.Behaviors => pipeline.Behaviors;
@@ -62,10 +62,10 @@ namespace Stunts.Sample
         public void Dispose() => pipeline.Execute(MethodInvocation.Create(this, MethodBase.GetCurrentMethod()));
 
         [CompilerGenerated]
-        public override bool Equals(object obj) => pipeline.Execute<bool>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) => m.CreateValueReturn(base.Equals(obj)), obj));
+        public override bool Equals(object obj) => pipeline.Execute<bool>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) => m.CreateValueReturn(base.Equals(obj)), obj));
 
         [CompilerGenerated]
-        public override int GetHashCode() => pipeline.Execute<int>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) => m.CreateValueReturn(base.GetHashCode())));
+        public override int GetHashCode() => pipeline.Execute<int>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) => m.CreateValueReturn(base.GetHashCode())));
 
         [CompilerGenerated]
         public int? Recall(string name) => pipeline.Execute<int?>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), name));
@@ -74,7 +74,7 @@ namespace Stunts.Sample
         public void Store(string name, int value) => pipeline.Execute(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), name, value));
 
         [CompilerGenerated]
-        public override string ToString() => pipeline.Execute<string>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) => m.CreateValueReturn(base.ToString())));
+        public override string ToString() => pipeline.Execute<string>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) => m.CreateValueReturn(base.ToString())));
 
         [CompilerGenerated]
         public bool TryAdd(ref int x, ref int y, out int? z)

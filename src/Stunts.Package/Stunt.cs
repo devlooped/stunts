@@ -9,6 +9,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 
 namespace Stunts
@@ -141,6 +142,8 @@ namespace Stunts
     /// extension methods available for any <see cref="IStunt"/>, and each <c>Build</c> 
     /// call creates the stunt with a pipeline initialized with a snapshot of the 
     /// behaviors configured at that point, via <see cref="BehaviorPipelineFactory.UseAmbient"/>.
+    /// A target registered with <c>Forward</c> is appended to that snapshot when exactly one
+    /// registration is assignable to every type the build requests.
     /// </remarks>
     [CompilerGenerated]
     [ExcludeFromCodeCoverage]
@@ -151,10 +154,98 @@ namespace Stunts
         /// </summary>
         public IList<IStuntBehavior> Behaviors { get; } = new List<IStuntBehavior>();
 
+        readonly List<ForwardRegistration> forwards = new List<ForwardRegistration>();
+
+        /// <summary>
+        /// Forwards calls on each built stunt to <paramref name="instance"/> when its runtime
+        /// type is assignable to every type that build requests.
+        /// </summary>
+        /// <remarks>
+        /// The registration is keyed by the instance's runtime type, so one object can serve
+        /// every build it is assignable to. Registering that runtime type again throws.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException"><paramref name="instance"/> is <see langword="null"/>.</exception>
+        /// <exception cref="InvalidOperationException">That runtime type is already registered.</exception>
+        public StuntBuilder Forward<T>(T instance) where T : class
+        {
+            if (instance == null)
+                throw new ArgumentNullException(nameof(instance));
+
+            return AddForward(instance.GetType(), instance, null);
+        }
+
+        /// <summary>
+        /// Forwards calls on each built stunt to the object returned by <paramref name="factory"/>.
+        /// </summary>
+        /// <remarks>
+        /// The factory is keyed by <typeparamref name="T"/> and is not invoked while matching,
+        /// so a factory must be typed as the concrete class (or an interface that already covers
+        /// every build it should serve). It runs once per built stunt, on the first forwarded call.
+        /// Reuse of the instance is decided entirely by the factory.
+        /// A lambda binds to this overload. An existing <see cref="Func{T}"/> is ambiguous with
+        /// <see cref="Forward{T}(T)"/>; specify the type argument to choose.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException"><paramref name="factory"/> is <see langword="null"/>.</exception>
+        /// <exception cref="InvalidOperationException"><typeparamref name="T"/> is already registered.</exception>
+        public StuntBuilder Forward<T>(Func<T> factory) where T : class
+        {
+            if (factory == null)
+                throw new ArgumentNullException(nameof(factory));
+
+            return AddForward(typeof(T), null, () => factory());
+        }
+
+        StuntBuilder AddForward(Type type, object? instance, Func<object?>? factory)
+        {
+            if (forwards.Exists(registration => registration.Type == type))
+                throw new InvalidOperationException(type + " is already registered.");
+
+            forwards.Add(new ForwardRegistration(type, instance, factory));
+            return this;
+        }
+
         T Create<T>(object[] constructorArgs, params Type[] interfaces)
         {
-            using (BehaviorPipelineFactory.UseAmbient(new BuilderPipelineFactory(Behaviors)))
+            // The pipeline factory only sees the generated stunt class, so the requested
+            // interfaces have to be matched here, before that class is constructed.
+            var behaviors = new List<IStuntBehavior>(Behaviors);
+            var match = Match(typeof(T), interfaces);
+            if (match != null)
+                behaviors.Add(match.CreateBehavior());
+
+            using (BehaviorPipelineFactory.UseAmbient(new BuilderPipelineFactory(behaviors)))
                 return (T)StuntFactory.Default.CreateStunt(typeof(Stunt).Assembly, typeof(T), interfaces, constructorArgs);
+        }
+
+        ForwardRegistration? Match(Type primary, Type[] interfaces)
+        {
+            ForwardRegistration? found = null;
+            foreach (var candidate in forwards)
+            {
+                if (!AssignableToAll(candidate.Type, primary, interfaces))
+                    continue;
+
+                if (found != null)
+                    throw new AmbiguousMatchException(found.Type + " and " + candidate.Type + " both match the requested stunt.");
+
+                found = candidate;
+            }
+
+            return found;
+        }
+
+        static bool AssignableToAll(Type candidate, Type primary, Type[] interfaces)
+        {
+            if (!primary.IsAssignableFrom(candidate))
+                return false;
+
+            for (var i = 0; i < interfaces.Length; i++)
+            {
+                if (!interfaces[i].IsAssignableFrom(candidate))
+                    return false;
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -241,6 +332,29 @@ namespace Stunts
         /// </summary>
         [StuntGenerator]
         public T Build<T, T1, T2, T3, T4, T5, T6, T7, T8>(params object[] constructorArgs) => Create<T>(constructorArgs, typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5), typeof(T6), typeof(T7), typeof(T8));
+
+        sealed class ForwardRegistration
+        {
+            readonly object? instance;
+            readonly Func<object?>? factory;
+
+            public ForwardRegistration(Type type, object? instance, Func<object?>? factory)
+            {
+                Type = type;
+                this.instance = instance;
+                this.factory = factory;
+            }
+
+            public Type Type { get; }
+
+            public IStuntBehavior CreateBehavior()
+            {
+                if (instance != null)
+                    return new TargetBehavior(instance);
+
+                return new TargetBehavior(factory ?? throw new InvalidOperationException(Type + " has no target."));
+            }
+        }
 
         class BuilderPipelineFactory : IBehaviorPipelineFactory
         {

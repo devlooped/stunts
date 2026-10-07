@@ -35,13 +35,11 @@ namespace Stunts
         HashSet<Type> SkipBehaviors { get; }
 
         /// <summary>
-        /// Whether the method has a built-in implementation that can be invoked via 
-        /// <see cref="CreateInvokeReturn"/>.
+        /// Whether <see cref="Invoke"/> runs a member body when the target is the stunt.
         /// </summary>
         /// <remarks>
-        /// For a class-based stunt, this would be <see langword="true"/> for virtual 
-        /// methods, for an interface-based stunt, it would be <see langword="true"/> 
-        /// if a target implementation instance was provided (i.e. as a decorator pattern).
+        /// A class member's invoker calls the base body for the stunt. A member with no
+        /// body uses an invoker that throws <see cref="NotImplementedException"/>.
         /// </remarks>
         bool HasImplementation { get; }
 
@@ -55,9 +53,16 @@ namespace Stunts
         /// <exception cref="NotImplementedException">The current method invocation does not have a 
         /// base implementation. In other words, it's either abstract or a member of an interface (with 
         /// no target implementation).</exception>
-        /// <exception cref="NotSupportedException">The target invocation attempted to get the 
-        /// next behavior, which is not supported.</exception>
         IMethodReturn CreateInvokeReturn(IArgumentCollection? arguments = null);
+
+        /// <summary>
+        /// Invokes this member on <paramref name="target"/>.
+        /// </summary>
+        /// <param name="target">The instance that receives the call. The stunt runs its base body, or throws when the member has none. Any other instance runs the member on that instance.</param>
+        /// <returns>The result of the call.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="target"/> is <see langword="null"/>.</exception>
+        /// <exception cref="NotImplementedException">The invoker has no body for <paramref name="target"/>.</exception>
+        IMethodReturn Invoke(object target);
 
         /// <summary>
         /// Creates the method invocation return that ends the current invocation by providing 

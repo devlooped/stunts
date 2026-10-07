@@ -159,9 +159,6 @@
   <data name="NotImplemented" xml:space="preserve">
     <value>Member {method} does not have an implementation.</value>
   </data>
-  <data name="GetNextNotSupported" xml:space="preserve">
-    <value>Getting the next behavior from a method implementation is not supported.</value>
-  </data>
   <data name="ProceedCallbackMustNotAwait" xml:space="preserve">
     <value>The Proceed callback must finish synchronously because {method} does not return a task or value task.</value>
   </data>

@@ -48,21 +48,21 @@ namespace Stunts.UnitTests
     {
         readonly BehaviorPipeline pipeline = BehaviorPipelineFactory.Default.CreatePipeline<BaseClassStunt>();
         [CompilerGenerated]
-        public BaseClassStunt() => pipeline.Execute(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) => m.CreateValueReturn(this, m.Arguments)));
+        public BaseClassStunt() => pipeline.Execute(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) => m.CreateValueReturn(this, m.Arguments)));
         [CompilerGenerated]
         IList<IStuntBehavior> IStunt.Behaviors => pipeline.Behaviors;
         [CompilerGenerated]
-        public override bool Equals(object obj) => pipeline.Execute<bool>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) => m.CreateValueReturn(base.Equals(obj), obj), obj));
+        public override bool Equals(object obj) => pipeline.Execute<bool>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) => m.CreateValueReturn(base.Equals(obj), obj), obj));
         [CompilerGenerated]
-        public override int GetHashCode() => pipeline.Execute<int>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) => m.CreateValueReturn(base.GetHashCode())));
+        public override int GetHashCode() => pipeline.Execute<int>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) => m.CreateValueReturn(base.GetHashCode())));
         [CompilerGenerated]
-        public override string ToString() => pipeline.Execute<string>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (m, n) => m.CreateValueReturn(base.ToString())));
+        public override string ToString() => pipeline.Execute<string>(MethodInvocation.Create(this, MethodBase.GetCurrentMethod(), (target, m) => m.CreateValueReturn(base.ToString())));
         [CompilerGenerated]
         public override bool TryMixed(int x, int? y, ref string name, out int? z)
         {
             var _method = MethodBase.GetCurrentMethod();
             z = default;
-            var _result = pipeline.Invoke(MethodInvocation.Create(this, _method, (m, n) =>
+            var _result = pipeline.Invoke(MethodInvocation.Create(this, _method, (target, m) =>
             {
                 var _name = m.Arguments.Get<string>("name");
                 var _z = m.Arguments.Get<int?>("z");
