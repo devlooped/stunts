@@ -15,8 +15,22 @@ namespace Stunts.Scenarios.NotifyPropertyChange
         string Name { get; set; }
     }
 
-    public class Test
+    /// <summary>
+    /// A behavior can raise INotifyPropertyChanging/INotifyPropertyChanged from
+    /// property setters, with per-stunt notification state.
+    /// </summary>
+    public class Test : IRunnable
     {
+        public void Run()
+        {
+            NewValueRaisesChangingThenChanged_WithPropertyName_SetterRunsOnce();
+            EqualValue_RaisesNeitherEvent_ButStillRunsSetter_ByDefault();
+            EqualValue_SkipsSetter_WhenShortCircuitUnchanged();
+            ThrowingSetter_RaisesNoPropertyChanged_AndDoesNotRecordValue();
+            BuilderStuntsHaveIndependentNotificationState();
+            Unsubscribe_StopsNotifications();
+        }
+
         public void NewValueRaisesChangingThenChanged_WithPropertyName_SetterRunsOnce()
         {
             var stunt = Stunt.For<IPerson, INotifyPropertyChanged, INotifyPropertyChanging>();
