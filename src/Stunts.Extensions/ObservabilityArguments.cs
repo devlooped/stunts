@@ -94,17 +94,11 @@ namespace Stunts
                 _ => display.ToString() ?? "null"
             };
 
-        sealed class Slot
+        sealed class Slot(string name, object? display)
         {
-            public Slot(string name, object? display)
-            {
-                Name = name;
-                Display = display;
-            }
+            public string Name => name;
 
-            public string Name { get; }
-
-            public object? Display { get; set; }
+            public object? Display { get; set; } = display;
 
             public bool Dropped { get; set; }
         }
