@@ -135,5 +135,28 @@ namespace Stunts
             => stunt.Behaviors is BehaviorsCollection
                 ? factory() ?? throw new InvalidOperationException(ThisAssembly.Strings.BehaviorFactoryReturnedNull)
                 : new BehaviorFactory(factory);
+
+        /// <summary>
+        /// Adds a behavior of the given type to a stunt, creating a new instance
+        /// per pipeline seeding.
+        /// </summary>
+        /// <typeparam name="TBehavior">The behavior type. Must have a public parameterless constructor.</typeparam>
+        /// <param name="stunt">The stunt to add the behavior to.</param>
+        /// <returns>The stunt, for chaining.</returns>
+        /// <remarks>
+        /// Equivalent to <c>AddBehavior(() => new TBehavior())</c>: if the stunt is
+        /// not constructed yet, a new instance is created per pipeline seeding
+        /// (e.g. per <c>StuntBuilder.Build</c> call); if it is already constructed,
+        /// the instance is created immediately and added to the live pipeline.
+        /// </remarks>
+        public static IStunt AddBehavior<TBehavior>(this IStunt stunt)
+            where TBehavior : IStuntBehavior, new()
+        {
+            if (stunt == null)
+                throw new ArgumentNullException(nameof(stunt));
+
+            stunt.Behaviors.Add(CreateBehavior(stunt, () => new TBehavior()));
+            return stunt;
+        }
     }
 }

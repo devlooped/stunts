@@ -222,5 +222,42 @@ namespace Stunts.Scenarios.Factories
             calculator.Add(1, 2);
             Assert.Equal(1, counting.Calls);
         }
+
+        public void GenericAddBehaviorCreatesDistinctInstancesPerBuild()
+        {
+            var builder = Stunt.Builder();
+            builder.AddBehavior<CountingBehavior>();
+            builder.AddBehavior<DefaultValueBehavior>();
+
+            ICalculator first = builder.Build<ICalculator>();
+            ICalculator second = builder.Build<ICalculator>();
+
+            var firstBehavior = Stunt.Get(first).Behaviors.OfType<CountingBehavior>().Single();
+            var secondBehavior = Stunt.Get(second).Behaviors.OfType<CountingBehavior>().Single();
+
+            Assert.NotSame(firstBehavior, secondBehavior);
+
+            // Building already invokes the pipeline (constructor), so compare relative to baseline.
+            var firstCalls = firstBehavior.Calls;
+            var secondCalls = secondBehavior.Calls;
+
+            first.Add(1, 2);
+
+            Assert.Equal(firstCalls + 1, firstBehavior.Calls);
+            Assert.Equal(secondCalls, secondBehavior.Calls);
+        }
+
+        public void GenericAddBehaviorOnLivePipelineAddsInstanceImmediately()
+        {
+            var stunt = Stunt.For<ICalculator>();
+            ICalculator calculator = stunt.ToObject();
+
+            stunt.AddBehavior<CountingBehavior>();
+
+            var counting = stunt.Behaviors.OfType<CountingBehavior>().Single();
+            calculator.Add(1, 2);
+
+            Assert.Equal(1, counting.Calls);
+        }
     }
 }
