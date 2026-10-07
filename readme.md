@@ -75,6 +75,8 @@ Some commonly used behaviors that are generally useful are provided in the libra
 
 * `RecordingBehavior`: simple behavior that keeps track of all invocations, for troubleshooting or reporting.
 
+* `ObservabilityBehavior`, in the `Stunts.Extensions` package: logs each call, records its duration in milliseconds, and writes an activity named for the member. Add it first so one observation covers the rest of the pipeline.
+
 ## Building Stunts
 
 When you need the same behaviors on multiple stunts, `Stunt.Builder()` returns a `StuntBuilder` 
