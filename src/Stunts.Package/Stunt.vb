@@ -148,7 +148,7 @@ Namespace Global.Stunts
                     Return fallback.CreatePipeline(Of TStunt)()
                 End If
 
-                Return New BehaviorPipeline(behaviors)
+                Return New BehaviorPipeline(BehaviorPipeline.Materialize(behaviors))
             End Function
         End Class
     End Class
@@ -304,8 +304,9 @@ Namespace Global.Stunts
             End Sub
 
             ' The pipeline copies the behaviors, so later builder changes don't affect created stunts.
+            ' Behavior factories and ICloneable behaviors are materialized into per-pipeline instances.
             Public Function CreatePipeline(Of TStunt)() As BehaviorPipeline Implements IBehaviorPipelineFactory.CreatePipeline
-                Return New BehaviorPipeline(behaviors)
+                Return New BehaviorPipeline(BehaviorPipeline.Materialize(behaviors))
             End Function
         End Class
     End Class

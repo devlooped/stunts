@@ -55,6 +55,45 @@ namespace Stunts
             => Behaviors = new BehaviorsCollection();
 
         /// <summary>
+        /// Materializes behavior registrations into the behavior instances for one
+        /// pipeline seeding.
+        /// </summary>
+        /// <param name="behaviors">The registered behaviors.</param>
+        /// <returns>
+        /// One behavior instance per registration, in registration order:
+        /// <see cref="BehaviorFactory"/> registrations are replaced by the instance
+        /// their factory creates, behaviors implementing <see cref="ICloneable"/>
+        /// are replaced by their <see cref="ICloneable.Clone"/> result, and all other
+        /// behaviors are shared as-is.
+        /// </returns>
+        /// <remarks>
+        /// Used when a pipeline is seeded from registrations (e.g. by
+        /// <c>StuntBuilder.Build</c>), so stateful behaviors get per-pipeline
+        /// instances. Direct <see cref="BehaviorPipeline"/> construction preserves
+        /// instance identity and never clones or invokes factories.
+        /// </remarks>
+        /// <exception cref="InvalidOperationException">
+        /// A factory returned <see langword="null"/>, or an <see cref="ICloneable"/>
+        /// behavior cloned into a non-<see cref="IStuntBehavior"/> value.
+        /// </exception>
+        public static IReadOnlyList<IStuntBehavior> Materialize(IEnumerable<IStuntBehavior> behaviors)
+        {
+            var materialized = new List<IStuntBehavior>();
+            foreach (var behavior in behaviors)
+            {
+                // A factory already controls instantiation, so it wins over ICloneable.
+                if (behavior is BehaviorFactory factory)
+                    materialized.Add(factory.Create());
+                else if (behavior is ICloneable cloneable)
+                    materialized.Add(cloneable.Clone() as IStuntBehavior
+                        ?? throw new InvalidOperationException(ThisAssembly.Strings.CloneableBehaviorWrongType(behavior.GetType())));
+                else
+                    materialized.Add(behavior);
+            }
+            return materialized;
+        }
+
+        /// <summary>
         /// Gets the collection of behaviors applied to this instance.
         /// </summary>
         /// <remarks>

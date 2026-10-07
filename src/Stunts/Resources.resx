@@ -174,4 +174,13 @@
   <data name="TypeNotCompatible" xml:space="preserve">
     <value>Argument type '{argType}' is not compatible with its parameter '{paramType} {paramName}'.</value>
   </data>
+  <data name="BehaviorFactoryReturnedNull" xml:space="preserve">
+    <value>Behavior factory returned null.</value>
+  </data>
+  <data name="BehaviorFactoryLivePipeline" xml:space="preserve">
+    <value>Behavior factories are unwrapped when the pipeline is seeded and cannot run as pipeline behaviors. Register the factory before the stunt is constructed (e.g. on StuntBuilder or before StuntReference&lt;T&gt;.ToObject()).</value>
+  </data>
+  <data name="CloneableBehaviorWrongType" xml:space="preserve">
+    <value>ICloneable behavior '{behavior}' cloned into a non-IStuntBehavior value.</value>
+  </data>
 </root>

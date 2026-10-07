@@ -127,7 +127,7 @@ namespace Stunts
             }
 
             public BehaviorPipeline CreatePipeline<TStunt>()
-                => behaviors.Count == 0 ? fallback.CreatePipeline<TStunt>() : new BehaviorPipeline(behaviors);
+                => behaviors.Count == 0 ? fallback.CreatePipeline<TStunt>() : new BehaviorPipeline(BehaviorPipeline.Materialize(behaviors));
         }
     }
 
@@ -249,7 +249,8 @@ namespace Stunts
             public BuilderPipelineFactory(IEnumerable<IStuntBehavior> behaviors) => this.behaviors = behaviors;
 
             // The pipeline copies the behaviors, so later builder changes don't affect created stunts.
-            public BehaviorPipeline CreatePipeline<TStunt>() => new BehaviorPipeline(behaviors);
+            // Behavior factories and ICloneable behaviors are materialized into per-pipeline instances.
+            public BehaviorPipeline CreatePipeline<TStunt>() => new BehaviorPipeline(BehaviorPipeline.Materialize(behaviors));
         }
     }
 
