@@ -6,8 +6,6 @@ using System.ComponentModel;
 using Stunts;
 using Xunit;
 
-[assembly: Stunt<Stunts.Scenarios.NotifyPropertyChange.IPerson, INotifyPropertyChanged, INotifyPropertyChanging>]
-
 namespace Stunts.Scenarios.NotifyPropertyChange
 {
     public interface IPerson
