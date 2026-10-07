@@ -71,14 +71,12 @@ namespace Stunts.UnitTests
         }
 
         [Fact]
-        public void SynchronousCallbackThatYieldsThrows()
+        public void SynchronousCallbackThatDoesNotFinishThrows()
         {
+            var pending = new TaskCompletionSource<ProceedOutcome>();
             var exception = Assert.Throws<InvalidOperationException>(() =>
-                Proceed(nameof(ISample.Read), (invocation, next) => invocation.CreateValueReturn(1), async (outcome, again) =>
-                {
-                    await Task.Yield();
-                    return outcome;
-                }));
+                Proceed(nameof(ISample.Read), (invocation, next) => invocation.CreateValueReturn(1), (outcome, again) =>
+                    new ValueTask<ProceedOutcome>(pending.Task)));
 
             Assert.Contains(nameof(ISample.Read), exception.Message);
         }
