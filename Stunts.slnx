@@ -56,6 +56,7 @@
   <Project Path="src/Stunts.CodeAnalysis/Stunts.CodeAnalysis.csproj" />
   <Project Path="src/Stunts.CodeFixes/Stunts.CodeFixes.csproj" />
   <Project Path="src/Stunts.DynamicProxy/Stunts.DynamicProxy.csproj" />
+  <Project Path="src/Stunts.Extensions/Stunts.Extensions.csproj" />
   <Project Path="src/Stunts.IntegrationTests/Stunts.IntegrationTests.csproj" />
   <Project Path="src/Stunts.Package/Stunts.Package.msbuildproj" Type="13b669be-bb05-4ddf-9536-439f39a36129" />
   <Project Path="src/Stunts.CompiledProxy/Stunts.CompiledProxy.csproj" />
