@@ -29,6 +29,8 @@ namespace Stunts.Scenarios.NotifyPropertyChange
             ThrowingSetter_RaisesNoPropertyChanged_AndDoesNotRecordValue();
             BuilderStuntsHaveIndependentNotificationState();
             Unsubscribe_StopsNotifications();
+            GenericAddBehavior_MaterializesOnToObject();
+            GenericAddBehavior_OnLivePipeline_AddsInstanceImmediately();
         }
 
         public void NewValueRaisesChangingThenChanged_WithPropertyName_SetterRunsOnce()
@@ -155,6 +157,41 @@ namespace Stunts.Scenarios.NotifyPropertyChange
 
             ((INotifyPropertyChanged)person).PropertyChanged -= handler;
             person.Name = "Grace";
+
+            Assert.Equal(new[] { "Name" }, events);
+        }
+
+        public void GenericAddBehavior_MaterializesOnToObject()
+        {
+            var stunt = Stunt.For<IPerson, INotifyPropertyChanged, INotifyPropertyChanging>();
+            stunt.AddBehavior<NotifyPropertyChangeBehavior>();
+            stunt.AddBehavior(new DefaultValueBehavior());
+            IPerson person = stunt.ToObject();
+
+            Assert.IsType<NotifyPropertyChangeBehavior>(stunt.Behaviors[0]);
+
+            var events = new List<string>();
+            ((INotifyPropertyChanged)person).PropertyChanged += (_, e) => events.Add(e.PropertyName);
+
+            person.Name = "Ada";
+
+            Assert.Equal(new[] { "Name" }, events);
+        }
+
+        public void GenericAddBehavior_OnLivePipeline_AddsInstanceImmediately()
+        {
+            var stunt = Stunt.For<IPerson, INotifyPropertyChanged, INotifyPropertyChanging>();
+            IPerson person = stunt.ToObject();
+
+            stunt.AddBehavior<NotifyPropertyChangeBehavior>();
+            stunt.AddBehavior(new DefaultValueBehavior());
+
+            Assert.IsType<NotifyPropertyChangeBehavior>(stunt.Behaviors[0]);
+
+            var events = new List<string>();
+            ((INotifyPropertyChanged)person).PropertyChanged += (_, e) => events.Add(e.PropertyName);
+
+            person.Name = "Ada";
 
             Assert.Equal(new[] { "Name" }, events);
         }
