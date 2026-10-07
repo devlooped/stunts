@@ -1139,7 +1139,7 @@ namespace Stunts.Processors
                             ExpressionStatement(stuntCall),
                             ReturnStatement(InvocationExpression(invocationName, "CreateReturn")));
 
-                    return ReturnStatement(InvocationExpression(invocationName, "CreateValueReturn", Argument(stuntCall)));
+                    return ReturnStatement(InvocationExpression(invocationName, "CreateValueReturn", Argument(Returned(stuntCall))));
                 }
 
                 StatementSyntax Target()
@@ -1151,8 +1151,14 @@ namespace Stunts.Processors
                             ExpressionStatement(targetCall),
                             ReturnStatement(InvocationExpression(invocationName, "CreateReturn")));
 
-                    return ReturnStatement(InvocationExpression(invocationName, "CreateValueReturn", Argument(targetCall)));
+                    return ReturnStatement(InvocationExpression(invocationName, "CreateValueReturn", Argument(Returned(targetCall))));
                 }
+
+                // CreateValueReturn is an extension. A dynamic result cannot select it.
+                ExpressionSyntax Returned(ExpressionSyntax call)
+                    => IsDynamic(returnType)
+                        ? CastExpression(PredefinedType(Token(SyntaxKind.ObjectKeyword)), call)
+                        : call;
 
                 return LambdaExpression(
                     new[] { Parameter(targetName), Parameter(invocationName) },
@@ -1168,8 +1174,31 @@ namespace Stunts.Processors
                     return UnsupportedForward();
                 if (baseCall != null)
                     return Retarget(baseCall, CastTarget(type));
+                // Indexers read arguments back with Arguments.Get<T>. A ref struct cannot be that
+                // type argument, and the invoker delegate cannot capture it. Leave the throwing invoker.
+                if (synthesize == null || !CanBoxArguments(member))
+                    return null;
 
-                return synthesize?.Invoke(type);
+                return synthesize.Invoke(type);
+            }
+
+            static bool IsDynamic(TypeSyntax? type)
+            {
+                // Roslyn 5 represents dynamic as an identifier, not SyntaxKind.DynamicKeyword.
+                if (type is IdentifierNameSyntax name)
+                    return name.Identifier.ValueText == "dynamic";
+                return type is PredefinedTypeSyntax predefined && predefined.Keyword.ValueText == "dynamic";
+            }
+
+            static bool CanBoxArguments(SyntaxNode member)
+            {
+                if (member is not IndexerDeclarationSyntax indexer)
+                    return true;
+                if (indexer.HasAnnotation(Annotations.StructRef) || indexer.HasAnnotation(Annotations.PointerRef))
+                    return false;
+
+                return !indexer.ParameterList.Parameters.Any(parameter =>
+                    parameter.HasAnnotation(Annotations.StructRef) || parameter.HasAnnotation(Annotations.PointerRef));
             }
 
             static TypeSyntax? ForwardType(SyntaxNode node)
