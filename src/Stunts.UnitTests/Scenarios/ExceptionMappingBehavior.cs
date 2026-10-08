@@ -121,6 +121,7 @@ namespace Stunts.UnitTests
 
             Assert.Null(store.Read());
             Assert.Equal(0, store.Length());
+            Assert.Empty(store.Items());
             store.Run();
         }
 
@@ -268,6 +269,14 @@ namespace Stunts.UnitTests
             {
                 if (Failure != null)
                     throw Failure;
+            }
+
+            public virtual int[] Items()
+            {
+                if (Failure != null)
+                    throw Failure;
+
+                return new[] { 1 };
             }
 
             public virtual Task<int> CountAsync()

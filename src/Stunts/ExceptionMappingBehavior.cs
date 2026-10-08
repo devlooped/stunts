@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Threading.Tasks;
 
@@ -19,8 +18,9 @@ namespace Stunts
     /// </para>
     /// <para>
     /// Pass <c>swallow: true</c> to let a <see langword="null"/> result complete the call with
-    /// the default value of the member. The switch defaults to off, so a null result cannot
-    /// turn a failure into a value.
+    /// the value from <see cref="DefaultValueProvider"/>. The switch defaults to off, so a null
+    /// result cannot turn a failure into a value. Native AOT uses the typed factories the stunt
+    /// already registers.
     /// </para>
     /// <para>
     /// Behaviors added before this one sit outside the translated call. Exceptions they throw
@@ -29,6 +29,8 @@ namespace Stunts
     /// </remarks>
     public sealed class ExceptionMappingBehavior : IStuntBehavior
     {
+        static readonly DefaultValueProvider defaults = new();
+
         readonly Func<Exception, Exception?> map;
         readonly bool swallow;
 
@@ -38,11 +40,11 @@ namespace Stunts
         /// <param name="map">
         /// Translates the failure. Return <see langword="null"/> to leave the exception unchanged,
         /// or another instance to replace it. When <paramref name="swallow"/> is <see langword="true"/>,
-        /// <see langword="null"/> completes the call with the member's default value.
+        /// <see langword="null"/> completes the call with the <see cref="DefaultValueProvider"/> value.
         /// </param>
         /// <param name="swallow">
         /// When <see langword="true"/>, a <see langword="null"/> map result turns the failure into
-        /// the default value. Defaults to <see langword="false"/>.
+        /// the <see cref="DefaultValueProvider"/> value. Defaults to <see langword="false"/>.
         /// </param>
         /// <exception cref="ArgumentNullException"><paramref name="map"/> is <see langword="null"/>.</exception>
         public ExceptionMappingBehavior(Func<Exception, Exception?> map, bool swallow = false)
@@ -81,10 +83,7 @@ namespace Stunts
         static object? Default(IMethodInvocation invocation)
         {
             var type = ResultType(invocation);
-            if (type == null || !type.IsValueType || Nullable.GetUnderlyingType(type) != null)
-                return null;
-
-            return CreateDefault(type);
+            return type == null ? null : defaults.GetDefault(type);
         }
 
         static Type? ResultType(IMethodInvocation invocation)
@@ -100,9 +99,5 @@ namespace Stunts
 
             return awaitable.GenericTypeArguments[0];
         }
-
-        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Swallowing constructs the default instance of the member result type.")]
-        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Swallowing constructs the default instance of the member result type.")]
-        static object? CreateDefault(Type type) => Activator.CreateInstance(type);
     }
 }
