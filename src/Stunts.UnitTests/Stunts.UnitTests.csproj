@@ -65,6 +65,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Stunts\Stunts.csproj" />
     <ProjectReference Include="..\Stunts.Extensions\Stunts.Extensions.csproj" />
+    <ProjectReference Include="..\Stunts.Extensions.Generator\Stunts.Extensions.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
     <ProjectReference Include="..\Stunts.CodeAnalysis\Stunts.CodeAnalysis.csproj" />
     <ProjectReference Include="..\Stunts.CodeFixes\Stunts.CodeFixes.csproj" />
     <ProjectReference Include="..\Stunts.DynamicProxy\Stunts.DynamicProxy.csproj" />

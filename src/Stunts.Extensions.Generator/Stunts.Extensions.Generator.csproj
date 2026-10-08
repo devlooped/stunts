@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <!-- Shipped inside Stunts.Extensions, next to the behavior that reads the registry. -->
+    <PackFolder>analyzers\dotnet\cs</PackFolder>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <Description>Source generator that registers AOT-safe data annotation validation for Stunts.</Description>
+    <!-- Diagnostic text is the message. The analyzer host localizes nothing else. -->
+    <NoWarn>$(NoWarn);RS2008</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" VersionOverride="5.0.0" Pack="false" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

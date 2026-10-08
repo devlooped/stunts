@@ -118,6 +118,38 @@ The scenario at `src/Stunts.UnitTests/Scenarios/StuntBuilder.cs` covers all of t
 the real source generator (it uses the namespace `Stunts.Scenarios.Builders` because a
 `StuntBuilder` namespace segment would shadow the type).
 
+## Data annotations
+
+`DataAnnotationsBehavior` (`src/Stunts.Extensions`) rejects a call when a built-in
+`System.ComponentModel.DataAnnotations` validation attribute fails. Property attributes run on
+the setter. Method and constructor attributes run on the annotated parameters. Getters are not
+checked. The first failure is a `ValidationException`, and the rest of the pipeline does not run.
+
+The behavior does not reflect over attributes. `Stunts.Extensions.Generator` emits a module
+initializer that registers each interceptable member in `DataAnnotationsRegistry`, keyed by the
+declaring type, the metadata name (`set_Email`, `Save`, `.ctor`), and `DataAnnotationsSignature`.
+At the call, the behavior walks the stunt's base types and interfaces and formats the live
+`MethodBase` with that same signature. Generic method parameters stay `!!n` so one registration
+covers every closure. Generic declaring types are registered for each closed construction a
+`[StuntGenerator]` call, `[assembly: Stunt<...>]`, a `[Validated]` factory, or
+`[assembly: Validate<T>]` names. `[Validated]` is the extension point for a library whose
+factory is not a stunt generator: the call's type arguments and return type are registered,
+and a `[Validated]` wrapper substitutes its type arguments through factories it calls, up to
+eight levels. Non-generic types declared in the compilation are registered even when no
+factory call mentions them.
+
+`DataAnnotationsValidator` is the AOT-safe implementation of the built-in attributes. The
+generator inlines constructor and named arguments as ordinary calls. `CompareAttribute` reads
+the other property through the stunt, which re-enters the pipeline. `CustomValidationAttribute`
+is a direct call to the named static method. A custom `ValidationAttribute` subclass is reported
+as `STX001` and is not enforced. `STX002` reports an attribute the generator could not bind.
+Length checks use `string` or `ICollection`, or a public `Count` property the generator can name.
+`RangeAttribute(Type, string, string)` is emitted only when the operand type has a static
+`TryParse`; `TypeConverter` bounds are not.
+
+`Scenarios/DataAnnotationsBehavior.cs` covers the behavior through the real generator.
+`DataAnnotationsValidatorTests` compares the validator with the framework attributes.
+
 ## Test usage pattern
 
 Tests create the reference, configure behaviors on it, and assign the stunt to an explicitly

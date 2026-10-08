@@ -17,6 +17,12 @@
     <PackageReference Include="ManualStunts" />
   </ItemGroup>
 
+  <!-- The data-annotations generator is not in the Stunts package. Reference it directly so Static measures it. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\Stunts.Extensions\Stunts.Extensions.csproj" />
+    <ProjectReference Include="..\..\Stunts.Extensions.Generator\Stunts.Extensions.Generator.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
+  </ItemGroup>
+
   <Import Project="Stunts.props" />
 
 </Project>
