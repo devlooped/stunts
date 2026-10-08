@@ -11,6 +11,7 @@ namespace Stunts.Processors
     /// attribute to all generated members, so that it's possible to distinguish user-authored 
     /// members in a partial class from the generated code.
     /// </summary>
+    [SyntaxOnlyProcessor]
     public class CSharpGenerated : ISyntaxProcessor
     {
         /// <summary>

@@ -7,6 +7,7 @@ namespace Stunts.Processors
     /// Adds the <c>auto-generated</c> file header that flags the 
     /// document as a generated one.
     /// </summary>
+    [SyntaxOnlyProcessor]
     public class CSharpFileHeader : ISyntaxProcessor
     {
         const string header = @"//------------------------------------------------------------------------------

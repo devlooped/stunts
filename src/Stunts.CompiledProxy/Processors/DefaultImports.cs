@@ -12,6 +12,7 @@ namespace Stunts.Processors
     /// <summary>
     /// Adds a set of default imports to a document.
     /// </summary>
+    [SyntaxOnlyProcessor]
     public class DefaultImports : ISyntaxProcessor
     {
         // These namespaces are used by the default stunt code and are always imported.

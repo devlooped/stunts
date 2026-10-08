@@ -10,6 +10,7 @@ namespace Stunts.Processors
     /// <summary>
     /// Adds the <see cref="IStunt"/> interface implementation.
     /// </summary>
+    [SyntaxOnlyProcessor]
     public class CSharpStunt : ISyntaxProcessor
     {
         /// <summary>
