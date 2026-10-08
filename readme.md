@@ -75,7 +75,7 @@ Some commonly used behaviors that are generally useful are provided in the libra
 
 * `RecordingBehavior`: simple behavior that keeps track of all invocations, for troubleshooting or reporting.
 
-* `ExceptionMappingBehavior`: translates an exception from the target. Return null from the map to leave the exception unchanged, or another instance to replace it. Pass `swallow: true` to turn a null result into the `DefaultValueProvider` value.
+* `ExceptionMappingBehavior`: translates an exception from the target. Return null from the map to leave the exception unchanged, or another instance to replace it. Pass `swallow: true` to turn a null result into the `DefaultValueProvider` value, and pass an existing provider to reuse custom defaults.
 
 ## Building Stunts
 

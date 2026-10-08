@@ -23,6 +23,7 @@ namespace Stunts.UnitTests
             ValueTaskFault_LeavesMethodReturnExceptionNull();
             SwallowOff_NullMapCannotTurnAFailureIntoAValue();
             SwallowOn_NullMapReturnsTheDefault();
+            SwallowOn_UsesTheSuppliedDefaultProvider();
             SwallowOn_FaultedTaskReturnsTheDefault();
             SwallowOn_MappedExceptionStillFails();
             ReturnedException_IsTranslated();
@@ -123,6 +124,17 @@ namespace Stunts.UnitTests
             Assert.Equal(0, store.Length());
             Assert.Empty(store.Items());
             store.Run();
+        }
+
+        public void SwallowOn_UsesTheSuppliedDefaultProvider()
+        {
+            var defaults = new DefaultValueProvider();
+            defaults.Register<int>(() => 4);
+            var store = Create(new ExceptionMappingBehavior(static _ => null, swallow: true, defaults: defaults));
+            store.Failure = new IOException("disk");
+
+            Assert.Equal(4, store.Length());
+            Assert.Equal(4, store.CountAsync().GetAwaiter().GetResult());
         }
 
         public void SwallowOn_FaultedTaskReturnsTheDefault()

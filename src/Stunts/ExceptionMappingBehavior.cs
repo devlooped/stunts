@@ -19,8 +19,9 @@ namespace Stunts
     /// <para>
     /// Pass <c>swallow: true</c> to let a <see langword="null"/> result complete the call with
     /// the value from <see cref="DefaultValueProvider"/>. The switch defaults to off, so a null
-    /// result cannot turn a failure into a value. Native AOT uses the typed factories the stunt
-    /// already registers.
+    /// result cannot turn a failure into a value. Pass the provider already used to register
+    /// custom defaults, or omit it to use a new one. Native AOT uses the typed factories the
+    /// stunt already registers.
     /// </para>
     /// <para>
     /// Behaviors added before this one sit outside the translated call. Exceptions they throw
@@ -29,10 +30,9 @@ namespace Stunts
     /// </remarks>
     public sealed class ExceptionMappingBehavior : IStuntBehavior
     {
-        static readonly DefaultValueProvider defaults = new();
-
         readonly Func<Exception, Exception?> map;
         readonly bool swallow;
+        readonly DefaultValueProvider defaults;
 
         /// <summary>
         /// Initializes the behavior.
@@ -46,11 +46,16 @@ namespace Stunts
         /// When <see langword="true"/>, a <see langword="null"/> map result turns the failure into
         /// the <see cref="DefaultValueProvider"/> value. Defaults to <see langword="false"/>.
         /// </param>
+        /// <param name="defaults">
+        /// Supplies the swallowed value. Pass the provider that already has custom defaults
+        /// registered. <see langword="null"/> uses a new <see cref="DefaultValueProvider"/>.
+        /// </param>
         /// <exception cref="ArgumentNullException"><paramref name="map"/> is <see langword="null"/>.</exception>
-        public ExceptionMappingBehavior(Func<Exception, Exception?> map, bool swallow = false)
+        public ExceptionMappingBehavior(Func<Exception, Exception?> map, bool swallow = false, DefaultValueProvider? defaults = null)
         {
             this.map = map ?? throw new ArgumentNullException(nameof(map));
             this.swallow = swallow;
+            this.defaults = defaults ?? new DefaultValueProvider();
         }
 
         /// <summary>Translates every invocation the pipeline dispatches.</summary>
@@ -80,7 +85,7 @@ namespace Stunts
                 return new ValueTask<ProceedOutcome>(ProceedOutcome.FromException(translated, outcome.Elapsed));
             });
 
-        static object? Default(IMethodInvocation invocation)
+        object? Default(IMethodInvocation invocation)
         {
             var type = ResultType(invocation);
             return type == null ? null : defaults.GetDefault(type);
