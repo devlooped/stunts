@@ -82,8 +82,8 @@ namespace Stunts.Processors
                                     IdentifierName("pipeline"),
                                     IdentifierName("Behaviors"))))
                                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken))
-                        .NormalizeWhitespace()
-                        .WithTrailingTrivia(CarriageReturnLineFeed, CarriageReturnLineFeed);
+                        .WithLeadingTrivia(CarriageReturnLineFeed, Whitespace("        "))
+                        .WithTrailingTrivia(CarriageReturnLineFeed);
 
                     if (node.Members.Count > 0)
                         node = (TDeclaration)node.InsertNodesAfter(node.Members.First(), new[] { behaviors });
@@ -107,9 +107,10 @@ namespace Stunts.Processors
                                             nameof(BehaviorPipelineFactory.Default)),
                                         GenericName(
                                             nameof(IBehaviorPipelineFactory.CreatePipeline),
-                                            self))))
-                            .NormalizeWhitespace()
-                        ).WithModifiers(TokenList(Token(SyntaxKind.ReadOnlyKeyword)))
+                                            self)))))
+                        .WithModifiers(TokenList(Token(SyntaxKind.ReadOnlyKeyword)))
+                        .WithLeadingTrivia(CarriageReturnLineFeed, Whitespace("        "))
+                        .WithTrailingTrivia(CarriageReturnLineFeed)
                     });
                 }
 

@@ -125,7 +125,7 @@ namespace Stunts.Processors
             var syntax = (ArrayTypeSyntax)ParseTypeName(array.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
             var rank = syntax.RankSpecifiers[0].WithSizes(SeparatedList<ExpressionSyntax>(
                 Enumerable.Repeat<ExpressionSyntax>(LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)), array.Rank)));
-            return ArrayCreationExpression(syntax.WithRankSpecifiers(syntax.RankSpecifiers.Replace(syntax.RankSpecifiers[0], rank))).NormalizeWhitespace().ToFullString();
+            return SyntaxText.EmitExpression(ArrayCreationExpression(syntax.WithRankSpecifiers(syntax.RankSpecifiers.Replace(syntax.RankSpecifiers[0], rank))));
         }
 
         sealed class RootedMetadata : CSharpSyntaxRewriter
