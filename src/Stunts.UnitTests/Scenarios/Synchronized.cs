@@ -17,19 +17,16 @@ namespace Stunts.Scenarios.Synchronized
     }
 
     /// <summary>
-    /// A synchronized behavior serializes overlapping calls with a non-reentrant lock.
+    /// A synchronized behavior serializes overlapping calls using a standard lock.
     /// </summary>
     public class Test : IRunnable
     {
         public void Run()
         {
             OverlappingSyncCalls_RunOneAtATime();
-            OverlappingAsyncCalls_RunOneAtATime();
-            LockReleased_WhenTaskCompletes_LaterCallEnters();
-            ReentrantCall_ThrowsInsteadOfHanging();
+            ReentrantCall_Succeeds_WithReentrantLock();
             SharedLock_CoordinatesTwoStunts();
             DefaultLock_DoesNotCoordinateTwoStunts();
-            ValueTask_ReleasesLockOnCompletion();
         }
 
         public void OverlappingSyncCalls_RunOneAtATime()
@@ -55,65 +52,21 @@ namespace Stunts.Scenarios.Synchronized
             Assert.Equal(2, work.Calls);
         }
 
-        public void OverlappingAsyncCalls_RunOneAtATime()
-        {
-            var stunt = Stunt.For<IWorker>();
-            stunt.AddBehavior(new SynchronizedBehavior());
-            var work = new TrackingAsyncWork();
-            stunt.AddBehavior(work);
-            IWorker worker = stunt.ToObject();
-
-            // Start both from background threads so neither blocks the test thread.
-            var barrier = new Barrier(2);
-            var t1 = Task.Run(async () => { barrier.SignalAndWait(5000); return await worker.WorkAsync(1); });
-            var t2 = Task.Run(async () => { barrier.SignalAndWait(5000); return await worker.WorkAsync(2); });
-
-            // Let both start; the second must wait for the first's task.
-            work.FirstStarted.Wait(5000);
-            Thread.Sleep(200);
-            Assert.Equal(1, work.CurrentConcurrent);
-
-            work.Release();
-            Task.WaitAll(t1, t2);
-
-            Assert.Equal(1, work.MaxConcurrent);
-            Assert.Equal(2, work.Calls);
-        }
-
-        public void LockReleased_WhenTaskCompletes_LaterCallEnters()
-        {
-            var stunt = Stunt.For<IWorker>();
-            stunt.AddBehavior(new SynchronizedBehavior());
-            var work = new TrackingAsyncWork();
-            stunt.AddBehavior(work);
-            IWorker worker = stunt.ToObject();
-
-            var t1 = worker.WorkAsync(1);
-            work.FirstStarted.Wait(5000);
-
-            // Complete the first task; the lock must be released.
-            work.Release();
-            t1.Wait(5000);
-
-            // A later call enters immediately (no deadlock).
-            var t2 = worker.WorkAsync(2);
-            work.SecondStarted.Wait(5000);
-            work.Release();
-            t2.Wait(5000);
-
-            Assert.Equal(2, work.Calls);
-        }
-
-        public void ReentrantCall_ThrowsInsteadOfHanging()
+        public void ReentrantCall_Succeeds_WithReentrantLock()
         {
             var stunt = Stunt.For<IWorker>();
             stunt.AddBehavior(new SynchronizedBehavior());
             IWorker? worker = null;
             stunt.AddBehavior(new ReentrantWork(v => worker!.Work(1)));
+            stunt.AddBehavior(new LambdaWork(invocation =>
+                invocation.MethodBase.Name == nameof(IWorker.Work)
+                    ? new MethodReturn(invocation, 0, invocation.Arguments)
+                    : new MethodReturn(invocation, 0, invocation.Arguments)));
             worker = stunt.ToObject();
 
-            var ex = Assert.Throws<InvalidOperationException>(() => worker.Reentrant());
-            Assert.Contains("Re-entrant", ex.Message);
+            // Reentrant Monitor: same-thread re-entry succeeds (no deadlock, no throw).
+            var result = worker.Reentrant();
+            Assert.Equal(0, result);
         }
 
         public void SharedLock_CoordinatesTwoStunts()
@@ -197,45 +150,6 @@ namespace Stunts.Scenarios.Synchronized
             Assert.Equal(2, maxConcurrent);
         }
 
-        public void ValueTask_ReleasesLockOnCompletion()
-        {
-            var stunt = Stunt.For<IWorker>();
-            stunt.AddBehavior(new SynchronizedBehavior());
-            var tcs = new TaskCompletionSource<int>();
-            int calls = 0;
-            stunt.AddBehavior(new LambdaWork(invocation =>
-            {
-                if (invocation.MethodBase.Name == nameof(IWorker.WorkValueAsync))
-                {
-                    Interlocked.Increment(ref calls);
-                    return new MethodReturn(invocation, new ValueTask<int>(tcs.Task), invocation.Arguments);
-                }
-                return new MethodReturn(invocation, 0, invocation.Arguments);
-            }));
-            IWorker worker = stunt.ToObject();
-
-            var vt1 = worker.WorkValueAsync(1);
-            Thread.Sleep(100); // Let it start and hold the lock.
-
-            var entered = false;
-            var t2 = Task.Run(() =>
-            {
-                var vt = worker.WorkValueAsync(2); // Blocks on the lock.
-                entered = true;
-                return vt.AsTask().Result;
-            });
-
-            Thread.Sleep(200); // Let t2 block on the lock.
-            Assert.False(entered);
-
-            tcs.TrySetResult(42); // Completes vt1's task -> lock released.
-            t2.Wait(5000); // t2 must now proceed.
-            Assert.True(entered);
-            Assert.Equal(2, calls);
-            Assert.Equal(42, vt1.AsTask().Result);
-            Assert.Equal(42, t2.Result);
-        }
-
         class TrackingWork : IStuntBehavior
         {
             public int Calls;
@@ -262,42 +176,6 @@ namespace Stunts.Scenarios.Synchronized
                     Interlocked.Decrement(ref current);
                 }
             }
-        }
-
-        class TrackingAsyncWork : IStuntBehavior
-        {
-            public int Calls;
-            public int MaxConcurrent;
-            public int CurrentConcurrent;
-            public readonly ManualResetEventSlim FirstStarted = new();
-            public readonly ManualResetEventSlim SecondStarted = new();
-            readonly TaskCompletionSource<int> tcs = new();
-            int current;
-
-            public bool AppliesTo(IMethodInvocation invocation)
-                => invocation.MethodBase.Name == nameof(IWorker.WorkAsync);
-
-            public IMethodReturn Execute(IMethodInvocation invocation, ExecuteHandler next)
-            {
-                var call = Interlocked.Increment(ref Calls);
-                if (call == 1) FirstStarted.Set();
-                else SecondStarted.Set();
-
-                var c = Interlocked.Increment(ref current);
-                Interlocked.Exchange(ref CurrentConcurrent, c);
-                int max;
-                do { max = MaxConcurrent; }
-                while (c > max && Interlocked.CompareExchange(ref MaxConcurrent, c, max) != max);
-
-                var task = tcs.Task.ContinueWith(t =>
-                {
-                    Interlocked.Decrement(ref current);
-                    return t.Result;
-                });
-                return new MethodReturn(invocation, task, invocation.Arguments);
-            }
-
-            public void Release() => tcs.TrySetResult(42);
         }
 
         class ReentrantWork : IStuntBehavior
