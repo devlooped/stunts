@@ -73,12 +73,14 @@ namespace Stunts.UnitTests
 
             Assert.False(pending.IsCompleted);
             Assert.Empty(observed.Samples);
+            var started = Stopwatch.GetTimestamp();
             await Task.Delay(50);
+            var waited = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
             gate.SetResult(7);
 
             Assert.Equal(7, await pending);
             var sample = Assert.Single(observed.Samples);
-            Assert.True(sample.Value >= 50);
+            Assert.True(sample.Value >= waited - 15, $"duration {sample.Value} ms, waited {waited} ms");
             Assert.Equal(nameof(IObservabilityOrders.TrackAsync), Assert.Single(observed.Activities).OperationName);
         }
 
