@@ -69,6 +69,33 @@ Check(!defaults.Deregister(typeof(Task<>)), "Repeated deregistration");
 var fallback = Stunt.For<ISample, IDisposable>().AddBehavior(new DefaultValueBehavior(new CustomDefaults())).ToObject();
 Check(await fallback.Load() == 11, "Virtual default provider fallback");
 
+var swallowed = Stunt.For<ISample, IDisposable>()
+    .AddBehavior(new ExceptionMappingBehavior(static _ => null, swallow: true))
+    .ToObject();
+Check(swallowed.Value().Value == 13, "Swallowed struct uses the generated default");
+Check(swallowed.Grid().Length == 0, "Swallowed array uses the generated default");
+Check(await swallowed.Load() == 0, "Swallowed task uses the generated default");
+
+var supplied = new DefaultValueProvider();
+supplied.Register<int>(() => 4);
+var mappedDefaults = Stunt.For<ISample, IDisposable>()
+    .AddBehavior(new ExceptionMappingBehavior(static _ => null, swallow: true, supplied))
+    .ToObject();
+Check(mappedDefaults.Add(1, 2) == 4, "Swallowed call uses the supplied default provider");
+
+try
+{
+    Stunt.For<ISample, IDisposable>()
+        .AddBehavior(new ExceptionMappingBehavior(exception => new InvalidOperationException("mapped", exception)))
+        .ToObject()
+        .Add(1, 2);
+    throw new InvalidOperationException("Mapped exception was swallowed");
+}
+catch (InvalidOperationException error) when (error.Message == "mapped")
+{
+    Check(error.InnerException is NotImplementedException, "Mapped exception keeps the original inner");
+}
+
 var noDefaults = new DefaultValueProvider(false);
 Check(noDefaults.GetDefault<(int, string[])>().Item2 == null, "Disabled default factories");
 
