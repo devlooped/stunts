@@ -80,6 +80,27 @@ namespace Stunts.UnitTests
     public class StuntGeneratorTests
     {
         [Fact]
+        public void BindsExplicitGeneratorCallsAmongUnrelatedGenericCalls()
+        {
+            var noise = string.Join(Environment.NewLine, Enumerable.Range(0, 40).Select(index =>
+                $"static int Noise{index}<T>(T value) => 0; static int Use{index}() => Noise{index}<int>(1) + items.Select<int, int>(x => x).Count();"));
+            var (diagnostics, compilation) = GetGeneratedOutput($$"""
+                using System;
+                using System.Linq;
+                using Stunts;
+                public static class Test
+                {
+                    static int[] items = new int[0];
+                    {{noise}}
+                    public static IDisposable Create() => Stunt.Of<IDisposable>();
+                }
+                """);
+
+            Assert.Empty(diagnostics);
+            Assert.Contains(compilation.SyntaxTrees, tree => tree.ToString().Contains("CompiledStuntFactory.Register("));
+        }
+
+        [Fact]
         public void RegistersClosedStunts()
         {
             var (diagnostics, compilation) = GetGeneratedOutput(@"

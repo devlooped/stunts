@@ -500,8 +500,8 @@ namespace Stunts
                     return model;
                 }
 
-                // Invocations without explicit type arguments are only bound when they may 
-                // be inferred invocations of a known generator method.
+                // Every collected invocation carries its method name. Only names of known
+                // generator methods are bound, whether or not the call has explicit type arguments.
                 var names = new HashSet<string>(methods.Select(method => method switch
                 {
                     MethodDeclarationSyntax declaration => declaration.Identifier.ValueText,
@@ -592,12 +592,13 @@ namespace Stunts
                 switch (node)
                 {
                     case InvocationExpressionSyntax invocation:
-                        // Class.Method<T, ...>() and Method<T, ...>() are always considered, 
-                        // Class.Method(...) and Method(...) only if the name is a generator's.
+                        // Class.Method<T>() and Method<T>() keep the method name, same as calls
+                        // without explicit type arguments. GetStunts binds the call only when
+                        // that name belongs to a generator method.
                         var name = invocation.Expression switch
                         {
-                            MemberAccessExpressionSyntax { Name: GenericNameSyntax } => null,
-                            GenericNameSyntax => null,
+                            MemberAccessExpressionSyntax { Name: GenericNameSyntax generic } => generic.Identifier.ValueText,
+                            GenericNameSyntax generic => generic.Identifier.ValueText,
                             MemberAccessExpressionSyntax { Name: IdentifierNameSyntax identifier } => identifier.Identifier.ValueText,
                             IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
                             _ => "",
