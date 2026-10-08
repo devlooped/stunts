@@ -1247,12 +1247,7 @@ namespace Stunts.Processors
                     Argument(LiteralExpression("Cannot forward a protected member."))));
 
             static ExpressionSyntax Retarget(ExpressionSyntax call, ExpressionSyntax receiver)
-            {
-                // ref/out/in keywords are elastic trivia until the tree is normalized. ToFullString
-                // drops that trivia, so "ref _value" would be parsed as the identifier ref_value.
-                var clone = (ExpressionSyntax)ParseExpression(call.NormalizeWhitespace().ToFullString());
-                return ReplaceReceiver(clone, receiver);
-            }
+                => ReplaceReceiver(call, receiver);
 
             static ExpressionSyntax ReplaceReceiver(ExpressionSyntax expression, ExpressionSyntax receiver)
             {
