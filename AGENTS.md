@@ -118,6 +118,25 @@ The scenario at `src/Stunts.UnitTests/Scenarios/StuntBuilder.cs` covers all of t
 the real source generator (it uses the namespace `Stunts.Scenarios.Builders` because a
 `StuntBuilder` namespace segment would shadow the type).
 
+## Data annotations
+
+`DataAnnotationsBehavior` (`src/Stunts.Extensions`) rejects a call when a built-in
+`System.ComponentModel.DataAnnotations` validation attribute fails. The checks, the registry,
+and the source generator come from `NativeValidation`. Property
+attributes run on the setter. Method and constructor attributes run on the annotated parameters.
+Getters are not checked. The first failure is a `ValidationException`, and the rest of the
+pipeline does not run.
+
+`StuntGeneratorAttribute` derives from `ValidationAttribute`, so the generator treats a generic
+`[StuntGenerator]` method as a validated factory and registers the closed types that call names.
+A factory that is not a stunt generator uses
+`Devlooped.DataAnnotations.ValidatedAttribute`. `[assembly: Validate<T>]` registers a closed
+type no factory call names. `Stunts.Extensions.targets` adds `$(NativeValidatorAnalyzer)` for consumers,
+because the annotated types live in the consuming compilation.
+
+`CompareAttribute` reads the other property from the instance, which re-enters the pipeline.
+`Scenarios/DataAnnotationsBehavior.cs` covers the behavior through the package generator.
+
 ## Test usage pattern
 
 Tests create the reference, configure behaviors on it, and assign the stunt to an explicitly

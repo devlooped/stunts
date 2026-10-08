@@ -17,6 +17,12 @@
     <PackageReference Include="ManualStunts" />
   </ItemGroup>
 
+  <!-- Runs the data-annotation generator over this large compilation. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\Stunts.Extensions\Stunts.Extensions.csproj" />
+    <PackageReference Include="NativeValidation" />
+  </ItemGroup>
+
   <Import Project="Stunts.props" />
 
 </Project>

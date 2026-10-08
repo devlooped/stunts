@@ -7,6 +7,7 @@
 
   <ItemGroup Label="Core">
     <PackageVersion Include="PolySharp" Version="1.16.0" />
+    <PackageVersion Include="System.ComponentModel.Annotations" Version="5.0.0" />
     <PackageVersion Include="ThisAssembly" Version="2.1.6" />
     <PackageVersion Include="NuGetizer" Version="1.5.1" />
     <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
@@ -39,6 +40,7 @@
 
   <ItemGroup Label="Extensions">
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
+    <PackageVersion Include="NativeValidation" Version="0.1.0" />
   </ItemGroup>
 
   <ItemGroup Label="Tests">

@@ -89,6 +89,14 @@ namespace Stunts.UnitTests
                         Path.GetFileName(file))
                 });
 
+        static ISourceGenerator NativeValidationGenerator()
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "NativeValidation.Generator.dll");
+            var assembly = Assembly.LoadFrom(path);
+            var type = assembly.GetType("Devlooped.DataAnnotations.NativeValidationGenerator", throwOnError: true);
+            return ((IIncrementalGenerator)Activator.CreateInstance(type)).AsSourceGenerator();
+        }
+
         static Scenarios()
         {
             AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
@@ -179,7 +187,7 @@ namespace Stunts.UnitTests
                 return (before, compilation);
 
             GeneratorDriver driver = CSharpGeneratorDriver.Create(
-                new ISourceGenerator[] { new StuntGenerator(), new SignatureRefGenerator().AsSourceGenerator() },
+                new ISourceGenerator[] { new StuntGenerator(), new SignatureRefGenerator().AsSourceGenerator(), NativeValidationGenerator() },
                 parseOptions: parseOptions,
                 optionsProvider: EditorConfigOptionsProvider.Create(Directory.EnumerateFiles(
                     Path.Combine(ThisAssembly.Project.MSBuildProjectDirectory, ThisAssembly.Project.IntermediateOutputPath),
