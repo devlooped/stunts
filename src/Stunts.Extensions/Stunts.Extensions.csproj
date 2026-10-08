@@ -4,15 +4,24 @@
     <TargetFramework>net10.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <IsPackable>true</IsPackable>
-    <Description>Synchronization, logging, metrics, and tracing behaviors for Stunts.</Description>
+    <Description>Synchronization, logging, metrics, tracing, and data annotation behaviors for Stunts.</Description>
+    <IsAotCompatible>true</IsAotCompatible>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <!-- ThisAssembly's resource generator reads Assembly.Location, which single-file publishing leaves empty. -->
+    <NoWarn>$(NoWarn);IL3000</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="NativeValidation" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Stunts\Stunts.csproj" Pack="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Stunts.Extensions.targets" PackFolder="buildTransitive" />
   </ItemGroup>
 
 </Project>

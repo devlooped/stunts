@@ -1,0 +1,9 @@
+<Project>
+
+  <!-- NativeValidation sets NativeValidatorAnalyzer. Analyzers do not flow through the
+       package dependency, and the annotated types live in the consuming compilation. -->
+  <ItemGroup>
+    <Analyzer Include="$(NativeValidatorAnalyzer)" Condition="Exists('$(NativeValidatorAnalyzer)')" />
+  </ItemGroup>
+
+</Project>

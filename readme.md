@@ -77,6 +77,51 @@ Some commonly used behaviors that are generally useful are provided in the libra
 
 * `ExceptionMappingBehavior`: translates an exception from the target. Return null from the map to leave the exception unchanged, or another instance to replace it. Pass `swallow: true` to turn a null result into the `DefaultValueProvider` value, and pass an existing provider to reuse custom defaults.
 
+<!-- #annotations -->
+## Data annotations
+
+The `Stunts.Extensions` package adds `DataAnnotationsBehavior`. It rejects a call when a built-in
+`System.ComponentModel.DataAnnotations` attribute fails. The checks come from
+[NativeValidation](https://www.nuget.org/packages/NativeValidation):
+a source generator turns each attribute into a direct call, so the behavior does not reflect and
+stays valid for Native AOT.
+
+```csharp
+var stunt = Stunt.For<IAccount>();
+stunt.AddBehavior(new DataAnnotationsBehavior());
+IAccount account = stunt.ToObject();
+
+account.Email = "ada@example.com";
+```
+
+```csharp
+public interface IAccount
+{
+    [Required]
+    [EmailAddress]
+    [Display(Name = "Email address")]
+    string Email { get; set; }
+
+    void Rename([Required, StringLength(8, MinimumLength = 2)] string name, [Range(1, 10)] int attempt);
+}
+```
+
+Property attributes run on the setter. Method and constructor attributes run on the annotated
+parameters. Getters are not checked. The first failure is a `ValidationException`, and the rest
+of the pipeline does not run. Add this behavior last to place the check immediately before the
+target. Behaviors added before it still see the rejection.
+
+`StuntGeneratorAttribute` derives from `ValidationAttribute`, so a generic `[StuntGenerator]` method
+registers the closed types named at its call sites. A factory that is not a stunt generator uses
+`[Validated]` from `Devlooped.DataAnnotations`. A closed type with no factory call uses
+`[assembly: Validate<T>]`.
+
+`CompareAttribute` reads the other property from the instance. On a stunt that call re-enters
+the pipeline, so a `SynchronizedBehavior` wrapped outside this one throws on the re-entry.
+`CustomValidationAttribute` is a direct call to the named static method. Any other
+`ValidationAttribute` subclass warns as `NVA001` and is not enforced.
+<!-- #annotations -->
+
 ## Building Stunts
 
 When you need the same behaviors on multiple stunts, `Stunt.Builder()` returns a `StuntBuilder` 

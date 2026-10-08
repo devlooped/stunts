@@ -60,6 +60,7 @@
     <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" />
     <PackageReference Include="Microsoft.Bcl.HashCode" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="NativeValidation" GeneratePathProperty="true" />
   </ItemGroup>
   
   <ItemGroup>
@@ -112,5 +113,12 @@
   <Target Name="WriteLibs" AfterTargets="ResolvePackageAssets">
     <WriteLinesToFile Lines="@(RuntimeCopyLocalItems -> '%(FullPath)')" File="$(OutputPath)lib.txt" Overwrite="true" WriteOnlyWhenDifferent="true" />
   </Target>
+
+  <ItemGroup>
+    <None Include="$(PkgNativeValidation)\analyzers\dotnet\cs\NativeValidation.Generator.dll"
+          Link="NativeValidation.Generator.dll"
+          CopyToOutputDirectory="PreserveNewest"
+          Visible="false" />
+  </ItemGroup>
 
 </Project>
