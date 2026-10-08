@@ -64,6 +64,13 @@ namespace Stunts
         internal HashSet<INamedTypeSymbol> DefaultImplementations { get; init; } = new(SymbolEqualityComparer.Default);
 
         /// <summary>
+        /// Treeless copy of <see cref="Compilation"/> used to bind a generated stunt whose
+        /// bases all come from referenced assemblies. Rebuilding the user compilation's
+        /// declaration state for every stunt dominates generation.
+        /// </summary>
+        internal Compilation? MetadataScaffold { get; init; }
+
+        /// <summary>
         /// Get the <see cref="ParseOptions"/> that will be used to parse any added sources.
         /// </summary>
         public ParseOptions ParseOptions { get; }

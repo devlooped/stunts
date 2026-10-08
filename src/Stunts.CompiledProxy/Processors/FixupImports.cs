@@ -8,6 +8,7 @@ namespace Stunts.Processors
     /// <summary>
     /// Sorts imports.
     /// </summary>
+    [SyntaxOnlyProcessor]
     public class FixupImports : ISyntaxProcessor
     {
         /// <summary>

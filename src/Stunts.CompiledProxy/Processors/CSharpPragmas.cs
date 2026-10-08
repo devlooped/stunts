@@ -9,6 +9,7 @@ namespace Stunts.Processors
     /// Disables all nullable warnings since project may or may not 
     /// have nullable annotations enabled.
     /// </summary>
+    [SyntaxOnlyProcessor]
     public class CSharpPragmas : ISyntaxProcessor
     {
         /// <summary>
