@@ -137,6 +137,20 @@ because the annotated types live in the consuming compilation.
 `CompareAttribute` reads the other property from the instance, which re-enters the pipeline.
 `Scenarios/DataAnnotationsBehavior.cs` covers the behavior through the package generator.
 
+## Guards
+
+`GuardBehavior` (`src/Stunts.Extensions`) takes `Func<IMethodInvocation, Exception?>`. The predicate
+does not receive `next`. Null calls `next`. Any other result fails the invocation, and `next`
+is not called.
+
+A synchronous member returns that exception through `CreateExceptionReturn`, so the stunt throws
+it on the caller thread. A `Task` or `ValueTask` member returns a faulted awaitable of the same
+type before the target runs, including when the predicate returns `OperationCanceledException`.
+The fault is built by `AsyncRegistry` from the adapters the source generator registers, which
+keeps the behavior valid for Native AOT. The constructor is an invocation too, and a behavior
+added before `ToObject()` sees it. `GuardBehaviorTests` covers the pipeline return shape.
+`Scenarios/GuardBehavior.cs` covers the caller through the real generator.
+
 ## Test usage pattern
 
 Tests create the reference, configure behaviors on it, and assign the stunt to an explicitly

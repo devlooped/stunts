@@ -61,6 +61,20 @@ namespace Stunts
         internal static object FromOutcome(Type awaitable, ProceedOutcome outcome)
             => Start(awaitable, Task.FromResult((outcome.Value, outcome.Exception)));
 
+        /// <summary>
+        /// Returns a faulted <paramref name="awaitable"/> carrying <paramref name="exception"/>.
+        /// <see cref="OperationCanceledException"/> stays faulted with that instance.
+        /// </summary>
+        internal static object Fault(Type awaitable, Exception exception)
+        {
+            if (awaitable == null)
+                throw new ArgumentNullException(nameof(awaitable));
+            if (exception == null)
+                throw new ArgumentNullException(nameof(exception));
+
+            return Require(awaitable).Fault(exception);
+        }
+
         [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Reflection runs only when dynamic code is supported.")]
         [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Reflection runs only when dynamic code is supported.")]
         static Adapter Require(Type awaitable)
@@ -101,26 +115,37 @@ namespace Stunts
         {
             readonly Func<object, ValueTask<(object? Value, Exception? Error)>> unwrap;
             readonly Func<Task<(object? Value, Exception? Error)>, object> start;
+            readonly Func<Exception, object> fault;
 
             Adapter(
                 Func<object, ValueTask<(object? Value, Exception? Error)>> unwrap,
-                Func<Task<(object? Value, Exception? Error)>, object> start)
+                Func<Task<(object? Value, Exception? Error)>, object> start,
+                Func<Exception, object> fault)
             {
                 this.unwrap = unwrap;
                 this.start = start;
+                this.fault = fault;
             }
 
             public ValueTask<(object? Value, Exception? Error)> Unwrap(object instance) => unwrap(instance);
 
             public object Start(Task<(object? Value, Exception? Error)> pending) => start(pending);
 
-            public static Adapter PlainTask() => new(UnwrapTask, StartPlainTask);
+            public object Fault(Exception exception) => fault(exception);
 
-            public static Adapter PlainValueTask() => new(UnwrapValueTask, pending => new ValueTask((Task)StartPlainTask(pending)));
+            public static Adapter PlainTask() => new(UnwrapTask, StartPlainTask, static exception => Task.FromException(exception));
 
-            public static Adapter TaskOf<T>() => new(UnwrapTaskOf<T>, StartTask<T>);
+            public static Adapter PlainValueTask() => new(
+                UnwrapValueTask,
+                pending => new ValueTask((Task)StartPlainTask(pending)),
+                static exception => new ValueTask(Task.FromException(exception)));
 
-            public static Adapter ValueTaskOf<T>() => new(UnwrapValueTaskOf<T>, pending => new ValueTask<T>((Task<T>)StartTask<T>(pending)));
+            public static Adapter TaskOf<T>() => new(UnwrapTaskOf<T>, StartTask<T>, static exception => Task.FromException<T>(exception));
+
+            public static Adapter ValueTaskOf<T>() => new(
+                UnwrapValueTaskOf<T>,
+                pending => new ValueTask<T>((Task<T>)StartTask<T>(pending)),
+                static exception => new ValueTask<T>(Task.FromException<T>(exception)));
 
             static async ValueTask<(object? Value, Exception? Error)> UnwrapTask(object instance)
             {
