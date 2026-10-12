@@ -122,6 +122,36 @@ the pipeline, so a `SynchronizedBehavior` wrapped outside this one throws on the
 `ValidationAttribute` subclass warns as `NVA001` and is not enforced.
 <!-- #annotations -->
 
+<!-- #guards -->
+## Guards
+
+The `Stunts.Extensions` package adds `GuardBehavior`. A predicate over the invocation returns an
+exception to reject the call, or null to continue. The predicate does not call the rest of the
+pipeline. Use it for validation, null checks, and authorization.
+
+```csharp
+var stunt = Stunt.For<IOrders>();
+stunt.AddBehavior(new GuardBehavior(call =>
+    call.MethodBase.Name == nameof(IOrders.Track) && call.Arguments.GetValue(0) is null
+        ? new ArgumentNullException("sku")
+        : null));
+IOrders orders = stunt.ToObject();
+```
+
+```csharp
+public interface IOrders
+{
+    int Track(string sku);
+}
+```
+
+A synchronous member throws that exception on the caller thread. A `Task` or `ValueTask` member
+returns a faulted awaitable of the same type, and the rest of the pipeline does not run. Add this
+behavior last to place the check immediately before the target. Behaviors added before it still
+see the rejection. The constructor is an invocation too, so a behavior added before the stunt is
+materialized sees that call.
+<!-- #guards -->
+
 ## Building Stunts
 
 When you need the same behaviors on multiple stunts, `Stunt.Builder()` returns a `StuntBuilder` 
