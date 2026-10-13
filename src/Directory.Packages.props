@@ -40,7 +40,7 @@
 
   <ItemGroup Label="Extensions">
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
-    <PackageVersion Include="NativeValidation" Version="0.1.0" />
+    <PackageVersion Include="NativeValidation" Version="0.1.1" />
   </ItemGroup>
 
   <ItemGroup Label="Tests">
