@@ -25,7 +25,7 @@
 
   <ItemGroup Label="Targets">
     <PackageReference Include="Microsoft.ApplicationInsights" />
-    <PackageVersion Include="Microsoft.ApplicationInsights" Version="3.1.2" />
+    <PackageVersion Include="Microsoft.ApplicationInsights" Version="3.2.0" />
   </ItemGroup>
 
   <ItemGroup Label="net10 Targets" Condition="'$(TargetFramework)' == 'net10.0'">
