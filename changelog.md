@@ -1,5 +1,78 @@
 # Changelog
 
+## [v1.0.0-beta.4](https://github.com/devlooped/stunts/tree/v1.0.0-beta.4) (2026-10-16)
+
+[Full Changelog](https://github.com/devlooped/stunts/compare/v1.0.0-beta.3...v1.0.0-beta.4)
+
+:sparkles: Implemented enhancements:
+
+- Allow StuntBuilder to accept behavior factories for per-instance stateful behaviors [\#276](https://github.com/devlooped/stunts/issues/276)
+- Add a synchronized behavior [\#271](https://github.com/devlooped/stunts/issues/271)
+- Add property change notification behaviors [\#270](https://github.com/devlooped/stunts/issues/270)
+- Add an exception-mapping behavior [\#269](https://github.com/devlooped/stunts/issues/269)
+- Add a guard behavior for validation and authorization [\#268](https://github.com/devlooped/stunts/issues/268)
+- Add a Polly resilience behavior [\#266](https://github.com/devlooped/stunts/issues/266)
+- Add an observation behavior for logging, duration, and tracing [\#265](https://github.com/devlooped/stunts/issues/265)
+- Add a target-forwarding behavior, including a lazy target [\#264](https://github.com/devlooped/stunts/issues/264)
+- Add an async-aware Proceed extension for behaviors [\#263](https://github.com/devlooped/stunts/issues/263)
+- Support for default interface implementations [\#113](https://github.com/devlooped/stunts/issues/113)
+- Add a guard behavior for validation and authorization [\#291](https://github.com/devlooped/stunts/pull/291) (@kzu)
+- Add an AOT-safe data annotation behavior [\#290](https://github.com/devlooped/stunts/pull/290) (@kzu)
+- Speed up compile-time stunt generation [\#287](https://github.com/devlooped/stunts/pull/287) (@kzu)
+- Add an exception-mapping behavior [\#285](https://github.com/devlooped/stunts/pull/285) (@kzu)
+- Add a synchronized behavior that holds through async completion [\#284](https://github.com/devlooped/stunts/pull/284) (@kzu)
+- Add NotifyPropertyChangeBehavior [\#282](https://github.com/devlooped/stunts/pull/282) (@kzu)
+- Add AddBehavior\<TBehavior\> overload [\#281](https://github.com/devlooped/stunts/pull/281) (@kzu)
+- Add an observability behavior for logging, duration, and tracing [\#280](https://github.com/devlooped/stunts/pull/280) (@kzu)
+- Add a target-forwarding behavior, including a lazy target. [\#279](https://github.com/devlooped/stunts/pull/279) (@kzu)
+- Allow StuntBuilder to accept behavior factories and clone ICloneable behaviors [\#277](https://github.com/devlooped/stunts/pull/277) (@kzu)
+- Add an async-aware Proceed extension for behaviors. [\#273](https://github.com/devlooped/stunts/pull/273) (@kzu)
+- Name the non-array default argument [\#262](https://github.com/devlooped/stunts/pull/262) (@kzu)
+- Generate closed Native AOT stunts from call sites [\#257](https://github.com/devlooped/stunts/pull/257) (@kzu)
+- Generate comparison-package acceptance coverage [\#256](https://github.com/devlooped/stunts/pull/256) (@kzu)
+- Support generic proxy templates and compatible signatures [\#254](https://github.com/devlooped/stunts/pull/254) (@kzu)
+- Constrain behavior extension methods to IStunt [\#253](https://github.com/devlooped/stunts/pull/253) (@kzu)
+- Add StuntReference, Stunt.For/Get and StuntBuilder [\#252](https://github.com/devlooped/stunts/pull/252) (@kzu)
+- Use ambient behavior pipeline factory in tests [\#249](https://github.com/devlooped/stunts/pull/249) (@kzu)
+- Validate null value-type results [\#248](https://github.com/devlooped/stunts/pull/248) (@kzu)
+- Support Stunt.Of\<SomeDelegate\>\(\) so a delegate can be the pipeline tail [\#246](https://github.com/devlooped/stunts/pull/246) (@kzu)
+- Rename StaticStuntFactory to CompiledStuntFactory [\#245](https://github.com/devlooped/stunts/pull/245) (@kzu)
+- Copy custom attributes onto generated stunts [\#244](https://github.com/devlooped/stunts/pull/244) (@kzu)
+- Error when unsafe stunt signatures lack compile-time stunts or unsafe blocks [\#242](https://github.com/devlooped/stunts/pull/242) (@kzu)
+- Emit SignatureRef types at design time [\#241](https://github.com/devlooped/stunts/pull/241) (@kzu)
+- Rename StaticProxy to CompiledProxy [\#240](https://github.com/devlooped/stunts/pull/240) (@kzu)
+- Generate stunts for ref struct, pointer, and ref readonly signatures [\#239](https://github.com/devlooped/stunts/pull/239) (@kzu)
+- Proxy internal, private protected, and private nested types [\#238](https://github.com/devlooped/stunts/pull/238) (@kzu)
+- Intercept default interface members [\#236](https://github.com/devlooped/stunts/pull/236) (@kzu)
+- Emit a partial record when the stunt base type is a record [\#234](https://github.com/devlooped/stunts/pull/234) (@kzu)
+
+:bug: Fixed bugs:
+
+- Fix concurrent and simple-name dependency resolution [\#255](https://github.com/devlooped/stunts/pull/255) (@kzu)
+- Preserve narrowed accessor accessibility [\#237](https://github.com/devlooped/stunts/pull/237) (@kzu)
+- Close generic methods before creating the invocation [\#235](https://github.com/devlooped/stunts/pull/235) (@kzu)
+
+:hammer: Other:
+
+- Bump open dependency updates together [\#295](https://github.com/devlooped/stunts/issues/295)
+
+:twisted_rightwards_arrows: Merged:
+
+- Bump files with dotnet-file sync [\#302](https://github.com/devlooped/stunts/pull/302) (@kzu)
+- Bump open dependency updates together [\#296](https://github.com/devlooped/stunts/pull/296) (@Copilot)
+- Format generated stunts with explicit whitespace trivia. [\#288](https://github.com/devlooped/stunts/pull/288) (@kzu)
+- Run exception mapping tests without the scenario compiler [\#286](https://github.com/devlooped/stunts/pull/286) (@kzu)
+- Make the synchronous Proceed callback test deterministic [\#278](https://github.com/devlooped/stunts/pull/278) (@kzu)
+- Run the OS build matrix only for publish and release [\#261](https://github.com/devlooped/stunts/pull/261) (@kzu)
+- Document agent skill tracker, labels, and domain docs [\#260](https://github.com/devlooped/stunts/pull/260) (@kzu)
+- Rename leftover stunt shape terms to definitions [\#259](https://github.com/devlooped/stunts/pull/259) (@kzu)
+- Improve pipeline factory docs [\#251](https://github.com/devlooped/stunts/pull/251) (@kzu)
+- Showcase Stunts features with progressive C\# examples [\#250](https://github.com/devlooped/stunts/pull/250) (@kzu)
+- Name generated implementation lambda parameters clearly [\#247](https://github.com/devlooped/stunts/pull/247) (@kzu)
+- Bump files with dotnet-file sync [\#243](https://github.com/devlooped/stunts/pull/243) (@kzu)
+- Emit scenario generated sources to obj for inspection [\#233](https://github.com/devlooped/stunts/pull/233) (@kzu)
+- Showcase support for default interface implementation [\#232](https://github.com/devlooped/stunts/pull/232) (@kzu)
+
 ## [v1.0.0-beta.3](https://github.com/devlooped/stunts/tree/v1.0.0-beta.3) (2026-09-29)
 
 [Full Changelog](https://github.com/devlooped/stunts/compare/v1.0.0-beta.2...v1.0.0-beta.3)
