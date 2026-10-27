@@ -34,6 +34,9 @@ namespace Stunts
             /// <summary><c>DebugSourceGenerators</c>.</summary>
             public const string DebugSourceGenerators = "build_property.DebugSourceGenerators";
 
+            /// <summary><c>StuntsCacheDir</c>.</summary>
+            public const string StuntsCacheDir = "build_property.StuntsCacheDir";
+
             /// <summary><c>Debug</c> plus the generator name, such as <c>DebugStuntGenerator</c>.</summary>
             public static string Debug(string generator) => "build_property.Debug" + generator;
         }
@@ -68,6 +71,10 @@ namespace Stunts
         /// <summary>Project directory.</summary>
         public static string? MSBuildProjectDirectory(AnalyzerConfigOptions options)
             => Text(options, Name.MSBuildProjectDirectory);
+
+        /// <summary>Directory where generated stunts are cached across builds and projects.</summary>
+        public static string? StuntsCacheDir(AnalyzerConfigOptions options)
+            => Text(options, Name.StuntsCacheDir);
 
         /// <summary><c>DebugSourceGenerators</c> is true.</summary>
         public static bool DebugSourceGenerators(AnalyzerConfigOptions options)

@@ -37,6 +37,9 @@ namespace Stunts.Processors
         /// </summary>
         public DefaultImports(params string[] namespaces) => this.namespaces = namespaces;
 
+        /// <summary>The namespaces this processor adds.</summary>
+        internal IReadOnlyList<string> Namespaces => namespaces;
+
         /// <summary>
         /// Applies to <see cref="LanguageNames.CSharp"/>.
         /// </summary>

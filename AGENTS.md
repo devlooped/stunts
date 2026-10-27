@@ -243,6 +243,50 @@ Roslyn compares source hint names case-insensitively; qualify them and disambigu
 case-only collisions without changing generated type names. Sealed targets report
 `ST003` while other candidates continue generating.
 
+### Generation cache
+
+`StuntCache` reuses the emitted text of a stunt while the types it implements keep their shape,
+across builds and across projects. `Stunts.targets` (`ResolveStuntsCacheDir`, before
+`GenerateMSBuildEditorConfigFileShouldRun`) sets the compiler-visible `StuntsCacheDir` to
+`.vs/stunts-cache/` at the repository root, then the solution directory, then `obj/stunts-cache/`.
+The root is the git `SourceRoot` without `NestedRoot` from `InitializeSourceControlInformation`
+(as in ThisAssembly.Git): the repository containing the project, so worktrees and submodules get
+their own.
+`EnableStuntsCache=false` clears it. Without the property (unit tests, other hosts) nothing is
+cached. Entries live in a folder per generator version (`StuntFingerprint.Version`: the MVIDs of
+the generator, Roslyn, and processor assemblies), one content-addressed `.stunt` file per key,
+written to a temporary file and renamed so concurrent builds never read partial entries. A
+bounded in-memory copy, keyed by path, serves later compilations in the same compiler server.
+Pruning runs at most daily: entries not read for 30 days, other versions' folders not written
+for 7.
+
+`StuntFingerprint` keys hash the compilation-wide inputs processors read (generator
+configuration, the `DefaultImports` namespaces, the host culture, language version, nullable,
+unsafe and metadata import options, pretty-printing, by-ref-like generics support, the corlib
+identity, and the accessibility of the optional attributes the generated code uses, looked up
+in the compilation the stunt binds against: the treeless one for metadata-only stunts), plus
+each candidate type's declaration: attributes, containers, base types, interfaces, and every
+member signature, including inherited ones and overridden members. Types used by those
+signatures contribute their identity, kind, flags, accessibility, bases, interfaces, and
+delegate signature, but not their members; attribute classes also contribute the
+`AttributeUsage` of their base chain and the accessibility of named arguments' members.
+Stunt keys also include the stunt's full name and the colliding default implementation names its
+interfaces use, since collisions with the other stunts of a generation change them; default
+implementation keys include their class name.
+Processors from other assemblies disable the cache, since their inputs are unknown. Assemblies contribute only their
+relation to the compilation (`self`, `friend` through `InternalsVisibleTo`, or `other`), so a
+rebuilt or re-versioned library keeps its entries and test heads share them. Anything a
+processor starts reading from the compilation must be added to the fingerprint, or hits
+will emit stale code.
+
+An entry stores the text added for the stunt (pretty-printed when `EmitCompilerGeneratedFiles`
+is on), the flags that replay ST006/ST015 and the unchanged-scaffold skip, and the names of the
+interfaces whose default implementation classes it calls; those classes are cached under their
+own keys. Registration still runs every time: delegate and nested stunts are parsed back from
+the cached text so their forwarders bind. `StuntCacheTests` covers hits, signature changes,
+cross-project sharing, friend assemblies, nested and delegate stunts, default implementations,
+diagnostics replay, name collisions, culture changes and custom processors; `STUNTS_PROFILE` reports hits, misses and the cache time.
+
 ### Signature compatibility
 
 `MemberScaffold` preserves optional defaults, escaped identifiers, indexer metadata names,

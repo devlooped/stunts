@@ -290,6 +290,13 @@ Compile-time stunts support optional parameters, inherited generic constraints, 
 and `ref`/`out` arguments alongside spans and other ref structs. Ref-struct and pointer signatures
 require unsafe blocks to be enabled.
 
+Generated stunts are cached in `.vs/stunts-cache` at the repository root, a folder the standard
+.NET `.gitignore` already excludes. A later build reuses a stunt as long as the types it implements
+keep the same declarations and member signatures, so changing method bodies, tests or unrelated
+types doesn't regenerate it. Every project in the repository shares the cache, so an interface
+consumed by several test projects is generated once. Set `StuntsCacheDir` to use another folder,
+or `<EnableStuntsCache>false</EnableStuntsCache>` to always regenerate.
+
 Unsupported targets produce diagnostics at the factory call: `ST012` identifies inaccessible
 abstract interface members (such as an internal setter from another assembly, which C# cannot
 implement), while `ST013` identifies signatures using `TypedReference`, `ArgIterator`, or

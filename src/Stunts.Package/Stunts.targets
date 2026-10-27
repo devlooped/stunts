@@ -13,6 +13,7 @@
     <CompilerVisibleProperty Include="DebugStuntGenerator" />
     <CompilerVisibleProperty Include="SkipCompilerExecution" />
     <CompilerVisibleProperty Include="StuntsAnalyzerDir" />
+    <CompilerVisibleProperty Include="StuntsCacheDir" />
   </ItemGroup>
 
   <!-- The ref-struct generator skips its source unless both are true. -->
@@ -53,6 +54,37 @@
       <Analyzer Include="$(StuntsAnalyzerDir)\Stunts.CompiledProxy.dll" NuGetPackageId="Stunts" NuGetPackageVersion="$(StuntsVersion)" />
     </ItemGroup>
 
+  </Target>
+
+  <!-- Generated stunts are reused while the types they implement keep their shape. The default
+       location is .vs at the repository root (ignored by the usual .NET .gitignore), so every
+       project in the repository shares it. The root is the git source root that source control
+       information resolves (not its submodules), then the solution directory. -->
+  <Target Name="ResolveStuntsCacheDir" BeforeTargets="GenerateMSBuildEditorConfigFileShouldRun"
+          DependsOnTargets="_StuntsRepositoryRoot"
+          Condition="'$(EnableCompileTimeStunts)' == 'true' AND '$(SkipCompilerExecution)' != 'true' AND '$(DesignTimeBuild)' != 'true'">
+
+    <PropertyGroup Condition="'$(EnableStuntsCache)' != 'false' AND '$(StuntsCacheDir)' == ''">
+      <_StuntsCacheRoot Condition="'$(_StuntsCacheRoot)' == '' AND '$(SolutionDir)' != '' AND '$(SolutionDir)' != '*Undefined*'">$(SolutionDir)</_StuntsCacheRoot>
+      <StuntsCacheDir Condition="'$(_StuntsCacheRoot)' != ''">$([MSBuild]::NormalizeDirectory($(_StuntsCacheRoot), '.vs', 'stunts-cache'))</StuntsCacheDir>
+      <StuntsCacheDir Condition="'$(_StuntsCacheRoot)' == ''">$([MSBuild]::NormalizeDirectory($(MSBuildProjectDirectory), $(BaseIntermediateOutputPath), 'stunts-cache'))</StuntsCacheDir>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(EnableStuntsCache)' == 'false'">
+      <StuntsCacheDir />
+    </PropertyGroup>
+
+  </Target>
+
+  <Target Name="_StuntsRepositoryRoot" DependsOnTargets="InitializeSourceControlInformation"
+          Condition="'$(SourceControlInformationFeatureSupported)' == 'true' AND '$(EnableStuntsCache)' != 'false' AND '$(StuntsCacheDir)' == ''">
+    <ItemGroup>
+      <_StuntsGitSourceRoot Include="@(SourceRoot -> WithMetadataValue('SourceControl', 'git'))"
+                            Exclude="@(SourceRoot -> HasMetadata('NestedRoot'))" />
+    </ItemGroup>
+    <PropertyGroup>
+      <_StuntsCacheRoot>@(_StuntsGitSourceRoot)</_StuntsCacheRoot>
+      <_StuntsCacheRoot Condition="$(_StuntsCacheRoot.Contains(';'))" />
+    </PropertyGroup>
   </Target>
 
   <Target Name="CheckRunTimeStunts" BeforeTargets="CoreCompile"
