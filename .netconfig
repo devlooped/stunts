@@ -96,8 +96,8 @@
 
 [file ".github/workflows/changelog.yml"]
 	url = https://github.com/devlooped/oss/blob/main/.github/workflows/changelog.yml
-	sha = 5fb172362c767bef7c36478f1a6bdc264723f8f9
-	etag = ad1efa56d6024ee1add2bcda81a7e4e38d0e9069473c6ff70374d5ce06af1f5a
+	sha = 6687d5aa313eab371d2eb8befca9d429fc003765
+	etag = 9b98bce827aeef23b83001120dde1dbd9b8a9f9f256db052df952b8c411a4cb1
 	weak
 
 [file ".github/workflows/publish.yml"]
