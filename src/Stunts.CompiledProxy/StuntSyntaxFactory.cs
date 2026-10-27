@@ -19,13 +19,15 @@ namespace Stunts
             return new CSharpStuntSyntaxFactory();
         }
 
-        public abstract SyntaxNode CreateSyntax(NamingConvention naming, INamedTypeSymbol[] symbols);
+        public SyntaxNode CreateSyntax(NamingConvention naming, INamedTypeSymbol[] symbols)
+            => CreateSyntax(naming, symbols, naming.GetName(symbols));
+
+        public abstract SyntaxNode CreateSyntax(NamingConvention naming, INamedTypeSymbol[] symbols, string name);
 
         class CSharpStuntSyntaxFactory : StuntSyntaxFactory
         {
-            public override SyntaxNode CreateSyntax(NamingConvention naming, INamedTypeSymbol[] symbols)
+            public override SyntaxNode CreateSyntax(NamingConvention naming, INamedTypeSymbol[] symbols, string name)
             {
-                var name = naming.GetName(symbols);
                 var imports = new HashSet<string>();
                 var (baseType, implementedInterfaces) = symbols.ValidateGeneratorTypes();
 

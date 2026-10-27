@@ -13,10 +13,12 @@ namespace Stunts
     /// <summary>A generated stunt, with the assemblies that request it at run time.</summary>
     sealed class GeneratedStunt
     {
-        public GeneratedStunt(string name, INamedTypeSymbol[] types, SyntaxNode source, SyntaxNode syntax)
-            => (Name, Types, Source, Syntax) = (name, types, source, syntax);
+        public GeneratedStunt(string name, string shortName, INamedTypeSymbol[] types, SyntaxNode source, SyntaxNode syntax)
+            => (Name, ShortName, Types, Source, Syntax) = (name, shortName, types, source, syntax);
 
         public string Name { get; }
+
+        public string ShortName { get; }
 
         public INamedTypeSymbol[] Types { get; }
 
@@ -42,7 +44,7 @@ namespace Stunts
         /// Adds the registration of each stunt, nesting forwarders in the containing types 
         /// of stunts that cannot be accessed from the top-level registration class.
         /// </summary>
-        public static string? Register(ProcessorContext context, NamingConvention naming, IReadOnlyList<GeneratedStunt> stunts)
+        public static string? Register(ProcessorContext context, IReadOnlyList<GeneratedStunt> stunts)
         {
             if (stunts.Count == 0)
                 return null;
@@ -72,7 +74,7 @@ namespace Stunts
                 var trees = slow.ToDictionary(stunt => stunt, stunt => SyntaxTree(stunt.Syntax, options));
                 var compilation = context.Compilation.AddSyntaxTrees(trees.Values);
                 for (var index = 0; index < slow.Count; index++)
-                    AppendBound(context, naming, slow[index], trees[slow[index]], compilation, assemblyName, body, index);
+                    AppendBound(context, slow[index], trees[slow[index]], compilation, assemblyName, body, index);
             }
 
             if (body.Length == 0)
@@ -85,12 +87,11 @@ namespace Stunts
             => stunt.Types.Any(type => type.TypeKind == TypeKind.Delegate ||
                 (type.TypeKind != TypeKind.Interface && NestedTypeStunt.MustNest(type)));
 
-        static void AppendBound(ProcessorContext context, NamingConvention naming, GeneratedStunt stunt, SyntaxTree tree, Compilation compilation, string assemblyName, StringBuilder body, int index)
+        static void AppendBound(ProcessorContext context, GeneratedStunt stunt, SyntaxTree tree, Compilation compilation, string assemblyName, StringBuilder body, int index)
         {
             var root = tree.GetRoot(context.CancellationToken);
-            var shortName = naming.GetName(stunt.Types);
             var declaration = root.DescendantNodes().OfType<TypeDeclarationSyntax>()
-                .FirstOrDefault(type => type.Identifier.ValueText == shortName && type.BaseList != null);
+                .FirstOrDefault(type => type.Identifier.ValueText == stunt.ShortName && type.BaseList != null);
             if (declaration == null ||
                 compilation.GetSemanticModel(tree).GetDeclaredSymbol(declaration, context.CancellationToken) is not INamedTypeSymbol symbol)
                 return;

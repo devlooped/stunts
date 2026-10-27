@@ -95,7 +95,14 @@ namespace Stunts
 
         public static StringBuilder AddName(this StringBuilder builder, Type type)
         {
-            if (type.IsGenericType)
+            if (type.IsArray)
+            {
+                builder.Append("Array");
+                if (type.GetArrayRank() > 1)
+                    builder.Append(type.GetArrayRank()).Append('D');
+                return builder.Append("Of").AddName(type.GetElementType()!);
+            }
+            else if (type.IsGenericType)
             {
                 var arity = type.Name.IndexOf('`');
                 builder.Append(arity < 0 ? type.Name : type.Name.Substring(0, arity));

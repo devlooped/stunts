@@ -87,6 +87,14 @@ namespace Stunts.UnitTests
         }
 
         [Fact]
+        public void ArrayArgumentNames()
+        {
+            Assert.Equal("IListOfArrayOfInt32Stunt", StuntNaming.GetName(typeof(IList<int[]>)));
+            Assert.Equal("IListOfArray2DOfStringStunt", StuntNaming.GetName(typeof(IList<string[,]>)));
+            Assert.Equal("IListOfArrayOfArrayOfInt32Stunt", StuntNaming.GetName(typeof(IList<int[][]>)));
+        }
+
+        [Fact]
         public void PrivateNestedFullNameUsesTheDeclaringType()
         {
             var inner = typeof(StuntNamingTests).GetNestedType(nameof(Hidden), BindingFlags.NonPublic);
@@ -94,6 +102,7 @@ namespace Stunts.UnitTests
             Assert.Equal(typeof(StuntNamingTests).FullName + "+Hidden" + StuntNaming.DefaultSuffix, StuntNaming.GetFullName(inner));
         }
 
+        [Fact]
         public void GenericOfTwoGenericNames()
         {
             var name = StuntNaming.GetName(typeof(ICollection<KeyValuePair<string, ICalculator>>));

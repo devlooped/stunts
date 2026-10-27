@@ -64,6 +64,12 @@ namespace Stunts
         internal HashSet<INamedTypeSymbol> DefaultImplementations { get; init; } = new(SymbolEqualityComparer.Default);
 
         /// <summary>
+        /// Full names of default implementation classes shared by different interfaces of 
+        /// the current generation, which use <see cref="NamingConvention.GetUniqueDefaultImplementationName"/> instead.
+        /// </summary>
+        internal ISet<string> AmbiguousDefaultImplementations { get; init; } = new HashSet<string>(StringComparer.Ordinal);
+
+        /// <summary>
         /// Treeless copy of <see cref="Compilation"/> used to bind a generated stunt whose
         /// bases all come from referenced assemblies. Rebuilding the user compilation's
         /// declaration state for every stunt dominates generation.

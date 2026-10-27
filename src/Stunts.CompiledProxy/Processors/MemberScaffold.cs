@@ -75,7 +75,7 @@ namespace Stunts.Processors
             foreach (var (member, provider) in symbol.GetDefaultImplementedInterfaceMembers(context.CancellationToken))
             {
                 context.DefaultImplementations.Add(provider);
-                var instance = DefaultInstance(context.NamingConvention, provider, member.ContainingType);
+                var instance = DefaultInstance(context, provider, member.ContainingType);
                 members.Add(Stub(member, false, Collides(member, generated), instance, symbol, symbol.ContainingAssembly));
             }
 
@@ -123,9 +123,9 @@ namespace Stunts.Processors
 
         // => global::Stunts.DefaultIFoo.Default, cast to the member's interface when a derived 
         // interface provides the default for a base interface member.
-        static ExpressionSyntax DefaultInstance(NamingConvention naming, INamedTypeSymbol provider, INamedTypeSymbol iface)
+        static ExpressionSyntax DefaultInstance(ProcessorContext context, INamedTypeSymbol provider, INamedTypeSymbol iface)
         {
-            var fullName = naming.GetDefaultImplementationFullName(provider);
+            var fullName = DefaultImplementation.FullName(context, provider);
             ExpressionSyntax instance = MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
                 ParseName("global::" + fullName),
