@@ -98,7 +98,7 @@ namespace Stunts.CodeAnalysis
                 additionalInterfaces = symbols;
             }
 
-            return (baseType, additionalInterfaces.OrderBy(x => x.Name).ToImmutableArray());
+            return (baseType, additionalInterfaces.OrderBy(x => x.Name, StringComparer.Ordinal).ToImmutableArray());
         }
 
         /// <summary>
@@ -150,7 +150,7 @@ namespace Stunts.CodeAnalysis
                 additionalInterfaces = types.Cast<INamedTypeSymbol>();
             }
 
-            result = (baseType, additionalInterfaces.OrderBy(x => x.Name).ToImmutableArray());
+            result = (baseType, additionalInterfaces.OrderBy(x => x.Name, StringComparer.Ordinal).ToImmutableArray());
             return true;
         }
 
