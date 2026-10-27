@@ -230,7 +230,15 @@ tree and inspect each factory's original definition once. Event rewriting binds
 only declarations containing events. Interface scaffolding considers methods,
 properties, and events, not nested type declarations.
 
-Deduplicate stunts and default-interface helpers by namespace-qualified names.
+Deduplicate stunts and default-interface helpers by run-time identity
+(`NamingConvention.GetIdentity`, which ignores order, nullable annotations and tuple
+element names). Names drop the namespaces and nesting of type arguments, so different
+types can share a namespace-qualified name (`IFoo<A.Bar>`/`IFoo<B.Bar>`,
+`IFoo<Wrap<int>, string>`/`IFoo<Wrap<int, string>>`): all of them then use
+`GetUniqueName`/`GetUniqueDefaultImplementationName`, which append a stable hash, while
+non-colliding names stay unchanged. Default helpers are named during parallel processing,
+so their collisions are computed upfront (`ProcessorContext.AmbiguousDefaultImplementations`).
+Array arguments are named `ArrayOfInt32`/`Array2DOfInt32`, in `StuntNaming` too.
 Roslyn compares source hint names case-insensitively; qualify them and disambiguate
 case-only collisions without changing generated type names. Sealed targets report
 `ST003` while other candidates continue generating.

@@ -38,9 +38,26 @@ namespace Stunts
             new CSharpFileHeader(),
             new CSharpPragmas());
 
-        public static SyntaxNode CreateSyntax(NamingConvention naming, INamedTypeSymbol iface)
+        /// <summary>
+        /// The name of the class for <paramref name="iface"/>, unique among the interfaces 
+        /// of the current generation that would otherwise share it.
+        /// </summary>
+        public static string Name(ProcessorContext context, INamedTypeSymbol iface)
         {
-            var declaration = ClassDeclaration(naming.GetDefaultImplementationName(iface))
+            var naming = context.NamingConvention;
+            var name = naming.GetDefaultImplementationName(iface);
+            return context.AmbiguousDefaultImplementations.Contains(naming.GetNamespace(new[] { iface }) + "." + name)
+                ? naming.GetUniqueDefaultImplementationName(iface)
+                : name;
+        }
+
+        public static string FullName(ProcessorContext context, INamedTypeSymbol iface)
+            => context.NamingConvention.GetNamespace(new[] { iface }) + "." + Name(context, iface);
+
+        public static SyntaxNode CreateSyntax(ProcessorContext context, INamedTypeSymbol iface)
+        {
+            var naming = context.NamingConvention;
+            var declaration = ClassDeclaration(Name(context, iface))
                 .WithModifiers(TokenList(Token(IsPublic(iface) ? SyntaxKind.PublicKeyword : SyntaxKind.InternalKeyword)))
                 .WithBaseList(BaseList(SingletonSeparatedList<BaseTypeSyntax>(
                     SimpleBaseType(MemberScaffold.TypeName(iface)))));

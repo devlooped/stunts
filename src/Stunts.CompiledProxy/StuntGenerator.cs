@@ -219,7 +219,7 @@ namespace Stunts
             profile.Add(ref profile.Discover);
 
             var pending = new List<PendingStunt>();
-            var pendingByName = new Dictionary<string, PendingStunt>();
+            var pendingByName = new Dictionary<string, List<PendingStunt>>();
             var metadataBases = 0;
             foreach (var (source, candidate, requester) in candidates)
             {
@@ -254,11 +254,17 @@ namespace Stunts
                     !candidate.TryValidateGeneratorTypes(out _))
                     continue;
 
-                var name = naming.GetNamespace(candidate) + "." + naming.GetName(candidate);
-                if (pendingByName.TryGetValue(name, out var existing))
+                var ns = naming.GetNamespace(candidate);
+                var shortName = naming.GetName(candidate);
+                var name = ns + "." + shortName;
+                if (pendingByName.TryGetValue(name, out var sameName))
                 {
-                    existing.Requesters.Add(requester);
-                    continue;
+                    var identity = NamingConvention.GetIdentity(candidate);
+                    if (sameName.FirstOrDefault(other => other.Identity == identity) is PendingStunt existing)
+                    {
+                        existing.Requesters.Add(requester);
+                        continue;
+                    }
                 }
 
                 if (candidate.FirstOrDefault(type => type.TypeKind != TypeKind.Interface) is INamedTypeSymbol nested &&
@@ -276,10 +282,22 @@ namespace Stunts
                 if (MetadataTypes(candidate))
                     metadataBases++;
 
-                var item = new PendingStunt(source, candidate, name, requester);
-                pendingByName.Add(name, item);
+                var item = new PendingStunt(source, candidate, ns, shortName, requester);
+                if (sameName == null)
+                    pendingByName.Add(name, sameName = new List<PendingStunt>());
+                sameName.Add(item);
                 pending.Add(item);
             }
+
+            // Names drop namespaces and separators of type arguments, so different types can share one.
+            // All of them get the hash, which keeps each name independent of the order of the call sites.
+            foreach (var colliding in pendingByName.Values.Where(items => items.Count > 1))
+            {
+                foreach (var item in colliding)
+                    item.ShortName = naming.GetUniqueName(item.Candidate);
+            }
+
+            context = context with { AmbiguousDefaultImplementations = AmbiguousDefaultImplementations(naming, pending) };
 
             profile.Metadata = metadataBases;
             // One shared, treeless compilation. Each stunt adds only its own generated tree.
@@ -289,7 +307,7 @@ namespace Stunts
             {
                 var item = pending[index];
                 var started = GenProfile.Enabled ? Stopwatch.GetTimestamp() : 0;
-                var syntax = factory.CreateSyntax(naming, item.Candidate);
+                var syntax = factory.CreateSyntax(naming, item.Candidate, item.ShortName);
                 if (GenProfile.Enabled)
                     GenProfile.Step("CreateSyntax", Stopwatch.GetTimestamp() - started);
 
@@ -332,19 +350,19 @@ namespace Stunts
                     continue;
                 }
 
-                var stunt = new GeneratedStunt(item.Name, candidate, source, updated);
+                var stunt = new GeneratedStunt(item.Name, item.ShortName, candidate, source, updated);
                 foreach (var requester in item.Requesters)
                     stunt.Assemblies.Add(requester);
                 generated.Add(stunt);
 
                 foreach (var iface in item.Defaults)
                 {
-                    var defaultName = naming.GetNamespace(new[] { iface }) + "." + naming.GetDefaultImplementationName(iface);
+                    var defaultName = DefaultImplementation.FullName(context, iface);
                     if (!defaults.Add(defaultName))
                         continue;
 
                     AddSource(context, defaultName,
-                        DefaultImplementation.Driver.Process(DefaultImplementation.CreateSyntax(naming, iface), context), hintNames);
+                        DefaultImplementation.Driver.Process(DefaultImplementation.CreateSyntax(context, iface), context), hintNames);
                 }
             }
 
@@ -355,7 +373,7 @@ namespace Stunts
                 if (((CSharpParseOptions)context.ParseOptions).LanguageVersion < LanguageVersion.CSharp9)
                     context.ReportDiagnostic(Diagnostic.Create(StuntDiagnostics.LanguageVersionNotSupported, generated[0].Source.GetLocation()));
                 else
-                    registrations = StuntRegistrations.Register(context, naming, generated);
+                    registrations = StuntRegistrations.Register(context, generated);
             }
             profile.Add(ref profile.Register);
 
@@ -409,6 +427,36 @@ namespace Stunts
             }
 
             return true;
+        }
+
+        // Default implementation classes are named while stunts are processed in parallel, so the
+        // interfaces that would share a name are found upfront. Only generic interfaces can.
+        static ISet<string> AmbiguousDefaultImplementations(NamingConvention naming, List<PendingStunt> pending)
+        {
+            var ambiguous = new HashSet<string>(StringComparer.Ordinal);
+            var identities = new Dictionary<string, string>(StringComparer.Ordinal);
+            var visited = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+            foreach (var item in pending)
+            {
+                foreach (var type in item.Candidate)
+                {
+                    foreach (var iface in type.TypeKind == TypeKind.Interface ? type.AllInterfaces.Add(type) : type.AllInterfaces)
+                    {
+                        if (!iface.IsGenericType || !visited.Add(iface) ||
+                            !iface.GetMembers().Any(member => !member.IsStatic && !member.IsAbstract && member.Kind is SymbolKind.Method or SymbolKind.Property or SymbolKind.Event))
+                            continue;
+
+                        var name = naming.GetDefaultImplementationFullName(iface);
+                        var identity = NamingConvention.GetIdentity(new[] { iface });
+                        if (!identities.TryGetValue(name, out var existing))
+                            identities.Add(name, identity);
+                        else if (existing != identity)
+                            ambiguous.Add(name);
+                    }
+                }
+            }
+
+            return ambiguous;
         }
 
         static INamedTypeSymbol? GenericContainer(INamedTypeSymbol type)
@@ -715,11 +763,14 @@ namespace Stunts
 
     sealed class PendingStunt
     {
-        public PendingStunt(SyntaxNode source, INamedTypeSymbol[] candidate, string name, string requester)
+        string? identity;
+
+        public PendingStunt(SyntaxNode source, INamedTypeSymbol[] candidate, string @namespace, string shortName, string requester)
         {
             Source = source;
             Candidate = candidate;
-            Name = name;
+            Namespace = @namespace;
+            ShortName = shortName;
             Requesters = new List<string> { requester };
         }
 
@@ -727,7 +778,13 @@ namespace Stunts
 
         public INamedTypeSymbol[] Candidate { get; }
 
-        public string Name { get; }
+        public string Namespace { get; }
+
+        public string ShortName { get; set; }
+
+        public string Name => Namespace + "." + ShortName;
+
+        public string Identity => identity ??= NamingConvention.GetIdentity(Candidate);
 
         public List<string> Requesters { get; }
 

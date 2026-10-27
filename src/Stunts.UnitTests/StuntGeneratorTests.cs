@@ -454,6 +454,62 @@ public static class Test
         }
 
         [Fact]
+        public void GeneratesConstructedTypesWithCollidingNames()
+        {
+            var (diagnostics, compilation) = GetGeneratedOutput(@"
+using System.Collections.Generic;
+using Stunts;
+
+namespace First { public class Bar { } }
+namespace Second { public class Bar { } }
+public class Wrap<T> { }
+public class Wrap<T1, T2> { }
+public interface IFoo<T> { int Value() => 42; }
+public interface IFoo<T1, T2> { }
+public static class Test
+{
+    public static IList<int[]> Ints() => Stunt.Of<IList<int[]>>();
+    public static IList<string[]> Strings() => Stunt.Of<IList<string[]>>();
+    public static IList<string[,]> Matrix() => Stunt.Of<IList<string[,]>>();
+    public static IFoo<First.Bar> FirstBar() => Stunt.Of<IFoo<First.Bar>>();
+    public static IFoo<Second.Bar> SecondBar() => Stunt.Of<IFoo<Second.Bar>>();
+    public static IFoo<Wrap<int>, string> Split() => Stunt.Of<IFoo<Wrap<int>, string>>();
+    public static IFoo<Wrap<int, string>> Nested() => Stunt.Of<IFoo<Wrap<int, string>>>();
+    public static IFoo<(int a, int b)> Named() => Stunt.Of<IFoo<(int a, int b)>>();
+    public static IFoo<(int, int)> Unnamed() => Stunt.Of<IFoo<(int, int)>>();
+}");
+
+            Assert.Empty(diagnostics);
+            Assert.Empty(compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
+
+            var assembly = compilation.Emit(false);
+            foreach (var method in assembly.GetType("Test", true)!.GetMethods(BindingFlags.Public | BindingFlags.Static))
+            {
+                var stunt = method.Invoke(null, null);
+                Assert.IsAssignableFrom(method.ReturnType, stunt);
+                if (method.ReturnType.GetMethod("Value") is MethodInfo value)
+                    Assert.Equal(42, value.Invoke(stunt, null));
+            }
+
+            Assert.NotNull(assembly.GetType("Stunts.System.Collections.Generic.IListOfArrayOfInt32Stunt"));
+            Assert.NotNull(assembly.GetType("Stunts.System.Collections.Generic.IListOfArrayOfStringStunt"));
+            Assert.NotNull(assembly.GetType("Stunts.System.Collections.Generic.IListOfArray2DOfStringStunt"));
+            Assert.NotNull(assembly.GetType("Stunts.IFooOfValueTupleOfInt32Int32Stunt"));
+            Assert.Null(assembly.GetType("Stunts.IFooOfBarStunt"));
+
+            var naming = new NamingConvention();
+            var foo = compilation.GetTypeByMetadataName("IFoo`1")!;
+            foreach (var bar in new[] { "First.Bar", "Second.Bar" })
+            {
+                var constructed = foo.Construct(compilation.GetTypeByMetadataName(bar)!);
+                Assert.NotNull(assembly.GetType("Stunts." + naming.GetUniqueName(new[] { constructed })));
+                Assert.NotNull(assembly.GetType("Stunts." + naming.GetUniqueDefaultImplementationName(constructed)));
+            }
+
+            Assert.Equal(2, assembly.GetTypes().Count(type => type.Name.StartsWith("IFooOfWrapOfInt32StringStunt_")));
+        }
+
+        [Fact]
         public void ReportsSealedTypeWithoutDiscardingOtherStunts()
         {
             var (diagnostics, compilation) = GetGeneratedOutput(@"
