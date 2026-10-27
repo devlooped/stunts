@@ -26,7 +26,7 @@ OSMF tier. A single fee covers all of [Devlooped packages](https://www.nuget.org
 <!-- https://github.com/devlooped/.github/raw/main/osmf.md -->
 ---
 <!-- #content -->
-A modern interception library that runs everywhere, even where run-time code generation (Reflection.Emit) is forbidden or limitted (i.e. physical iOS devices and game consoles), through compile-time code generation.
+A modern interception library that runs everywhere, even where run-time code generation (Reflection.Emit) is forbidden or limitted (i.e. physical iOS devices, game consoles, native AOT), through compile-time code generation.
 
 > The **Stunts** name was inspired by the [Test Double](http://xunitpatterns.com/Test%20Double.html) naming in the mock objects literature, which in turn comes from the [Stunt Double](https://en.wikipedia.org/wiki/Stunt_double) concept from film making. This project allows your objects to pull arbitrary *stunts* based on your instructions/choreography 😉.
 
