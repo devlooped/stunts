@@ -13,7 +13,7 @@ namespace Stunts
     /// <summary>A generated stunt, with the assemblies that request it at run time.</summary>
     sealed class GeneratedStunt
     {
-        public GeneratedStunt(string name, string shortName, INamedTypeSymbol[] types, SyntaxNode source, SyntaxNode syntax)
+        public GeneratedStunt(string name, string shortName, INamedTypeSymbol[] types, SyntaxNode source, SyntaxNode? syntax)
             => (Name, ShortName, Types, Source, Syntax) = (name, shortName, types, source, syntax);
 
         public string Name { get; }
@@ -24,7 +24,17 @@ namespace Stunts
 
         public SyntaxNode Source { get; }
 
-        public SyntaxNode Syntax { get; set; }
+        /// <summary>The generated syntax. Null for a cached stunt until registration has to bind it.</summary>
+        public SyntaxNode? Syntax { get; set; }
+
+        /// <summary>The cached text, when the stunt comes from the <see cref="StuntCache"/>.</summary>
+        public string? Code { get; init; }
+
+        /// <summary>Registration nested forwarders in <see cref="Syntax"/>.</summary>
+        public bool Rewritten { get; set; }
+
+        /// <summary>The source added to the compilation.</summary>
+        public string? Text { get; set; }
 
         public SortedSet<string> Assemblies { get; } = new(StringComparer.Ordinal);
     }
@@ -71,7 +81,9 @@ namespace Stunts
 
             if (slow.Count > 0)
             {
-                var trees = slow.ToDictionary(stunt => stunt, stunt => SyntaxTree(stunt.Syntax, options));
+                var trees = slow.ToDictionary(stunt => stunt, stunt => stunt.Syntax == null
+                    ? CSharpSyntaxTree.ParseText(stunt.Code!, options, cancellationToken: context.CancellationToken)
+                    : SyntaxTree(stunt.Syntax, options));
                 var compilation = context.Compilation.AddSyntaxTrees(trees.Values);
                 for (var index = 0; index < slow.Count; index++)
                     AppendBound(context, slow[index], trees[slow[index]], compilation, assemblyName, body, index);
@@ -115,10 +127,13 @@ namespace Stunts
                 var member = inner < 0
                     ? $"internal static void {method}() {{ {string.Join(" ", statements)} }}"
                     : $"internal static void {method}() => {containers[inner].Identifier.ValueText}.{method}();";
-                return rewritten.AddMembers((MemberDeclarationSyntax)SyntaxFactory.ParseMemberDeclaration(member, options: (CSharpParseOptions)context.ParseOptions)!);
+                // Cached stunts are written without re-emitting, so the member brings its own line break.
+                return rewritten.AddMembers(((MemberDeclarationSyntax)SyntaxFactory.ParseMemberDeclaration(member, options: (CSharpParseOptions)context.ParseOptions)!)
+                    .WithLeadingTrivia(SyntaxFactory.CarriageReturnLineFeed));
             });
 
             stunt.Syntax = updated;
+            stunt.Rewritten = true;
             var outermost = (INamedTypeSymbol)symbol.ContainingType!;
             while (outermost.ContainingType != null)
                 outermost = outermost.ContainingType;

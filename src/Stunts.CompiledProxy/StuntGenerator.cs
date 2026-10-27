@@ -200,6 +200,13 @@ namespace Stunts
             if (!processors.Any(x => x.Phase == ProcessorPhase.Scaffold))
                 processors = processors.Add(new MemberScaffold());
 
+            var options = context.AnalyzerConfigOptions.GlobalOptions;
+            // Pretty-printing is C# only. The debugger dump in AddSource still uses the flag for every language.
+            var pretty = BuildProperties.EmitCompilerGeneratedFiles(options) && context.Language == LanguageNames.CSharp;
+            var cache = StuntFingerprint.Cacheable(processors) ? StuntCache.Create(options, StuntFingerprint.Version(this, processors)) : null;
+            var fingerprint = cache == null ? null : new StuntFingerprint(context, this, processors, naming, pretty);
+            var parallel = new ParallelOptions { CancellationToken = context.CancellationToken };
+
             var driver = new SyntaxProcessorDriver(processors);
             var factory = StuntSyntaxFactory.CreateFactory(context.Language);
             var closure = StuntClosure.Create(context.Compilation, GeneratorAttribute)!;
@@ -300,12 +307,29 @@ namespace Stunts
             context = context with { AmbiguousDefaultImplementations = AmbiguousDefaultImplementations(naming, pending) };
 
             profile.Metadata = metadataBases;
-            // One shared, treeless compilation. Each stunt adds only its own generated tree.
-            var scaffold = metadataBases > 0 ? context.Compilation.RemoveAllSyntaxTrees() : null;
             profile.Mark();
-            Parallel.For(0, pending.Count, new ParallelOptions { CancellationToken = context.CancellationToken }, index =>
+            if (cache != null)
+            {
+                Parallel.For(0, pending.Count, parallel, index =>
+                {
+                    var item = pending[index];
+                    item.Key = fingerprint!.Stunt(item.Candidate, MetadataTypes(item.Candidate), CachedNames(context, item));
+                    if (cache.Get(item.Key) is StuntCacheEntry entry &&
+                        ResolveDefaults(entry.Defaults, item.Candidate) is HashSet<INamedTypeSymbol> cachedDefaults)
+                        (item.Cached, item.Defaults) = (entry, cachedDefaults);
+                });
+            }
+            profile.Add(ref profile.Cache);
+
+            // One shared, treeless compilation. Each stunt adds only its own generated tree.
+            var scaffold = metadataBases > 0 && pending.Any(item => item.Cached == null) ? context.Compilation.RemoveAllSyntaxTrees() : null;
+            profile.Mark();
+            Parallel.For(0, pending.Count, parallel, index =>
             {
                 var item = pending[index];
+                if (item.Cached != null)
+                    return;
+
                 var started = GenProfile.Enabled ? Stopwatch.GetTimestamp() : 0;
                 var syntax = factory.CreateSyntax(naming, item.Candidate, item.ShortName);
                 if (GenProfile.Enabled)
@@ -317,30 +341,34 @@ namespace Stunts
 
                 item.Syntax = syntax;
                 item.Updated = driver.Process(syntax, stuntContext);
-                item.Defaults = stuntContext.DefaultImplementations;
+                // Processors bind in derived compilations. The default implementation classes are
+                // generated, and keyed, from the symbols of the user compilation.
+                item.Defaults = ResolveDefaults(stuntContext.DefaultImplementations.Select(StuntFingerprint.Name), item.Candidate)
+                    ?? stuntContext.DefaultImplementations;
             });
             profile.Add(ref profile.Process);
 
+            var nativeAot = BuildProperties.NativeAot(options);
             foreach (var item in pending)
             {
                 var source = item.Source;
                 var candidate = item.Candidate;
-                var updated = item.Updated;
-                if (item.Syntax.IsEquivalentTo(updated))
+                var flags = item.Flags = item.Cached?.Flags ?? Flags(item.Syntax, item.Updated);
+                if ((flags & StuntCacheFlags.Unchanged) != 0)
                     continue;
 
-                if (BuildProperties.NativeAot(context.AnalyzerConfigOptions.GlobalOptions))
+                if (nativeAot)
                 {
-                    if (updated.DescendantNodes().OfType<MethodDeclarationSyntax>().Any(method => method.TypeParameterList != null))
+                    if ((flags & StuntCacheFlags.GenericMethods) != 0)
                         context.ReportDiagnostic(Diagnostic.Create(StuntDiagnostics.AotUnsupportedMember, source.GetLocation(), "generic intercepted methods require runtime MakeGenericMethod"));
-                    if (updated.GetAnnotatedNodes("Stunts.AotQueryable").Any())
+                    if ((flags & StuntCacheFlags.AotQueryable) != 0)
                         context.ReportDiagnostic(Diagnostic.Create(StuntDiagnostics.AotUnsupportedMember, source.GetLocation(), "IQueryable default values require dynamic code; register a typed DefaultValueProvider factory"));
-                    if (updated.GetAnnotatedNodes("Stunts.AotRefStruct").Any())
+                    if ((flags & StuntCacheFlags.AotRefStruct) != 0)
                         context.ReportDiagnostic(Diagnostic.Create(StuntDiagnostics.AotUnsupportedMember, source.GetLocation(), "ref-struct interception requires by-ref-like generic runtime support (.NET 9 or later)"));
                 }
 
                 // At this point, we should have a type that has at least one public constructor
-                if (!updated.DescendantNodes().OfType<ConstructorDeclarationSyntax>().Any(constructor => !constructor.Modifiers.Any(SyntaxKind.StaticKeyword)))
+                if ((flags & StuntCacheFlags.NoConstructor) != 0)
                 {
                     context.ReportDiagnostic(
                         Diagnostic.Create(
@@ -350,7 +378,9 @@ namespace Stunts
                     continue;
                 }
 
-                var stunt = new GeneratedStunt(item.Name, item.ShortName, candidate, source, updated);
+                var stunt = item.Stunt = item.Cached is StuntCacheEntry cached
+                    ? new GeneratedStunt(item.Name, item.ShortName, candidate, source, null) { Code = cached.Code }
+                    : new GeneratedStunt(item.Name, item.ShortName, candidate, source, item.Updated);
                 foreach (var requester in item.Requesters)
                     stunt.Assemblies.Add(requester);
                 generated.Add(stunt);
@@ -361,8 +391,16 @@ namespace Stunts
                     if (!defaults.Add(defaultName))
                         continue;
 
-                    AddSource(context, defaultName,
-                        DefaultImplementation.Driver.Process(DefaultImplementation.CreateSyntax(context, iface), context), hintNames);
+                    var defaultKey = fingerprint?.Default(iface, defaultName);
+                    if (defaultKey == null || cache!.Get(defaultKey)?.Code is not string code)
+                    {
+                        code = Format(context, SyntaxText.Emit(
+                            DefaultImplementation.Driver.Process(DefaultImplementation.CreateSyntax(context, iface), context)), pretty);
+                        if (defaultKey != null)
+                            cache!.Add(defaultKey, new StuntCacheEntry(StuntCacheFlags.None, Array.Empty<string>(), code));
+                    }
+
+                    AddSource(context, defaultName, code, hintNames);
                 }
             }
 
@@ -379,12 +417,33 @@ namespace Stunts
 
             profile.Mark();
             var emitted = new string[generated.Count];
-            Parallel.For(0, generated.Count, new ParallelOptions { CancellationToken = context.CancellationToken }, index =>
-                emitted[index] = SyntaxText.Emit(generated[index].Syntax));
+            Parallel.For(0, generated.Count, parallel, index =>
+            {
+                var stunt = generated[index];
+                emitted[index] = stunt.Text = stunt.Code == null ? Format(context, SyntaxText.Emit(stunt.Syntax!), pretty) :
+                    // A cached tree is parsed text, so it already has its whitespace.
+                    stunt.Rewritten ? stunt.Syntax!.ToFullString() : stunt.Code;
+            });
             profile.Add(ref profile.Normalize);
 
             for (var index = 0; index < generated.Count; index++)
-                AddSource(context, generated[index].Name, generated[index].Syntax, hintNames, profile, emitted[index]);
+                AddSource(context, generated[index].Name, emitted[index], hintNames);
+
+            if (cache != null)
+            {
+                profile.Mark();
+                Parallel.ForEach(pending.Where(item => item.Cached == null), parallel, item =>
+                {
+                    // Registration nests forwarders in some stunts. The entry keeps the text before that.
+                    var code = item.Stunt == null ? null :
+                        item.Stunt.Rewritten ? Format(context, SyntaxText.Emit(item.Updated), pretty) :
+                        item.Stunt.Text;
+                    cache.Add(item.Key!, new StuntCacheEntry(item.Flags, item.Defaults.Select(StuntFingerprint.Name).ToArray(), code));
+                });
+                profile.Add(ref profile.Cache);
+                profile.Hits = cache.Hits;
+                profile.Misses = cache.Misses;
+            }
 
             if (registrations != null)
                 context.AddSource(UniqueHintName("Stunts.Generated.StuntRegistrations", hintNames), SourceText.From(registrations, Encoding.UTF8));
@@ -480,26 +539,84 @@ namespace Stunts
             return hintName;
         }
 
-        static void AddSource(ProcessorContext context, string name, SyntaxNode updated, HashSet<string> hintNames, GenProfile? profile = null, string? code = null)
+        static string Format(ProcessorContext context, string code, bool pretty)
+        {
+            if (!pretty)
+                return code;
+
+            var started = GenProfile.Enabled ? Stopwatch.GetTimestamp() : 0;
+            var updated = CSharpSyntaxTree.ParseText(code, (CSharpParseOptions)context.ParseOptions).GetRoot();
+            updated = new CSharpFormatter().Visit(updated);
+            code = updated.GetText().ToString();
+            if (GenProfile.Enabled)
+                GenProfile.Step("Pretty", Stopwatch.GetTimestamp() - started);
+
+            return code;
+        }
+
+        static StuntCacheFlags Flags(SyntaxNode syntax, SyntaxNode updated)
+        {
+            if (syntax.IsEquivalentTo(updated))
+                return StuntCacheFlags.Unchanged;
+
+            var flags = StuntCacheFlags.NoConstructor;
+            foreach (var node in updated.DescendantNodes())
+            {
+                if (node is MethodDeclarationSyntax { TypeParameterList: not null })
+                    flags |= StuntCacheFlags.GenericMethods;
+                else if (node is ConstructorDeclarationSyntax constructor && !constructor.Modifiers.Any(SyntaxKind.StaticKeyword))
+                    flags &= ~StuntCacheFlags.NoConstructor;
+            }
+
+            if (updated.GetAnnotatedNodes("Stunts.AotQueryable").Any())
+                flags |= StuntCacheFlags.AotQueryable;
+            if (updated.GetAnnotatedNodes("Stunts.AotRefStruct").Any())
+                flags |= StuntCacheFlags.AotRefStruct;
+
+            return flags;
+        }
+
+        // The names in the text of a stunt that depend on the other stunts of the generation: its own,
+        // and those of the default implementation classes of its interfaces that collide.
+        static string CachedNames(ProcessorContext context, PendingStunt item)
+        {
+            var names = new StringBuilder(item.Name);
+            if (context.AmbiguousDefaultImplementations.Count > 0)
+            {
+                foreach (var iface in item.Candidate.Concat(item.Candidate.SelectMany(type => type.AllInterfaces))
+                    .Where(type => type.TypeKind == TypeKind.Interface).Distinct(SymbolEqualityComparer.Default).Cast<INamedTypeSymbol>())
+                {
+                    var name = DefaultImplementation.FullName(context, iface);
+                    if (name != context.NamingConvention.GetDefaultImplementationFullName(iface))
+                        names.Append('|').Append(name);
+                }
+            }
+
+            return names.ToString();
+        }
+
+        // Finds the interfaces whose default implementation class a stunt calls, by name, among its types.
+        static HashSet<INamedTypeSymbol>? ResolveDefaults(IEnumerable<string> names, INamedTypeSymbol[] candidate)
+        {
+            var defaults = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+            INamedTypeSymbol[]? interfaces = null;
+            foreach (var name in names)
+            {
+                interfaces ??= candidate.Concat(candidate.SelectMany(type => type.AllInterfaces)).ToArray();
+                if (interfaces.FirstOrDefault(type => StuntFingerprint.Name(type) == name) is not INamedTypeSymbol iface)
+                    return null;
+
+                defaults.Add(iface);
+            }
+
+            return defaults;
+        }
+
+        static void AddSource(ProcessorContext context, string name, string code, HashSet<string> hintNames)
         {
             var hintName = UniqueHintName(name, hintNames);
-            if (code == null)
-            {
-                profile?.Mark();
-                code = SyntaxText.Emit(updated);
-                profile?.Add(ref profile.Normalize);
-            }
             var options = context.AnalyzerConfigOptions.GlobalOptions;
-            // Pretty-printing is C# only. The debugger dump below still uses the flag for every language.
             var shouldEmit = BuildProperties.EmitCompilerGeneratedFiles(options);
-            if (shouldEmit && context.Language == LanguageNames.CSharp)
-            {
-                profile?.Mark();
-                updated = CSharpSyntaxTree.ParseText(code, (CSharpParseOptions)context.ParseOptions).GetRoot();
-                updated = new CSharpFormatter().Visit(updated);
-                code = updated.GetText().ToString();
-                profile?.Add(ref profile.Pretty);
-            }
 
             context.AddSource(hintName, SourceText.From(code, Encoding.UTF8));
 
@@ -793,6 +910,16 @@ namespace Stunts
         public SyntaxNode Updated { get; set; } = null!;
 
         public HashSet<INamedTypeSymbol> Defaults { get; set; } = null!;
+
+        /// <summary>The <see cref="StuntCache"/> key, when the cache is enabled.</summary>
+        public string? Key { get; set; }
+
+        /// <summary>The result of an earlier generation, which replaces processing.</summary>
+        public StuntCacheEntry? Cached { get; set; }
+
+        public StuntCacheFlags Flags { get; set; }
+
+        public GeneratedStunt? Stunt { get; set; }
     }
 
     sealed class GenProfile
@@ -802,11 +929,13 @@ namespace Stunts
         static readonly ConcurrentDictionary<string, StrongBox<long>> steps = new();
 
         public long Discover;
+        public long Cache;
         public long Process;
         public long Normalize;
-        public long Pretty;
         public long Register;
         public int Metadata;
+        public int Hits;
+        public int Misses;
         readonly string? path;
         readonly Stopwatch clock = new Stopwatch();
         long mark;
@@ -862,12 +991,14 @@ namespace Stunts
             {
                 "generated=" + generated,
                 "metadata=" + Metadata,
+                "hits=" + Hits,
+                "misses=" + Misses,
                 "discover=" + Seconds(Discover),
+                "cache=" + Seconds(Cache),
                 "process=" + Seconds(Process),
                 "normalize=" + Seconds(Normalize),
-                "pretty=" + Seconds(Pretty),
                 "register=" + Seconds(Register),
-                "other=" + Seconds(total - Discover - Process - Normalize - Pretty - Register),
+                "other=" + Seconds(total - Discover - Cache - Process - Normalize - Register),
                 "total=" + Seconds(total),
             };
             foreach (var step in steps.OrderByDescending(pair => pair.Value.Value))
