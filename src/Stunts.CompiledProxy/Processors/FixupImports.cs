@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -37,7 +38,7 @@ namespace Stunts.Processors
             return unit.WithUsings(
                 List(
                     unit.Usings
-                        .OrderBy(x => x.Name?.ToString())));
+                        .OrderBy(x => x.Name?.ToString(), StringComparer.Ordinal)));
         }
     }
 }

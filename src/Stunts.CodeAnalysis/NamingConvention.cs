@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -84,6 +85,6 @@ namespace Stunts.CodeAnalysis
 
         IEnumerable<INamedTypeSymbol> Sorted(IEnumerable<INamedTypeSymbol> symbols)
             => symbols.Where(x => x.TypeKind == TypeKind.Class || x.TypeKind == TypeKind.Delegate)
-                .Concat(symbols.Where(x => x.TypeKind == TypeKind.Interface).OrderBy(x => x.Name));
+                .Concat(symbols.Where(x => x.TypeKind == TypeKind.Interface).OrderBy(x => x.Name, StringComparer.Ordinal));
     }
 }
