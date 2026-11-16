@@ -64,7 +64,21 @@ namespace Stunts.CodeAnalysis
             "Build", DiagnosticSeverity.Error, true);
 
         /// <summary>
-        /// Diagnostic reported whenever type parameters specified for a 
+        /// Reports code in a <c>[SyntaxOnlyProcessor]</c> type that reads inputs the stunt
+        /// generation cache does not track, so a cache hit would replay stale code.
+        /// </summary>
+        public static DiagnosticDescriptor SyntaxOnlyProcessorUsesSemantics { get; } = new DiagnosticDescriptor(
+            "ST022", "Syntax-only processor reads untracked inputs",
+            "'{0}' is marked [SyntaxOnlyProcessor] but {1}",
+            "Build", DiagnosticSeverity.Error, true,
+            "The stunt generation cache reuses the output of syntax-only processors while the syntax they receive is unchanged. " +
+            "They can read that syntax and ProcessorContext.Language, CancellationToken and NamingConvention. Compilations, " +
+            "semantic models, symbols, operations and the other ProcessorContext members make the output depend on inputs " +
+            "the cache does not track, as does code outside the processor that receives the context. Stop reading them, " +
+            "or remove the attribute.");
+
+        /// <summary>
+        /// Diagnostic reported whenever type parameters specified for a
         /// <see cref="StuntGeneratorAttribute"/>-annotated method contain a base 
         /// type but it is not the first provided type parameter. This matches 
         /// the compiler requirement of having the base class as the first type too.
