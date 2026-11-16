@@ -10,9 +10,13 @@ namespace Stunts
     /// <summary>
     /// Marks an <see cref="ISyntaxProcessor"/> that rewrites syntax without binding it.
     /// The driver does not add the generated tree to the compilation for these processors.
+    /// The generation cache can store their output: the fingerprint already describes the
+    /// syntax they receive, and their assembly identity is part of the cache version.
+    /// The ST022 analyzer reports what such a processor reads beyond that syntax. A processor whose
+    /// configuration changes its output implements <see cref="IConfiguredSyntaxProcessor"/>.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class, Inherited = false)]
-    sealed class SyntaxOnlyProcessorAttribute : Attribute
+    public sealed class SyntaxOnlyProcessorAttribute : Attribute
     {
     }
 

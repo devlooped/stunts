@@ -13,7 +13,7 @@ namespace Stunts.Processors
     /// Adds a set of default imports to a document.
     /// </summary>
     [SyntaxOnlyProcessor]
-    public class DefaultImports : ISyntaxProcessor
+    public class DefaultImports : IConfiguredSyntaxProcessor
     {
         // These namespaces are used by the default stunt code and are always imported.
         static readonly string[] DefaultNamespaces =
@@ -38,7 +38,7 @@ namespace Stunts.Processors
         public DefaultImports(params string[] namespaces) => this.namespaces = namespaces;
 
         /// <summary>The namespaces this processor adds.</summary>
-        internal IReadOnlyList<string> Namespaces => namespaces;
+        string IConfiguredSyntaxProcessor.Configuration => string.Join(" ", namespaces);
 
         /// <summary>
         /// Applies to <see cref="LanguageNames.CSharp"/>.

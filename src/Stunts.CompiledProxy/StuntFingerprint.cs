@@ -61,11 +61,15 @@ namespace Stunts
         }
 
         /// <summary>
-        /// Whether the output of <paramref name="processors"/> is fully described by the fingerprint. 
-        /// Processors from other assemblies can read anything from the context.
+        /// Whether the output of <paramref name="processors"/> is fully described by the fingerprint.
+        /// Processors from other assemblies can read anything from the context, unless they are
+        /// <see cref="SyntaxOnlyProcessorAttribute"/> and therefore depend only on the syntax
+        /// the fingerprint already accounts for.
         /// </summary>
         public static bool Cacheable(IEnumerable<ISyntaxProcessor> processors)
-            => processors.All(processor => processor.GetType().Assembly == typeof(StuntGenerator).Assembly);
+            => processors.All(processor =>
+                processor.GetType().Assembly == typeof(StuntGenerator).Assembly ||
+                processor.GetType().IsDefined(typeof(SyntaxOnlyProcessorAttribute), inherit: false));
 
         /// <summary>Folder name for the generator version, shared by every compilation it runs on.</summary>
         public static string Version(StuntGenerator generator, IEnumerable<ISyntaxProcessor> processors)
@@ -89,6 +93,11 @@ namespace Stunts
             return Hash(builder.ToString());
         }
 
+        // The configuration is length-prefixed, so its text cannot be mistaken for the separators.
+        static string Describe(ISyntaxProcessor processor) => processor is IConfiguredSyntaxProcessor configured
+            ? processor.GetType().FullName + "(" + configured.Configuration.Length.ToString(CultureInfo.InvariantCulture) + ":" + configured.Configuration + ")"
+            : processor.GetType().FullName!;
+
         // The inputs every stunt of a compilation shares: the generator configuration, the 
         // language and runtime features the processors check, and the target framework.
         static string Environment(ProcessorContext context, StuntGenerator generator, IEnumerable<ISyntaxProcessor> processors, NamingConvention naming, bool pretty)
@@ -97,11 +106,7 @@ namespace Stunts
             var builder = new StringBuilder()
                 .Append(generator.GetType().FullName).Append('|')
                 .Append(generator.GeneratorAttribute.FullName).Append('|')
-                .Append(string.Join(",", processors.Select(processor => processor is DefaultImports imports
-                    ? processor.GetType().FullName + "(" + string.Join(" ", imports.Namespaces) + ")"
-                    : processor.GetType().FullName))).Append('|')
-                // Imports and interface names are sorted with the current culture.
-                .Append(CultureInfo.CurrentCulture.Name).Append('|')
+                .Append(string.Join(",", processors.Select(Describe))).Append('|')
                 .Append(naming.GetType().FullName).Append(':').Append(naming.RootNamespace).Append(':')
                 .Append(naming.NameSuffix).Append(':').Append(naming.DefaultImplementationPrefix).Append('|')
                 .Append(context.Language).Append('|')

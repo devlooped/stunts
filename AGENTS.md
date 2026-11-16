@@ -261,7 +261,8 @@ Pruning runs at most daily: entries not read for 30 days, other versions' folder
 for 7.
 
 `StuntFingerprint` keys hash the compilation-wide inputs processors read (generator
-configuration, the `DefaultImports` namespaces, the host culture, language version, nullable,
+configuration, each processor's `IConfiguredSyntaxProcessor.Configuration` (such as the
+`DefaultImports` namespaces), language version, nullable,
 unsafe and metadata import options, pretty-printing, by-ref-like generics support, the corlib
 identity, and the accessibility of the optional attributes the generated code uses, looked up
 in the compilation the stunt binds against: the treeless one for metadata-only stunts), plus
@@ -273,7 +274,15 @@ delegate signature, but not their members; attribute classes also contribute the
 Stunt keys also include the stunt's full name and the colliding default implementation names its
 interfaces use, since collisions with the other stunts of a generation change them; default
 implementation keys include their class name.
-Processors from other assemblies disable the cache, since their inputs are unknown. Assemblies contribute only their
+Processors from other assemblies disable the cache, since their inputs are unknown, unless they are
+marked `[SyntaxOnlyProcessor]` (they rewrite syntax and do not bind it). `SyntaxOnlyProcessorAnalyzer`
+(`ST022`, an error) enforces that: inside such a type (nested types included) it reports
+`ProcessorContext` members other than `Language`, `CancellationToken` and `NamingConvention`, where a
+`Compilation`, `SemanticModel`, `ISymbol` or `IOperation` value enters the processor (not each member
+read on it), and the context passed to code outside a syntax-only processor, which it cannot follow.
+Processors are keyed by type, so a cacheable processor whose instance configuration changes its
+output must implement `IConfiguredSyntaxProcessor`; the analyzer does not check instance state.
+`ST022_SyntaxOnlyProcessorUsesSemantics` also runs it over the built-in processors. Assemblies contribute only their
 relation to the compilation (`self`, `friend` through `InternalsVisibleTo`, or `other`), so a
 rebuilt or re-versioned library keeps its entries and test heads share them. Anything a
 processor starts reading from the compilation must be added to the fingerprint, or hits
@@ -285,7 +294,7 @@ interfaces whose default implementation classes it calls; those classes are cach
 own keys. Registration still runs every time: delegate and nested stunts are parsed back from
 the cached text so their forwarders bind. `StuntCacheTests` covers hits, signature changes,
 cross-project sharing, friend assemblies, nested and delegate stunts, default implementations,
-diagnostics replay, name collisions, culture changes and custom processors; `STUNTS_PROFILE` reports hits, misses and the cache time.
+diagnostics replay, name collisions, culture independence and custom processors; `STUNTS_PROFILE` reports hits, misses and the cache time.
 
 ### Signature compatibility
 

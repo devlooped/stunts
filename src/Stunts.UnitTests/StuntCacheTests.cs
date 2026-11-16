@@ -195,7 +195,7 @@ namespace Stunts.UnitTests
         }
 
         [Fact]
-        public void RegeneratesStuntsForAnotherCulture()
+        public void ReusesStuntsForAnotherCulture()
         {
             var culture = CultureInfo.CurrentCulture;
             try
@@ -205,7 +205,7 @@ namespace Stunts.UnitTests
                 MarkEntries();
 
                 CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
-                Assert.DoesNotContain(Marker, Stunt(Generate(Calculator("int")).Compilation, "ICalculatorStunt"));
+                Assert.Contains(Marker, Stunt(Generate(Calculator("int")).Compilation, "ICalculatorStunt"));
             }
             finally
             {
@@ -219,6 +219,39 @@ namespace Stunts.UnitTests
             Generate(Calculator("int"), generator: new StuntGenerator().WithProcessor(new NoopProcessor()));
 
             Assert.False(Directory.Exists(cacheDir));
+        }
+
+        [Fact]
+        public void CachesSyntaxOnlyProcessorsFromOtherAssemblies()
+        {
+            var generator = new StuntGenerator().WithProcessor(new CommentProcessor());
+            Generate(Calculator("int"), generator: generator);
+            Assert.NotEqual(0, MarkEntries());
+
+            var (diagnostics, compilation) = Generate(Calculator("int"), generator: generator);
+
+            Assert.Empty(diagnostics);
+            var stunt = Stunt(compilation, "ICalculatorStunt");
+            Assert.Contains(Marker, stunt);
+            Assert.Contains(CommentProcessor.Comment, stunt);
+        }
+
+        [Fact]
+        public void DistinguishesProcessorConfigurations()
+        {
+            var first = new StuntGenerator().WithProcessor(new ConfiguredProcessor("FirstConfiguration"));
+            Generate(Calculator("int"), generator: first);
+            Assert.NotEqual(0, MarkEntries());
+
+            var stunt = Stunt(Generate(Calculator("int"), generator: new StuntGenerator().WithProcessor(new ConfiguredProcessor("SecondConfiguration"))).Compilation, "ICalculatorStunt");
+            Assert.DoesNotContain(Marker, stunt);
+            Assert.Contains("SecondConfiguration", stunt);
+            Assert.DoesNotContain("FirstConfiguration", stunt);
+
+            // The first configuration is still cached.
+            stunt = Stunt(Generate(Calculator("int"), generator: first).Compilation, "ICalculatorStunt");
+            Assert.Contains(Marker, stunt);
+            Assert.Contains("FirstConfiguration", stunt);
         }
 
         [Fact]
@@ -360,6 +393,31 @@ namespace Stunts.UnitTests
             public string Language => LanguageNames.CSharp;
             public ProcessorPhase Phase => ProcessorPhase.Fixup;
             public SyntaxNode Process(SyntaxNode syntax, ProcessorContext context) => syntax;
+        }
+
+        [SyntaxOnlyProcessor]
+        sealed class CommentProcessor : ISyntaxProcessor
+        {
+            public const string Comment = "SyntaxOnlyProcessorSentinel";
+
+            public string Language => LanguageNames.CSharp;
+            public ProcessorPhase Phase => ProcessorPhase.Fixup;
+
+            public SyntaxNode Process(SyntaxNode syntax, ProcessorContext context)
+                => ((CompilationUnitSyntax)syntax).AddMembers(
+                    SyntaxFactory.ParseMemberDeclaration($"static class {Comment} {{ }}")!);
+        }
+
+        [SyntaxOnlyProcessor]
+        sealed class ConfiguredProcessor(string name) : IConfiguredSyntaxProcessor
+        {
+            public string Configuration => name;
+            public string Language => LanguageNames.CSharp;
+            public ProcessorPhase Phase => ProcessorPhase.Fixup;
+
+            public SyntaxNode Process(SyntaxNode syntax, ProcessorContext context)
+                => ((CompilationUnitSyntax)syntax).AddMembers(
+                    SyntaxFactory.ParseMemberDeclaration($"static class {name} {{ }}")!);
         }
 
         sealed class PropertiesProvider : AnalyzerConfigOptionsProvider
