@@ -17,8 +17,8 @@ namespace Samples
         // [Fact]
         public void Test()
         {
-            var console = Stunt.Of<IConsole>()
-                .AddBehavior(new InterfaceStaticAdapterBehavior(typeof(Console)));
+            var console = Stunt.Of<IConsole>();
+            Stunt.Get(console).AddBehavior(new InterfaceStaticAdapterBehavior(typeof(Console)));
 
             console.Write("Hello");
             console.WriteLine(" World!");

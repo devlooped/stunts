@@ -16,8 +16,9 @@ namespace Samples.TargetInvocation
             // By adding the recorder *after* the dynamic target, 
             // we can check if any calls where made to the stunt
             // instead of the target.
-            calc.AddBehavior(new DynamicTargetBehavior(target))
-                 .AddBehavior(recorder);
+            Stunt.Get(calc)
+                .AddBehavior(new DynamicTargetBehavior(target))
+                .AddBehavior(recorder);
 
             var result = calc.Add(2, 3);
 
@@ -38,8 +39,9 @@ namespace Samples.TargetInvocation
             // By adding the recorder *after* the dynamic target, 
             // we can check if any calls where made to the stunt
             // instead of the target.
-            stunt.AddBehavior(new DynamicTargetBehavior(target))
-                 .AddBehavior(stuntRecorder);
+            Stunt.Get(stunt)
+                .AddBehavior(new DynamicTargetBehavior(target))
+                .AddBehavior(stuntRecorder);
 
             stunt.Store("m1", 42);
             Assert.Equal(42, stunt.Recall("m1"));

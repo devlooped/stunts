@@ -26,9 +26,15 @@ namespace Samples
     public static class Stub
     {
         [StuntGenerator]
-        public static T Of<T>() => Stunt.Of<T>()
-            .AddBehavior(new DefaultEqualityBehavior())
-            .AddBehavior(new RecordingBehavior())
-            .AddBehavior(new DefaultValueBehavior());
+        public static T Of<T>()
+        {
+            var stub = Stunt.Of<T>();
+            Stunt.Get(stub)
+                .AddBehavior(new DefaultEqualityBehavior())
+                .AddBehavior(new RecordingBehavior())
+                .AddBehavior(new DefaultValueBehavior());
+
+            return stub;
+        }
     }
 }

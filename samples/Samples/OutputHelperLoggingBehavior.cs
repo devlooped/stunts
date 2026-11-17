@@ -37,7 +37,8 @@ namespace Samples
         [Fact]
         public void LogsAllCalls()
         {
-            var calc = Stunt.Of<ICalculator>()
+            var calc = Stunt.Of<ICalculator>();
+            Stunt.Get(calc)
                 .AddBehavior(new OutputHelperLoggingBehavior(output))
                 .AddBehavior(new DefaultValueBehavior());
 
