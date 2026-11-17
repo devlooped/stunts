@@ -1,6 +1,6 @@
 # Changelog
 
-## [v1.0.0-beta.4](https://github.com/devlooped/stunts/tree/v1.0.0-beta.4) (2026-11-16)
+## [v1.0.0-beta.4](https://github.com/devlooped/stunts/tree/v1.0.0-beta.4) (2026-11-17)
 
 [Full Changelog](https://github.com/devlooped/stunts/compare/v1.0.0-beta.3...v1.0.0-beta.4)
 
