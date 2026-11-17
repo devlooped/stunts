@@ -1,6 +1,6 @@
 ﻿# Builds a final release version on every supported OS and pushes to nuget.org
 # whenever a release is published. Packages are pushed only after the whole matrix passes.
-# Requires: secrets.NUGET_API_KEY
+# Requires: vars.NUGET_OIDC (or secrets.NUGET_OIDC) and a nuget.org trusted publishing policy
 
 name: publish
 on:
@@ -65,9 +65,28 @@ jobs:
           name: bin-ubuntu-latest
           path: bin/*.nupkg
 
+  # Pushes with nuget.org Trusted Publishing (GitHub Actions OIDC), no long-lived API key.
+  # Only this job may request an OIDC token. The nuget.org policy, created by the
+  # NuGet/login user (vars.NUGET_OIDC, or secrets.NUGET_OIDC when the variable is empty),
+  # must match:
+  #   Package owner: Devlooped
+  #   Repository owner: devlooped
+  #   Repository: stunts
+  #   Workflow file: publish.yml
+  #   Environment: nuget
+  #   Scope: Push new packages and package versions
+  #   Glob patterns and packages: Stunts, Stunts.*, ManualStunts
+  # The nuget GitHub environment must allow the release tag ref (refs/tags/<tag_name>).
+  # https://learn.microsoft.com/nuget/nuget-org/trusted-publishing
+  # https://github.com/NuGet/login
   publish:
     needs: build
+    if: github.event.action != 'prereleased'
     runs-on: ubuntu-latest
+    environment: nuget
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: 🔽 packages
         uses: actions/download-artifact@v4
@@ -75,8 +94,11 @@ jobs:
           name: bin-ubuntu-latest
           path: bin
 
+      - name: 🔑 nuget login
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGET_OIDC || secrets.NUGET_OIDC }}
+
       - name: 🚀 nuget
-        env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-        if: ${{ env.NUGET_API_KEY != '' && github.event.action != 'prereleased' }}
-        run: dotnet nuget push ./bin/**/*.nupkg -s https://api.nuget.org/v3/index.json -k ${{secrets.NUGET_API_KEY}} --skip-duplicate
+        run: dotnet nuget push ./bin/**/*.nupkg -s https://api.nuget.org/v3/index.json -k ${{ steps.login.outputs.NUGET_API_KEY }} --skip-duplicate
