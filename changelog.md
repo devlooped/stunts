@@ -61,6 +61,8 @@
 
 :twisted_rightwards_arrows: Merged:
 
+- Publish to nuget.org with trusted publishing [\#348](https://github.com/devlooped/stunts/pull/348) (@kzu)
+- Add a per-stunt memoize sample and fix the samples build [\#347](https://github.com/devlooped/stunts/pull/347) (@kzu)
 - Cache syntax-only processors from other assemblies, verified by ST022 [\#345](https://github.com/devlooped/stunts/pull/345) (@kzu)
 - Bump files with dotnet-file sync [\#315](https://github.com/devlooped/stunts/pull/315) (@kzu)
 - Bump files with dotnet-file sync [\#302](https://github.com/devlooped/stunts/pull/302) (@kzu)
