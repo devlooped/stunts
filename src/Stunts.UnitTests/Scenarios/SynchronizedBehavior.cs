@@ -181,7 +181,7 @@ namespace Stunts.UnitTests
             var root = new object();
             var held = new ManualResetEventSlim(false);
             var leave = new ManualResetEventSlim(false);
-            var external = Task.Run(() =>
+            var external = Dedicated(() =>
             {
                 lock (root)
                 {
@@ -192,7 +192,7 @@ namespace Stunts.UnitTests
             Assert.True(held.Wait(TimeSpan.FromSeconds(5)));
 
             var worker = Create(new SynchronizedBehavior(root), new Script(invocation => invocation.CreateValueReturn(1)));
-            var call = Task.Run(() => worker.Work(1));
+            var call = Dedicated(() => worker.Work(1));
             Assert.True(call.Wait(TimeSpan.FromSeconds(2)), "The call blocked on the caller's sync root.");
 
             leave.Set();
@@ -264,11 +264,19 @@ namespace Stunts.UnitTests
         }
 
         static Task<int> Start(Barrier start, IWorker worker, Func<IWorker, Task<int>> call)
-            => Task.Run(() =>
+            => Dedicated(() =>
             {
                 Assert.True(start.SignalAndWait(5000));
                 return call(worker);
-            });
+            }).Unwrap();
+
+        // Callers that block run on threads of their own: the other tests running in parallel
+        // can exhaust the thread pool for longer than the timeouts of these scenarios.
+        static Task Dedicated(Action action)
+            => Task.Factory.StartNew(action, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+
+        static Task<T> Dedicated<T>(Func<T> func)
+            => Task.Factory.StartNew(func, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
         static int Finish(Task<int> task)
         {

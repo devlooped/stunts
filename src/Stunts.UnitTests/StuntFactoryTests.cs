@@ -6,6 +6,14 @@ using Xunit;
 
 namespace Stunts.UnitTests
 {
+    /// <summary>
+    /// Replaces the global default factory, which every other test creating stunts reads,
+    /// so it runs after the parallel tests, alone.
+    /// </summary>
+    [CollectionDefinition(nameof(GlobalStuntFactory), DisableParallelization = true)]
+    public class GlobalStuntFactory { }
+
+    [Collection(nameof(GlobalStuntFactory))]
     public class StuntFactoryTests
     {
         [Fact]
@@ -17,16 +25,23 @@ namespace Stunts.UnitTests
         {
             var instance = new object();
             var factory = new TestFactory(instance);
+            var original = StuntFactory.Default;
 
             StuntFactory.Default = factory;
+            try
+            {
+                var actual = StuntFactory.Default.CreateStunt(
+                    Assembly.GetExecutingAssembly(),
+                    typeof(object),
+                    new[] { typeof(IFormatProvider) },
+                    Array.Empty<object>());
 
-            var actual = StuntFactory.Default.CreateStunt(
-                Assembly.GetExecutingAssembly(),
-                typeof(object),
-                new[] { typeof(IFormatProvider) },
-                Array.Empty<object>());
-
-            Assert.Same(instance, actual);
+                Assert.Same(instance, actual);
+            }
+            finally
+            {
+                StuntFactory.Default = original;
+            }
         }
 
         [Fact]
