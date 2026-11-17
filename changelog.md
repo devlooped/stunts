@@ -1,6 +1,6 @@
 # Changelog
 
-## [v1.0.0-beta.4](https://github.com/devlooped/stunts/tree/v1.0.0-beta.4) (2026-10-16)
+## [v1.0.0-beta.4](https://github.com/devlooped/stunts/tree/v1.0.0-beta.4) (2026-11-16)
 
 [Full Changelog](https://github.com/devlooped/stunts/compare/v1.0.0-beta.3...v1.0.0-beta.4)
 
@@ -16,6 +16,7 @@
 - Add a target-forwarding behavior, including a lazy target [\#264](https://github.com/devlooped/stunts/issues/264)
 - Add an async-aware Proceed extension for behaviors [\#263](https://github.com/devlooped/stunts/issues/263)
 - Support for default interface implementations [\#113](https://github.com/devlooped/stunts/issues/113)
+- Reuse generated stunts across builds and projects while their types keep their shape [\#318](https://github.com/devlooped/stunts/pull/318) (@kzu)
 - Add a guard behavior for validation and authorization [\#291](https://github.com/devlooped/stunts/pull/291) (@kzu)
 - Add an AOT-safe data annotation behavior [\#290](https://github.com/devlooped/stunts/pull/290) (@kzu)
 - Speed up compile-time stunt generation [\#287](https://github.com/devlooped/stunts/pull/287) (@kzu)
@@ -48,6 +49,8 @@
 
 :bug: Fixed bugs:
 
+- Make generated stunt names unique per constructed type [\#317](https://github.com/devlooped/stunts/pull/317) (@kzu)
+- Sort generated imports and stunt type names with ordinal comparison [\#316](https://github.com/devlooped/stunts/pull/316) (@kzu)
 - Fix concurrent and simple-name dependency resolution [\#255](https://github.com/devlooped/stunts/pull/255) (@kzu)
 - Preserve narrowed accessor accessibility [\#237](https://github.com/devlooped/stunts/pull/237) (@kzu)
 - Close generic methods before creating the invocation [\#235](https://github.com/devlooped/stunts/pull/235) (@kzu)
@@ -58,6 +61,8 @@
 
 :twisted_rightwards_arrows: Merged:
 
+- Cache syntax-only processors from other assemblies, verified by ST022 [\#345](https://github.com/devlooped/stunts/pull/345) (@kzu)
+- Bump files with dotnet-file sync [\#315](https://github.com/devlooped/stunts/pull/315) (@kzu)
 - Bump files with dotnet-file sync [\#302](https://github.com/devlooped/stunts/pull/302) (@kzu)
 - Bump open dependency updates together [\#296](https://github.com/devlooped/stunts/pull/296) (@Copilot)
 - Format generated stunts with explicit whitespace trivia. [\#288](https://github.com/devlooped/stunts/pull/288) (@kzu)
