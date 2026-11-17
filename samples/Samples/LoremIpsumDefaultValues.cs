@@ -26,7 +26,8 @@ namespace Samples
             var provider = new DefaultValueProvider();
             provider.Register(typeof(string), _ => Ipsum.GetPhrase());
 
-            var greeter = Stunt.Of<IGreeter>().AddBehavior(new DefaultValueBehavior(provider));
+            var greeter = Stunt.Of<IGreeter>();
+            Stunt.Get(greeter).AddBehavior(new DefaultValueBehavior(provider));
 
             // On ever run, you'll get three different greetings!
             output.WriteLine(greeter.Greet());

@@ -15,17 +15,18 @@ namespace Samples
         public void DebuggerDisplay()
         {
             var calc = Stunt.Of<ICalculator>();
+            var stunt = Stunt.Get(calc);
             var recorder = new RecordingBehavior();
 
-            calc.AddBehavior(recorder);
-            calc.AddBehavior(new DefaultEqualityBehavior());
+            stunt.AddBehavior(recorder);
+            stunt.AddBehavior(new DefaultEqualityBehavior());
 
-            calc.AddBehavior(
+            stunt.AddBehavior(
                 (invocation, next) => invocation.CreateValueReturn(invocation.Arguments.Get<int>(0) + invocation.Arguments.Get<int>(1)),
                 invocation => invocation.MethodBase.Name == nameof(ICalculator.Add),
                 "Add");
 
-            calc.AddBehavior(new DefaultValueBehavior());
+            stunt.AddBehavior(new DefaultValueBehavior());
             calc.GetHashCode();
 
             Assert.False(calc.Equals(new object()));

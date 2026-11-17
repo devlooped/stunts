@@ -33,8 +33,13 @@ namespace Samples
 
         [StuntGenerator]
         public static T Of<T>()
-            => Stunt.Of<T>().AddBehavior(
+        {
+            var stunt = Stunt.Of<T>();
+            Stunt.Get(stunt).AddBehavior(
                 (invocation, next) => invocation.CreateValueReturn(random.Next()),
                 invocation => invocation.MethodBase is MethodInfo info && info.ReturnType == typeof(int));
+
+            return stunt;
+        }
     }
 }
